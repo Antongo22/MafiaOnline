@@ -24,8 +24,8 @@ public class Room : ControllerBase
         if (room.Status != GameStatus.Created)
             return BadRequest("Room is not in created state");
         
-        
-        room.Users.Add(new User { Name = playerName });
+        var userId = Guid.NewGuid().ToString();
+        room.Users.Add(new UserDTO { Id = userId, Name = playerName, Status = UserStatus.Player });
         
         return Ok(room);
     }
@@ -34,15 +34,27 @@ public class Room : ControllerBase
     [HttpPost("create")]
     public ActionResult<RoomDTO> CreateRoom(string roomName, string playerName)
     {
+        var userId = Guid.NewGuid().ToString();
         var room = new RoomDTO
         {
+            Id = Guid.NewGuid().ToString(),
             Name = roomName,
-            Users = new List<User> { new User { Name = playerName } },
+            Users = new List<UserDTO> { new UserDTO { Id = userId, Name = playerName, Status = UserStatus.Admin } },
             InviteCode = Guid.NewGuid().ToString().Substring(0, 6).ToUpper(),
             Status = GameStatus.Created
         };
         
         Game.Rooms.Add(room);
+        
+        return Ok(room);
+    }
+
+    [HttpGet("my")]
+    public ActionResult<RoomDTO> GetMyRoom(string userId)
+    {
+        var room = Game.Rooms.FirstOrDefault(r => r.Users.Any(u => u.Id == userId));
+        if (room == null)
+            return NotFound("Room not found");
         
         return Ok(room);
     }
