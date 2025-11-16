@@ -2,7 +2,8 @@ namespace Mafia.Enums;
 
 public enum UserStatus
 {
-    Player,
-    Spectator,
-    Admin
+    Player, // активный игрок
+    Spectator, // убитый игрок
+    Admin, // создатель комнаты
+    Leave // отключившийся игрок
 }
