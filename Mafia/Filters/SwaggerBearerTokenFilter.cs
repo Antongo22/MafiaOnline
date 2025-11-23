@@ -4,6 +4,8 @@ using System.Linq;
 
 namespace Mafia.Filters;
 
+// удобный модуль для jwt.
+// скорее всего не будет использоваться
 public class SwaggerBearerTokenFilter : IOperationFilter
 {
     public void Apply(OpenApiOperation operation, OperationFilterContext context)
