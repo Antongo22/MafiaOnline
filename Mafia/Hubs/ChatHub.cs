@@ -112,6 +112,118 @@ public class ChatHub : Hub
         await Clients.Group(roomId).SendAsync("ReceiveMessage", chatMessage);
     }
 
+    public async Task JoinMafiaChat(string roomId, string userId)
+    {
+        // Проверяем существование комнаты
+        var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
+        if (room == null)
+        {
+            await Clients.Caller.SendAsync("Error", "Room not found");
+            return;
+        }
+
+        // Проверяем, что пользователь в комнате
+        var user = room.Users.FirstOrDefault(u => u.Id == userId);
+        if (user == null)
+        {
+            await Clients.Caller.SendAsync("Error", "User not in room");
+            return;
+        }
+
+        // Проверяем, что у пользователя есть роль и она относится к мафии
+        if (room.PlayerRoles == null || !room.PlayerRoles.ContainsKey(userId))
+        {
+            await Clients.Caller.SendAsync("Error", "Role not assigned");
+            return;
+        }
+
+        var userRole = room.PlayerRoles[userId];
+        var team = Enums.RoleInfo.GetTeam(userRole);
+        
+        if (team != Enums.Team.Evil)
+        {
+            await Clients.Caller.SendAsync("Error", "Only mafia members can join mafia chat");
+            return;
+        }
+
+        // Добавляем пользователя в группу чата мафии
+        var mafiaGroupName = $"{roomId}_mafia";
+        await Groups.AddToGroupAsync(Context.ConnectionId, mafiaGroupName);
+
+        // Отправляем историю сообщений чата мафии
+        if (Game.MafiaChatMessages.TryGetValue(roomId, out var mafiaMessages))
+        {
+            await Clients.Caller.SendAsync("ReceiveMafiaMessageHistory", mafiaMessages);
+        }
+        else
+        {
+            await Clients.Caller.SendAsync("ReceiveMafiaMessageHistory", new List<ChatMessageDTO>());
+        }
+    }
+
+    public async Task SendMafiaMessage(string roomId, string userId, string userName, string message)
+    {
+        // Проверяем существование комнаты
+        var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
+        if (room == null)
+        {
+            await Clients.Caller.SendAsync("Error", "Room not found");
+            return;
+        }
+
+        // Проверяем, что пользователь в комнате
+        var user = room.Users.FirstOrDefault(u => u.Id == userId);
+        if (user == null)
+        {
+            await Clients.Caller.SendAsync("Error", "User not in room");
+            return;
+        }
+
+        // Проверяем, что у пользователя есть роль и она относится к мафии
+        if (room.PlayerRoles == null || !room.PlayerRoles.ContainsKey(userId))
+        {
+            await Clients.Caller.SendAsync("Error", "Role not assigned");
+            return;
+        }
+
+        var userRole = room.PlayerRoles[userId];
+        var team = Enums.RoleInfo.GetTeam(userRole);
+        
+        if (team != Enums.Team.Evil)
+        {
+            await Clients.Caller.SendAsync("Error", "Only mafia members can send messages to mafia chat");
+            return;
+        }
+
+        // Получаем название роли
+        var roleInfo = Enums.RoleInfo.GetRole(userRole);
+        var roleName = roleInfo.Item1;
+
+        // Создаем сообщение
+        var chatMessage = new ChatMessageDTO
+        {
+            Id = Guid.NewGuid().ToString(),
+            RoomId = roomId,
+            UserId = userId,
+            UserName = userName,
+            UserRole = roleName,
+            Message = message,
+            Timestamp = DateTime.UtcNow,
+            IsMafiaChat = true
+        };
+
+        // Сохраняем сообщение в кеше чата мафии
+        if (!Game.MafiaChatMessages.ContainsKey(roomId))
+        {
+            Game.MafiaChatMessages[roomId] = new List<ChatMessageDTO>();
+        }
+        Game.MafiaChatMessages[roomId].Add(chatMessage);
+
+        // Отправляем сообщение всем в группе чата мафии
+        var mafiaGroupName = $"{roomId}_mafia";
+        await Clients.Group(mafiaGroupName).SendAsync("ReceiveMafiaMessage", chatMessage);
+    }
+
     public async Task KickPlayer(string roomId, string adminId, string targetUserId)
     {
         // Проверяем существование комнаты

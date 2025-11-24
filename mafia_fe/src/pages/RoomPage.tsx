@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Chat } from "../components/Chat";
+import { MafiaChat } from "../components/MafiaChat";
 import { AdminPanel } from "../components/AdminPanel";
 import { RoleDisplay } from "../components/RoleDisplay";
 import { type User, chatService } from "../services/chatService";
@@ -31,6 +32,10 @@ export function RoomPage() {
   const [revealedRoles, setRevealedRoles] = useState<{ [key: string]: string }>({});
 
   const isAdmin = room && userId && room.users.find(u => u.id === userId)?.status === "Admin";
+  
+  // Роли мафии
+  const MAFIA_ROLES = ["Don", "Mafia", "Ninja"];
+  const isMafia = myRole && MAFIA_ROLES.includes(myRole);
 
   // Проверяем localStorage при загрузке компонента
   useEffect(() => {
@@ -469,15 +474,29 @@ export function RoomPage() {
           </div>
         </div>
 
-        {/* Правая панель - чат */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-          <Chat 
-            roomId={room.id} 
-            userId={userId} 
-            userName={userName} 
-            apiUrl={API_URL}
-            onUserListUpdate={setUsers}
-          />
+        {/* Правая панель - чат(ы) */}
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {/* Общий чат */}
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+            <Chat 
+              roomId={room.id} 
+              userId={userId} 
+              userName={userName} 
+              apiUrl={API_URL}
+              onUserListUpdate={setUsers}
+            />
+          </div>
+
+          {/* Чат мафии (только для мафии во время игры) */}
+          {isMafia && gameStatus === "InProgress" && (
+            <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+              <MafiaChat 
+                roomId={room.id} 
+                userId={userId} 
+                userName={userName} 
+              />
+            </div>
+          )}
         </div>
 
         {error && (

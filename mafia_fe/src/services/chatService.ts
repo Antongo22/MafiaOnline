@@ -7,6 +7,8 @@ export interface ChatMessage {
   userName: string;
   message: string;
   timestamp: string;
+  userRole?: string; // Роль отправителя (для чата мафии)
+  isMafiaChat?: boolean; // Флаг чата мафии
 }
 
 export interface User {
@@ -29,6 +31,8 @@ class ChatService {
   private roleAssignedHandlers: ((data: { userId: string; role: string }) => void)[] = [];
   private allRolesRevealedHandlers: ((rolesData: any) => void)[] = [];
   private gameResetHandlers: (() => void)[] = [];
+  private mafiaMessageHandlers: ((message: ChatMessage) => void)[] = [];
+  private mafiaHistoryHandlers: ((messages: ChatMessage[]) => void)[] = [];
 
   async connect(apiUrl: string = "http://localhost:5141"): Promise<void> {
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
@@ -100,6 +104,16 @@ class ChatService {
       this.gameResetHandlers.forEach((handler) => handler());
     });
 
+    // Обработчик получения сообщения в чате мафии
+    this.connection.on("ReceiveMafiaMessage", (message: ChatMessage) => {
+      this.mafiaMessageHandlers.forEach((handler) => handler(message));
+    });
+
+    // Обработчик получения истории чата мафии
+    this.connection.on("ReceiveMafiaMessageHistory", (messages: ChatMessage[]) => {
+      this.mafiaHistoryHandlers.forEach((handler) => handler(messages));
+    });
+
     await this.connection.start();
   }
 
@@ -129,6 +143,20 @@ class ChatService {
       throw new Error("Connection is not established");
     }
     await this.connection.invoke("LeaveRoom", roomId, userId);
+  }
+
+  async joinMafiaChat(roomId: string, userId: string): Promise<void> {
+    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+      throw new Error("Connection is not established");
+    }
+    await this.connection.invoke("JoinMafiaChat", roomId, userId);
+  }
+
+  async sendMafiaMessage(roomId: string, userId: string, userName: string, message: string): Promise<void> {
+    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+      throw new Error("Connection is not established");
+    }
+    await this.connection.invoke("SendMafiaMessage", roomId, userId, userName, message);
   }
 
   async kickPlayer(roomId: string, adminId: string, targetUserId: string): Promise<void> {
@@ -239,6 +267,22 @@ class ChatService {
 
   removeGameResetHandler(handler: () => void): void {
     this.gameResetHandlers = this.gameResetHandlers.filter((h) => h !== handler);
+  }
+
+  onMafiaMessage(handler: (message: ChatMessage) => void): void {
+    this.mafiaMessageHandlers.push(handler);
+  }
+
+  removeMafiaMessageHandler(handler: (message: ChatMessage) => void): void {
+    this.mafiaMessageHandlers = this.mafiaMessageHandlers.filter((h) => h !== handler);
+  }
+
+  onMafiaMessageHistory(handler: (messages: ChatMessage[]) => void): void {
+    this.mafiaHistoryHandlers.push(handler);
+  }
+
+  removeMafiaHistoryHandler(handler: (messages: ChatMessage[]) => void): void {
+    this.mafiaHistoryHandlers = this.mafiaHistoryHandlers.filter((h) => h !== handler);
   }
 
   async notifyGameStatusChange(roomId: string, status: string, additionalData?: any): Promise<void> {
