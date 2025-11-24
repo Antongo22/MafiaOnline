@@ -219,6 +219,28 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
         ) : (
           messages.map((msg) => {
             const isMyMessage = msg.userId === userId;
+            const isSystemMessage = msg.userId === "system";
+            
+            // Системное сообщение-разделитель
+            if (isSystemMessage) {
+              return (
+                <div
+                  key={msg.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "1rem",
+                    margin: "1rem 0",
+                    color: "var(--text-muted)",
+                    fontSize: "0.875rem"
+                  }}
+                >
+                  <div style={{ flex: 1, height: "1px", background: "var(--border)" }}></div>
+                  <span>{msg.message}</span>
+                  <div style={{ flex: 1, height: "1px", background: "var(--border)" }}></div>
+                </div>
+              );
+            }
             
             return (
               <div

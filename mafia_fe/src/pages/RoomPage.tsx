@@ -305,7 +305,11 @@ export function RoomPage() {
           display: "flex", 
           flexDirection: "column",
           gap: "1rem",
-          flexShrink: 0
+          flexShrink: 0,
+          overflowY: "auto",
+          overflowX: "hidden",
+          maxHeight: "100vh",
+          paddingRight: "0.5rem"
         }}>
           {/* Информация о комнате */}
           <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>

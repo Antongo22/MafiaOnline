@@ -191,6 +191,45 @@ public class GameController : ControllerBase
         // Переводим в начальный статус
         room.Status = GameStatus.Created;
         
+        // Добавляем разделитель в общий чат
+        var dividerMessage = new ChatMessageDTO
+        {
+            Id = Guid.NewGuid().ToString(),
+            RoomId = roomId,
+            UserId = "system",
+            UserName = "Система",
+            Message = "─────────── Новая игра ───────────",
+            Timestamp = DateTime.UtcNow,
+            IsMafiaChat = false
+        };
+        
+        if (!Game.ChatMessages.ContainsKey(roomId))
+        {
+            Game.ChatMessages[roomId] = new List<ChatMessageDTO>();
+        }
+        Game.ChatMessages[roomId].Add(dividerMessage);
+        await _hubContext.Clients.Group(roomId).SendAsync("ReceiveMessage", dividerMessage);
+        
+        // Добавляем разделитель в чат мафии
+        var mafiaDividerMessage = new ChatMessageDTO
+        {
+            Id = Guid.NewGuid().ToString(),
+            RoomId = roomId,
+            UserId = "system",
+            UserName = "Система",
+            Message = "─────────── Новая игра ───────────",
+            Timestamp = DateTime.UtcNow,
+            IsMafiaChat = true
+        };
+        
+        if (!Game.MafiaChatMessages.ContainsKey(roomId))
+        {
+            Game.MafiaChatMessages[roomId] = new List<ChatMessageDTO>();
+        }
+        Game.MafiaChatMessages[roomId].Add(mafiaDividerMessage);
+        var mafiaGroupName = $"{roomId}_mafia";
+        await _hubContext.Clients.Group(mafiaGroupName).SendAsync("ReceiveMafiaMessage", mafiaDividerMessage);
+        
         // Уведомляем всех через SignalR
         await _hubContext.Clients.Group(roomId).SendAsync("GameStatusChanged", new { status = room.Status.ToString() });
         await _hubContext.Clients.Group(roomId).SendAsync("GameReset");

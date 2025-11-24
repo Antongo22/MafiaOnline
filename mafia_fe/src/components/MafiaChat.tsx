@@ -117,6 +117,29 @@ export function MafiaChat({ roomId, userId, userName }: MafiaChatProps) {
         ) : (
           messages.map((msg) => {
             const isMyMessage = msg.userId === userId;
+            const isSystemMessage = msg.userId === "system";
+            
+            // Системное сообщение-разделитель
+            if (isSystemMessage) {
+              return (
+                <div
+                  key={msg.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "1rem",
+                    margin: "1rem 0",
+                    color: "#ef4444",
+                    fontSize: "0.875rem"
+                  }}
+                >
+                  <div style={{ flex: 1, height: "1px", background: "#ef444444" }}></div>
+                  <span>{msg.message}</span>
+                  <div style={{ flex: 1, height: "1px", background: "#ef444444" }}></div>
+                </div>
+              );
+            }
+            
             return (
               <div
                 key={msg.id}
