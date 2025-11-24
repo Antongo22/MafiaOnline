@@ -25,6 +25,10 @@ class ChatService {
   private userLeftHandlers: ((data: { userName: string; userId: string }) => void)[] = [];
   private playerKickedHandlers: ((data: { kickedUserId: string; kickedUserName: string; kickedBy: string }) => void)[] = [];
   private roomDisbandedHandlers: (() => void)[] = [];
+  private gameStatusChangedHandlers: ((data: { status: string; data?: any }) => void)[] = [];
+  private roleAssignedHandlers: ((data: { userId: string; role: string }) => void)[] = [];
+  private allRolesRevealedHandlers: ((rolesData: any) => void)[] = [];
+  private gameResetHandlers: (() => void)[] = [];
 
   async connect(apiUrl: string = "http://localhost:5141"): Promise<void> {
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
@@ -74,6 +78,26 @@ class ChatService {
     // Обработчик расформирования комнаты
     this.connection.on("RoomDisbanded", () => {
       this.roomDisbandedHandlers.forEach((handler) => handler());
+    });
+
+    // Обработчик изменения статуса игры
+    this.connection.on("GameStatusChanged", (data: { status: string; data?: any }) => {
+      this.gameStatusChangedHandlers.forEach((handler) => handler(data));
+    });
+
+    // Обработчик получения роли
+    this.connection.on("RoleAssigned", (data: { userId: string; role: string }) => {
+      this.roleAssignedHandlers.forEach((handler) => handler(data));
+    });
+
+    // Обработчик раскрытия всех ролей
+    this.connection.on("AllRolesRevealed", (rolesData: any) => {
+      this.allRolesRevealedHandlers.forEach((handler) => handler(rolesData));
+    });
+
+    // Обработчик сброса игры
+    this.connection.on("GameReset", () => {
+      this.gameResetHandlers.forEach((handler) => handler());
     });
 
     await this.connection.start();
@@ -183,6 +207,52 @@ class ChatService {
 
   removeRoomDisbandedHandler(handler: () => void): void {
     this.roomDisbandedHandlers = this.roomDisbandedHandlers.filter((h) => h !== handler);
+  }
+
+  onGameStatusChanged(handler: (data: { status: string; data?: any }) => void): void {
+    this.gameStatusChangedHandlers.push(handler);
+  }
+
+  removeGameStatusChangedHandler(handler: (data: { status: string; data?: any }) => void): void {
+    this.gameStatusChangedHandlers = this.gameStatusChangedHandlers.filter((h) => h !== handler);
+  }
+
+  onRoleAssigned(handler: (data: { userId: string; role: string }) => void): void {
+    this.roleAssignedHandlers.push(handler);
+  }
+
+  removeRoleAssignedHandler(handler: (data: { userId: string; role: string }) => void): void {
+    this.roleAssignedHandlers = this.roleAssignedHandlers.filter((h) => h !== handler);
+  }
+
+  onAllRolesRevealed(handler: (rolesData: any) => void): void {
+    this.allRolesRevealedHandlers.push(handler);
+  }
+
+  removeAllRolesRevealedHandler(handler: (rolesData: any) => void): void {
+    this.allRolesRevealedHandlers = this.allRolesRevealedHandlers.filter((h) => h !== handler);
+  }
+
+  onGameReset(handler: () => void): void {
+    this.gameResetHandlers.push(handler);
+  }
+
+  removeGameResetHandler(handler: () => void): void {
+    this.gameResetHandlers = this.gameResetHandlers.filter((h) => h !== handler);
+  }
+
+  async notifyGameStatusChange(roomId: string, status: string, additionalData?: any): Promise<void> {
+    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+      throw new Error("Connection is not established");
+    }
+    await this.connection.invoke("NotifyGameStatusChange", roomId, status, additionalData);
+  }
+
+  async notifyAllRolesRevealed(roomId: string, rolesData: any): Promise<void> {
+    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+      throw new Error("Connection is not established");
+    }
+    await this.connection.invoke("NotifyAllRolesRevealed", roomId, rolesData);
   }
 
   isConnected(): boolean {

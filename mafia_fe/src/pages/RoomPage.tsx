@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Chat } from "../components/Chat";
+import { AdminPanel } from "../components/AdminPanel";
+import { RoleDisplay } from "../components/RoleDisplay";
 import { type User, chatService } from "../services/chatService";
 import { saveRoomState, loadRoomState, clearRoomState } from "../utils/storage";
 
@@ -8,6 +10,7 @@ interface Room {
   name: string;
   inviteCode: string;
   users: Array<{ id: string; name: string; status: string }>;
+  status: string;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5141";
@@ -23,6 +26,9 @@ export function RoomPage() {
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [kickingUserId, setKickingUserId] = useState<string | null>(null);
+  const [gameStatus, setGameStatus] = useState<string>("Created");
+  const [myRole, setMyRole] = useState<string | null>(null);
+  const [revealedRoles, setRevealedRoles] = useState<{ [key: string]: string }>({});
 
   const isAdmin = room && userId && room.users.find(u => u.id === userId)?.status === "Admin";
 
@@ -52,6 +58,57 @@ export function RoomPage() {
     checkExistingRoom();
   }, []);
 
+  // Подписка на игровые события SignalR
+  useEffect(() => {
+    if (!room || !userId) return;
+
+    const handleGameStatusChanged = (data: { status: string }) => {
+      console.log("Game status changed:", data.status);
+      setGameStatus(data.status);
+      if (room) {
+        setRoom({ ...room, status: data.status });
+      }
+      
+      // Сбрасываем роли при возврате в Created
+      if (data.status === "Created") {
+        setMyRole(null);
+        setRevealedRoles({});
+      }
+    };
+
+    const handleRoleAssigned = (data: { userId: string; role: string }) => {
+      console.log("Role assigned:", data);
+      // Проверяем что роль для нас
+      if (data.userId === userId) {
+        setMyRole(data.role);
+      }
+    };
+
+    const handleAllRolesRevealed = (rolesData: any) => {
+      console.log("All roles revealed:", rolesData);
+      setRevealedRoles(rolesData);
+    };
+
+    const handleGameReset = () => {
+      console.log("Game reset");
+      setMyRole(null);
+      setRevealedRoles({});
+      setGameStatus("Created");
+    };
+
+    chatService.onGameStatusChanged(handleGameStatusChanged);
+    chatService.onRoleAssigned(handleRoleAssigned);
+    chatService.onAllRolesRevealed(handleAllRolesRevealed);
+    chatService.onGameReset(handleGameReset);
+
+    return () => {
+      chatService.removeGameStatusChangedHandler(handleGameStatusChanged);
+      chatService.removeRoleAssignedHandler(handleRoleAssigned);
+      chatService.removeAllRolesRevealedHandler(handleAllRolesRevealed);
+      chatService.removeGameResetHandler(handleGameReset);
+    };
+  }, [room, userId]);
+
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!roomName.trim() || !userName.trim()) {
@@ -79,6 +136,7 @@ export function RoomPage() {
       setRoom(data);
       setUserId(data.users[0].id);
       setUserName(userName);
+      setGameStatus(data.status || "Created");
       
       saveRoomState({
         roomId: data.id,
@@ -121,6 +179,7 @@ export function RoomPage() {
 
       const data: Room = await response.json();
       setRoom(data);
+      setGameStatus(data.status || "Created");
       const user = data.users.find((u) => u.name === userName);
       if (user) {
         setUserId(user.id);
@@ -216,6 +275,13 @@ export function RoomPage() {
     }
   };
 
+  const handleGameStatusChange = (newStatus: string) => {
+    setGameStatus(newStatus);
+    if (room) {
+      setRoom({ ...room, status: newStatus });
+    }
+  };
+
   if (room && userId) {
     return (
       <div className="fade-in" style={{ 
@@ -292,6 +358,25 @@ export function RoomPage() {
               {isAdmin ? "🚪 Расформировать комнату" : "🚪 Покинуть комнату"}
             </button>
           </div>
+
+          {/* Админ-панель */}
+          {isAdmin && (
+            <AdminPanel
+              roomId={room.id}
+              userId={userId}
+              gameStatus={gameStatus}
+              playerCount={users.length}
+              apiUrl={API_URL}
+              onStatusChange={handleGameStatusChange}
+            />
+          )}
+
+          {/* Отображение ролей */}
+          <RoleDisplay
+            myRole={myRole}
+            revealedRoles={revealedRoles}
+            gameStatus={gameStatus}
+          />
 
           {/* Список пользователей */}
           <div className="card" style={{

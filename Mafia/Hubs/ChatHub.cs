@@ -155,6 +155,38 @@ public class ChatHub : Hub
         await Clients.Group(roomId).SendAsync("RoomDisbanded", new { roomId = roomId });
     }
 
+    public async Task NotifyGameStatusChange(string roomId, string status, object? additionalData = null)
+    {
+        // Уведомляем всех в комнате о смене статуса игры
+        await Clients.Group(roomId).SendAsync("GameStatusChanged", new { 
+            status = status,
+            data = additionalData
+        });
+    }
+
+    public async Task NotifyRoleAssigned(string roomId, string userId, string role)
+    {
+        // Отправляем конкретному пользователю его роль
+        var connectionIds = await GetUserConnectionIds(roomId, userId);
+        foreach (var connectionId in connectionIds)
+        {
+            await Clients.Client(connectionId).SendAsync("RoleAssigned", new { role = role });
+        }
+    }
+
+    public async Task NotifyAllRolesRevealed(string roomId, object rolesData)
+    {
+        // Отправляем всем роли всех игроков после завершения игры
+        await Clients.Group(roomId).SendAsync("AllRolesRevealed", rolesData);
+    }
+
+    private async Task<List<string>> GetUserConnectionIds(string roomId, string userId)
+    {
+        // В реальном приложении здесь нужно хранить маппинг userId -> connectionId
+        // Пока возвращаем пустой список, т.к. мы используем Groups
+        return new List<string>();
+    }
+
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         await base.OnDisconnectedAsync(exception);

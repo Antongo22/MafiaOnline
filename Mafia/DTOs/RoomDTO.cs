@@ -10,4 +10,10 @@ public class RoomDTO
     public List<UserDTO> Users { get; set; }
     public string InviteCode { get; set; }
     public GameStatus Status { get; set; }
+    
+    // Роли игроков (userId -> Role)
+    public Dictionary<string, Role>? PlayerRoles { get; set; }
+    
+    // Настройка ролей для игры (Role -> количество)
+    public Dictionary<Role, int>? RoleSettings { get; set; }
 }
