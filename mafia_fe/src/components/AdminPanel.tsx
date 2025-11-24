@@ -18,6 +18,7 @@ interface RoleInfo {
   name: string;
   description: string;
   team: string;
+  isUnique: boolean;
 }
 
 // Минимальная конфигурация для разного количества игроков
@@ -265,6 +266,7 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
             gap: "0.5rem",
             maxHeight: "400px",
             overflowY: "auto",
+            overflowX: "hidden",
             paddingRight: "0.5rem"
           }}>
             {availableRoles.map(role => {
@@ -278,21 +280,24 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    padding: "0.75rem",
+                    padding: "0.75rem 1rem",
                     background: count > 0 ? "var(--bg-hover)" : "var(--bg-tertiary)",
                     borderRadius: "var(--radius)",
                     border: `1px solid ${count > 0 ? teamColor : "var(--border)"}`,
                     position: "relative",
-                    cursor: "help",
+                    cursor: "help"
                   }}
                   onMouseEnter={(e) => handleMouseEnter(role.roleValue, e)}
                   onMouseLeave={handleMouseLeave}
                 >
-                  <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+                  <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
                     <span style={{ 
                       fontSize: "0.875rem", 
                       fontWeight: "500",
-                      color: count > 0 ? teamColor : "inherit"
+                      color: count > 0 ? teamColor : "inherit",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis"
                     }}>
                       {role.name}
                     </span>
@@ -302,28 +307,30 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
                       </span>
                     )}
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                     <button
                       onClick={() => handleRoleChange(role.roleValue, -1)}
                       disabled={loading || count === 0}
                       className="btn-secondary btn-sm"
-                      style={{ padding: "0.25rem 0.5rem", minWidth: "30px" }}
+                      style={{ padding: "0.375rem 0.75rem", minWidth: "36px", fontSize: "1rem" }}
                     >
                       −
                     </button>
                     <span style={{
-                      minWidth: "30px",
+                      minWidth: "40px",
                       textAlign: "center",
                       fontWeight: "600",
+                      fontSize: "1rem",
                       color: count > 0 ? teamColor : "var(--text-muted)"
                     }}>
                       {count}
                     </span>
                     <button
                       onClick={() => handleRoleChange(role.roleValue, 1)}
-                      disabled={loading}
+                      disabled={loading || (role.isUnique && count >= 1)}
                       className="btn-secondary btn-sm"
-                      style={{ padding: "0.25rem 0.5rem", minWidth: "30px" }}
+                      style={{ padding: "0.375rem 0.75rem", minWidth: "36px", fontSize: "1rem" }}
+                      title={role.isUnique && count >= 1 ? "Эта роль уникальная (макс. 1)" : ""}
                     >
                       +
                     </button>

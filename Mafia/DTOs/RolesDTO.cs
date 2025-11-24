@@ -6,4 +6,5 @@ public class RolesDTO
     public string Name { get; set; }
     public string Description { get; set; }
     public string Team { get; set; }
+    public bool IsUnique { get; set; }
 }
