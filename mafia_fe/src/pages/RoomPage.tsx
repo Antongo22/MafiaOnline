@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Chat } from "../components/Chat";
-import { type User } from "../services/chatService";
+import { type User, chatService } from "../services/chatService";
 import { saveRoomState, loadRoomState, clearRoomState } from "../utils/storage";
 
 interface Room {
@@ -22,6 +22,9 @@ export function RoomPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
+  const [kickingUserId, setKickingUserId] = useState<string | null>(null);
+
+  const isAdmin = room && userId && room.users.find(u => u.id === userId)?.status === "Admin";
 
   // Проверяем localStorage при загрузке компонента
   useEffect(() => {
@@ -29,7 +32,6 @@ export function RoomPage() {
       const savedState = loadRoomState();
       if (!savedState) return;
 
-      // Проверяем, существует ли комната на сервере
       try {
         const response = await fetch(`${API_URL}/api/Room/my?userId=${savedState.userId}`);
         if (response.ok) {
@@ -37,10 +39,8 @@ export function RoomPage() {
           setRoom(data);
           setUserId(savedState.userId);
           setUserName(savedState.userName);
-          // Инициализируем список пользователей
           setUsers(data.users.filter(u => u.status !== "Leave"));
         } else {
-          // Комната не найдена, очищаем localStorage
           clearRoomState();
         }
       } catch (err) {
@@ -80,7 +80,6 @@ export function RoomPage() {
       setUserId(data.users[0].id);
       setUserName(userName);
       
-      // Сохраняем в localStorage
       saveRoomState({
         roomId: data.id,
         userId: data.users[0].id,
@@ -89,7 +88,6 @@ export function RoomPage() {
         inviteCode: data.inviteCode,
       });
 
-      // Инициализируем список пользователей
       setUsers(data.users.filter(u => u.status !== "Leave"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create room");
@@ -128,7 +126,6 @@ export function RoomPage() {
         setUserId(user.id);
         setUserName(userName);
         
-        // Сохраняем в localStorage
         saveRoomState({
           roomId: data.id,
           userId: user.id,
@@ -137,7 +134,6 @@ export function RoomPage() {
           inviteCode: data.inviteCode,
         });
 
-        // Инициализируем список пользователей
         setUsers(data.users.filter(u => u.status !== "Leave"));
       }
     } catch (err) {
@@ -150,7 +146,11 @@ export function RoomPage() {
   const handleLeaveRoom = async () => {
     if (!userId || !room) return;
 
-    const confirmLeave = window.confirm("Вы уверены, что хотите покинуть комнату?");
+    const message = isAdmin 
+      ? "Вы админ! При выходе комната будет расформирована. Продолжить?" 
+      : "Вы уверены, что хотите покинуть комнату?";
+    
+    const confirmLeave = window.confirm(message);
     if (!confirmLeave) return;
 
     try {
@@ -162,7 +162,13 @@ export function RoomPage() {
         throw new Error("Failed to leave room");
       }
 
-      // Очищаем состояние
+      const result = await response.json();
+
+      // Если комната расформирована, уведомляем всех через SignalR
+      if (result.disbanded && room) {
+        await chatService.disbandRoom(room.id);
+      }
+
       clearRoomState();
       setRoom(null);
       setUserId(null);
@@ -173,115 +179,213 @@ export function RoomPage() {
     }
   };
 
+  const handleKickPlayer = async (targetUserId: string) => {
+    if (!userId || !room || !isAdmin) return;
+
+    const targetUser = users.find(u => u.id === targetUserId);
+    if (!targetUser) return;
+
+    const confirmKick = window.confirm(`Исключить игрока ${targetUser.name}?`);
+    if (!confirmKick) return;
+
+    setKickingUserId(targetUserId);
+
+    try {
+      const response = await fetch(`${API_URL}/api/Room/kick?adminId=${userId}&targetUserId=${targetUserId}`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to kick player");
+      }
+
+      // Уведомляем через SignalR
+      await chatService.kickPlayer(room.id, userId, targetUserId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to kick player");
+    } finally {
+      setKickingUserId(null);
+    }
+  };
+
+  const copyInviteCode = () => {
+    if (room) {
+      navigator.clipboard.writeText(room.inviteCode);
+      // Можно добавить уведомление
+    }
+  };
+
   if (room && userId) {
     return (
-      <div style={{ 
+      <div className="fade-in" style={{ 
         display: "flex", 
         flexDirection: "row",
         height: "100vh", 
-        padding: "20px",
-        gap: "20px",
-        maxWidth: "1400px",
-        margin: "0 auto"
+        padding: "1.5rem",
+        gap: "1.5rem",
+        maxWidth: "1600px",
+        margin: "0 auto",
+        overflow: "hidden"
       }}>
-        {/* Левая панель - информация о комнате и список пользователей */}
+        {/* Левая панель */}
         <div style={{ 
-          width: "300px", 
+          width: "320px", 
           display: "flex", 
           flexDirection: "column",
-          gap: "20px"
+          gap: "1rem",
+          flexShrink: 0
         }}>
           {/* Информация о комнате */}
-          <div style={{
-            padding: "20px",
-            background: "#fff",
-            borderRadius: "8px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-          }}>
-            <h2 style={{ margin: 0, marginBottom: "12px", fontSize: "20px" }}>
-              {room.name}
-            </h2>
-            <div style={{ marginBottom: "8px" }}>
-              <span style={{ color: "#666", fontSize: "14px" }}>Код приглашения:</span>
-              <div style={{ 
-                marginTop: "4px",
-                padding: "8px",
-                background: "#f5f5f5",
-                borderRadius: "4px",
-                fontWeight: "bold",
-                fontSize: "18px",
-                textAlign: "center",
-                letterSpacing: "2px"
+          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div>
+              <h2 style={{ margin: 0, marginBottom: "0.5rem", fontSize: "1.5rem" }}>
+                {room.name}
+              </h2>
+              {isAdmin && (
+                <span className="badge badge-success">Вы админ 👑</span>
+              )}
+            </div>
+            
+            <div>
+              <label style={{ 
+                display: "block", 
+                color: "var(--text-secondary)", 
+                fontSize: "0.875rem",
+                marginBottom: "0.5rem"
               }}>
-                {room.inviteCode}
+                Код приглашения
+              </label>
+              <div style={{ 
+                display: "flex",
+                gap: "0.5rem"
+              }}>
+                <div style={{ 
+                  flex: 1,
+                  padding: "0.75rem",
+                  background: "var(--bg-tertiary)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                  fontWeight: "bold",
+                  fontSize: "1.25rem",
+                  textAlign: "center",
+                  letterSpacing: "3px",
+                  color: "var(--accent-primary)"
+                }}>
+                  {room.inviteCode}
+                </div>
+                <button
+                  onClick={copyInviteCode}
+                  className="btn-secondary btn-sm"
+                  title="Копировать код"
+                  style={{ padding: "0.75rem" }}
+                >
+                  📋
+                </button>
               </div>
             </div>
+
             <button
               onClick={handleLeaveRoom}
-              style={{
-                width: "100%",
-                marginTop: "12px",
-                padding: "10px",
-                background: "#f44336",
-                color: "#fff",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "14px",
-                fontWeight: "500"
-              }}
+              className="btn-danger w-full"
             >
-              Покинуть комнату
+              {isAdmin ? "🚪 Расформировать комнату" : "🚪 Покинуть комнату"}
             </button>
           </div>
 
           {/* Список пользователей */}
-          <div style={{
-            padding: "20px",
-            background: "#fff",
-            borderRadius: "8px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+          <div className="card" style={{
             flex: 1,
-            overflowY: "auto"
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden"
           }}>
-            <h3 style={{ margin: 0, marginBottom: "12px", fontSize: "16px" }}>
-              Участники ({users.length})
+            <h3 style={{ 
+              margin: 0, 
+              marginBottom: "1rem", 
+              fontSize: "1.125rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem"
+            }}>
+              <span>👥 Участники</span>
+              <span className="badge" style={{ 
+                background: "var(--accent-light)",
+                color: "var(--accent-primary)"
+              }}>
+                {users.length}
+              </span>
             </h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              {users.map((user) => (
-                <div
-                  key={user.id}
-                  style={{
-                    padding: "10px",
-                    background: user.id === userId ? "#e3f2fd" : "#f5f5f5",
-                    borderRadius: "4px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px"
-                  }}
-                >
-                  <div style={{
-                    width: "8px",
-                    height: "8px",
-                    borderRadius: "50%",
-                    background: "#4caf50"
-                  }}></div>
-                  <span style={{ 
-                    fontSize: "14px",
-                    fontWeight: user.id === userId ? "bold" : "normal"
-                  }}>
-                    {user.name}
-                    {user.id === userId && " (вы)"}
-                    {user.status === "Admin" && " 👑"}
-                  </span>
-                </div>
-              ))}
+            <div style={{ 
+              display: "flex", 
+              flexDirection: "column", 
+              gap: "0.5rem",
+              overflowY: "auto",
+              paddingRight: "0.5rem"
+            }}>
+              {users.map((user) => {
+                const isCurrentUser = user.id === userId;
+                const isUserAdmin = user.status === "Admin";
+                
+                return (
+                  <div
+                    key={user.id}
+                    style={{
+                      padding: "0.75rem",
+                      background: isCurrentUser ? "var(--accent-light)" : "var(--bg-tertiary)",
+                      border: `1px solid ${isCurrentUser ? "var(--accent-primary)" : "var(--border)"}`,
+                      borderRadius: "var(--radius)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "0.75rem",
+                      transition: "var(--transition)"
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        width: "8px",
+                        height: "8px",
+                        borderRadius: "50%",
+                        background: "var(--success)",
+                        flexShrink: 0
+                      }}></div>
+                      <span style={{ 
+                        fontSize: "0.875rem",
+                        fontWeight: isCurrentUser ? "600" : "normal",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap"
+                      }}>
+                        {user.name}
+                        {isCurrentUser && " (вы)"}
+                        {isUserAdmin && " 👑"}
+                      </span>
+                    </div>
+                    {isAdmin && !isCurrentUser && (
+                      <button
+                        onClick={() => handleKickPlayer(user.id)}
+                        disabled={kickingUserId === user.id}
+                        className="btn-danger btn-sm"
+                        style={{ 
+                          padding: "0.25rem 0.5rem",
+                          fontSize: "0.75rem",
+                          flexShrink: 0
+                        }}
+                        title="Исключить игрока"
+                      >
+                        {kickingUserId === user.id ? "..." : "✕"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
 
         {/* Правая панель - чат */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
           <Chat 
             roomId={room.id} 
             userId={userId} 
@@ -290,61 +394,103 @@ export function RoomPage() {
             onUserListUpdate={setUsers}
           />
         </div>
+
+        {error && (
+          <div style={{
+            position: "fixed",
+            bottom: "20px",
+            right: "20px",
+            padding: "1rem 1.5rem",
+            background: "var(--danger)",
+            color: "white",
+            borderRadius: "var(--radius-lg)",
+            boxShadow: "var(--shadow-lg)",
+            maxWidth: "400px",
+            animation: "fadeIn 0.3s ease-out"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+              <span>⚠️</span>
+              <span>{error}</span>
+              <button
+                onClick={() => setError(null)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "white",
+                  cursor: "pointer",
+                  padding: "0",
+                  fontSize: "1.25rem",
+                  marginLeft: "auto"
+                }}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div style={{ 
+    <div className="fade-in" style={{ 
       display: "flex", 
       justifyContent: "center", 
       alignItems: "center", 
       minHeight: "100vh",
-      padding: "20px"
+      padding: "1.5rem"
     }}>
-      <div style={{ 
+      <div className="card" style={{ 
         width: "100%", 
-        maxWidth: "400px", 
-        padding: "30px", 
-        background: "#fff",
-        borderRadius: "8px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+        maxWidth: "450px"
       }}>
-        <h1 style={{ marginTop: 0, marginBottom: "24px", textAlign: "center" }}>
-          Игра в Мафию
-        </h1>
+        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+          <h1 style={{ 
+            margin: 0, 
+            marginBottom: "0.5rem",
+            fontSize: "2.5rem",
+            background: "linear-gradient(135deg, var(--accent-primary) 0%, var(--info) 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text"
+          }}>
+            🎭 Мафия
+          </h1>
+          <p style={{ color: "var(--text-secondary)", margin: 0 }}>
+            Создайте комнату или присоединитесь к игре
+          </p>
+        </div>
 
-        <div style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
+        <div style={{ 
+          display: "flex", 
+          gap: "0.75rem", 
+          marginBottom: "1.5rem",
+          padding: "0.25rem",
+          background: "var(--bg-tertiary)",
+          borderRadius: "var(--radius-lg)"
+        }}>
           <button
             onClick={() => {
               setMode("create");
               setError(null);
             }}
-            style={{
+            className={mode === "create" ? "btn-primary" : "btn-secondary"}
+            style={{ 
               flex: 1,
-              padding: "10px",
-              background: mode === "create" ? "#2196f3" : "#f5f5f5",
-              color: mode === "create" ? "#fff" : "#333",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer"
+              borderRadius: "var(--radius)"
             }}
           >
-            Создать комнату
+            Создать
           </button>
           <button
             onClick={() => {
               setMode("join");
               setError(null);
             }}
-            style={{
+            className={mode === "join" ? "btn-primary" : "btn-secondary"}
+            style={{ 
               flex: 1,
-              padding: "10px",
-              background: mode === "join" ? "#2196f3" : "#f5f5f5",
-              color: mode === "join" ? "#fff" : "#333",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer"
+              borderRadius: "var(--radius)"
             }}
           >
             Присоединиться
@@ -353,26 +499,31 @@ export function RoomPage() {
 
         {error && (
           <div style={{ 
-            padding: "12px", 
-            background: "#ffebee", 
-            color: "#c62828",
-            borderRadius: "4px",
-            marginBottom: "20px",
-            fontSize: "14px"
+            padding: "1rem", 
+            background: "var(--danger-light)", 
+            color: "var(--danger)",
+            border: "1px solid var(--danger)",
+            borderRadius: "var(--radius)",
+            marginBottom: "1.5rem",
+            fontSize: "0.875rem"
           }}>
-            {error}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span>⚠️</span>
+              <span>{error}</span>
+            </div>
           </div>
         )}
 
-        <form onSubmit={mode === "create" ? handleCreateRoom : handleJoinRoom}>
-          <div style={{ marginBottom: "16px" }}>
+        <form onSubmit={mode === "create" ? handleCreateRoom : handleJoinRoom} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          <div>
             <label style={{ 
               display: "block", 
-              marginBottom: "8px", 
-              fontSize: "14px",
-              fontWeight: "500"
+              marginBottom: "0.5rem", 
+              fontSize: "0.875rem",
+              fontWeight: "500",
+              color: "var(--text-secondary)"
             }}>
-              Ваше имя:
+              Ваше имя
             </label>
             <input
               type="text"
@@ -380,68 +531,52 @@ export function RoomPage() {
               onChange={(e) => setUserName(e.target.value)}
               placeholder="Введите ваше имя"
               required
-              style={{
-                width: "100%",
-                padding: "10px",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                fontSize: "14px",
-                boxSizing: "border-box"
-              }}
+              autoFocus
             />
           </div>
 
           {mode === "create" ? (
-            <div style={{ marginBottom: "16px" }}>
+            <div>
               <label style={{ 
                 display: "block", 
-                marginBottom: "8px", 
-                fontSize: "14px",
-                fontWeight: "500"
+                marginBottom: "0.5rem", 
+                fontSize: "0.875rem",
+                fontWeight: "500",
+                color: "var(--text-secondary)"
               }}>
-                Название комнаты:
+                Название комнаты
               </label>
               <input
                 type="text"
                 value={roomName}
                 onChange={(e) => setRoomName(e.target.value)}
-                placeholder="Введите название комнаты"
+                placeholder="Моя игра в мафию"
                 required
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  fontSize: "14px",
-                  boxSizing: "border-box"
-                }}
               />
             </div>
           ) : (
-            <div style={{ marginBottom: "16px" }}>
+            <div>
               <label style={{ 
                 display: "block", 
-                marginBottom: "8px", 
-                fontSize: "14px",
-                fontWeight: "500"
+                marginBottom: "0.5rem", 
+                fontSize: "0.875rem",
+                fontWeight: "500",
+                color: "var(--text-secondary)"
               }}>
-                Код приглашения:
+                Код приглашения
               </label>
               <input
                 type="text"
                 value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                placeholder="Введите код приглашения"
+                placeholder="ABC123"
                 required
                 maxLength={6}
                 style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  fontSize: "14px",
-                  boxSizing: "border-box",
-                  textTransform: "uppercase"
+                  textTransform: "uppercase",
+                  fontSize: "1.25rem",
+                  letterSpacing: "3px",
+                  textAlign: "center"
                 }}
               />
             </div>
@@ -450,19 +585,23 @@ export function RoomPage() {
           <button
             type="submit"
             disabled={loading}
-            style={{
-              width: "100%",
-              padding: "12px",
-              background: loading ? "#ccc" : "#2196f3",
-              color: "#fff",
-              border: "none",
-              borderRadius: "4px",
-              fontSize: "16px",
-              fontWeight: "500",
-              cursor: loading ? "not-allowed" : "pointer"
+            className="btn-primary w-full"
+            style={{ 
+              padding: "1rem",
+              fontSize: "1.125rem"
             }}
           >
-            {loading ? "Загрузка..." : mode === "create" ? "Создать" : "Присоединиться"}
+            {loading ? (
+              <>
+                <span className="pulse">⏳</span>
+                <span>Загрузка...</span>
+              </>
+            ) : (
+              <>
+                <span>{mode === "create" ? "🎮" : "🚪"}</span>
+                <span>{mode === "create" ? "Создать комнату" : "Присоединиться"}</span>
+              </>
+            )}
           </button>
         </form>
       </div>

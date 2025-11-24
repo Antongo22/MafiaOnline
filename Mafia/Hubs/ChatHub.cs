@@ -112,6 +112,49 @@ public class ChatHub : Hub
         await Clients.Group(roomId).SendAsync("ReceiveMessage", chatMessage);
     }
 
+    public async Task KickPlayer(string roomId, string adminId, string targetUserId)
+    {
+        // Проверяем существование комнаты
+        var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
+        if (room == null)
+        {
+            await Clients.Caller.SendAsync("Error", "Room not found");
+            return;
+        }
+
+        // Проверяем права админа
+        var admin = room.Users.FirstOrDefault(u => u.Id == adminId);
+        if (admin == null || admin.Status != Enums.UserStatus.Admin)
+        {
+            await Clients.Caller.SendAsync("Error", "Only admin can kick players");
+            return;
+        }
+
+        var targetUser = room.Users.FirstOrDefault(u => u.Id == targetUserId);
+        if (targetUser == null)
+        {
+            await Clients.Caller.SendAsync("Error", "Target user not found");
+            return;
+        }
+
+        // Отправляем событие о кике всем
+        await Clients.Group(roomId).SendAsync("PlayerKicked", new { 
+            kickedUserId = targetUser.Id, 
+            kickedUserName = targetUser.Name,
+            kickedBy = admin.Name
+        });
+
+        // Отправляем обновленный список пользователей
+        var activeUsers = room.Users.Where(u => u.Status != Enums.UserStatus.Leave).ToList();
+        await Clients.Group(roomId).SendAsync("UpdateUserList", activeUsers);
+    }
+
+    public async Task DisbandRoom(string roomId)
+    {
+        // Отправляем всем участникам комнаты событие о расформировании
+        await Clients.Group(roomId).SendAsync("RoomDisbanded", new { roomId = roomId });
+    }
+
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         await base.OnDisconnectedAsync(exception);

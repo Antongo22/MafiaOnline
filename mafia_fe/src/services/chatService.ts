@@ -23,6 +23,8 @@ class ChatService {
   private userListHandlers: ((users: User[]) => void)[] = [];
   private userJoinedHandlers: ((data: { userName: string; userId: string }) => void)[] = [];
   private userLeftHandlers: ((data: { userName: string; userId: string }) => void)[] = [];
+  private playerKickedHandlers: ((data: { kickedUserId: string; kickedUserName: string; kickedBy: string }) => void)[] = [];
+  private roomDisbandedHandlers: (() => void)[] = [];
 
   async connect(apiUrl: string = "http://localhost:5141"): Promise<void> {
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
@@ -64,6 +66,16 @@ class ChatService {
       this.userLeftHandlers.forEach((handler) => handler(data));
     });
 
+    // Обработчик кика игрока
+    this.connection.on("PlayerKicked", (data: { kickedUserId: string; kickedUserName: string; kickedBy: string }) => {
+      this.playerKickedHandlers.forEach((handler) => handler(data));
+    });
+
+    // Обработчик расформирования комнаты
+    this.connection.on("RoomDisbanded", () => {
+      this.roomDisbandedHandlers.forEach((handler) => handler());
+    });
+
     await this.connection.start();
   }
 
@@ -93,6 +105,20 @@ class ChatService {
       throw new Error("Connection is not established");
     }
     await this.connection.invoke("LeaveRoom", roomId, userId);
+  }
+
+  async kickPlayer(roomId: string, adminId: string, targetUserId: string): Promise<void> {
+    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+      throw new Error("Connection is not established");
+    }
+    await this.connection.invoke("KickPlayer", roomId, adminId, targetUserId);
+  }
+
+  async disbandRoom(roomId: string): Promise<void> {
+    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+      throw new Error("Connection is not established");
+    }
+    await this.connection.invoke("DisbandRoom", roomId);
   }
 
   onMessage(handler: (message: ChatMessage) => void): void {
@@ -141,6 +167,22 @@ class ChatService {
 
   removeUserLeftHandler(handler: (data: { userName: string; userId: string }) => void): void {
     this.userLeftHandlers = this.userLeftHandlers.filter((h) => h !== handler);
+  }
+
+  onPlayerKicked(handler: (data: { kickedUserId: string; kickedUserName: string; kickedBy: string }) => void): void {
+    this.playerKickedHandlers.push(handler);
+  }
+
+  removePlayerKickedHandler(handler: (data: { kickedUserId: string; kickedUserName: string; kickedBy: string }) => void): void {
+    this.playerKickedHandlers = this.playerKickedHandlers.filter((h) => h !== handler);
+  }
+
+  onRoomDisbanded(handler: () => void): void {
+    this.roomDisbandedHandlers.push(handler);
+  }
+
+  removeRoomDisbandedHandler(handler: () => void): void {
+    this.roomDisbandedHandlers = this.roomDisbandedHandlers.filter((h) => h !== handler);
   }
 
   isConnected(): boolean {

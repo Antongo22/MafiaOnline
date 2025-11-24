@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { chatService, type ChatMessage, type User } from "../services/chatService";
+import { clearRoomState } from "../utils/storage";
 
 interface ChatProps {
   roomId: string;
@@ -29,6 +30,7 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
 
     const handleError = (errorMessage: string) => {
       setError(errorMessage);
+      setTimeout(() => setError(null), 5000);
     };
 
     const handleUserListUpdate = (users: User[]) => {
@@ -38,13 +40,29 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
     };
 
     const handleUserJoined = (data: { userName: string }) => {
-      // Можно добавить системное сообщение о входе пользователя
       console.log(`${data.userName} присоединился к комнате`);
     };
 
     const handleUserLeft = (data: { userName: string }) => {
-      // Можно добавить системное сообщение о выходе пользователя
       console.log(`${data.userName} покинул комнату`);
+    };
+
+    const handlePlayerKicked = (data: { kickedUserId: string; kickedUserName: string; kickedBy: string }) => {
+      // Если нас кикнули
+      if (data.kickedUserId === userId) {
+        alert(`Вы были исключены из комнаты админом ${data.kickedBy}`);
+        clearRoomState();
+        window.location.reload();
+      } else {
+        // Показываем уведомление о кике другого игрока
+        console.log(`${data.kickedUserName} был исключен админом ${data.kickedBy}`);
+      }
+    };
+
+    const handleRoomDisbanded = () => {
+      alert("Комната была расформирована администратором");
+      clearRoomState();
+      window.location.reload();
     };
 
     chatService.onMessage(handleMessage);
@@ -53,6 +71,8 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
     chatService.onUserListUpdate(handleUserListUpdate);
     chatService.onUserJoined(handleUserJoined);
     chatService.onUserLeft(handleUserLeft);
+    chatService.onPlayerKicked(handlePlayerKicked);
+    chatService.onRoomDisbanded(handleRoomDisbanded);
 
     const connect = async () => {
       try {
@@ -75,6 +95,8 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
       chatService.removeUserListHandler(handleUserListUpdate);
       chatService.removeUserJoinedHandler(handleUserJoined);
       chatService.removeUserLeftHandler(handleUserLeft);
+      chatService.removePlayerKickedHandler(handlePlayerKicked);
+      chatService.removeRoomDisbandedHandler(handleRoomDisbanded);
       chatService.leaveRoom(roomId, userId).catch(console.error);
       chatService.disconnect();
     };
@@ -103,133 +125,182 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
   };
 
   return (
-    <div style={{ 
+    <div className="card" style={{ 
       display: "flex", 
       flexDirection: "column", 
-      height: "100%", 
-      border: "1px solid #ccc", 
-      borderRadius: "8px",
-      overflow: "hidden"
+      height: "100%",
+      overflow: "hidden",
+      position: "relative"
     }}>
+      {/* Header */}
       <div style={{ 
-        padding: "10px", 
-        background: "#f5f5f5", 
-        borderBottom: "1px solid #ccc",
+        padding: "1rem", 
+        borderBottom: "1px solid var(--border)",
         display: "flex",
         justifyContent: "space-between",
-        alignItems: "center"
+        alignItems: "center",
+        flexShrink: 0
       }}>
-        <h3 style={{ margin: 0 }}>Чат</h3>
+        <h3 style={{ 
+          margin: 0, 
+          fontSize: "1.25rem",
+          display: "flex",
+          alignItems: "center",
+          gap: "0.75rem"
+        }}>
+          <span>💬</span>
+          <span>Чат</span>
+        </h3>
         <div style={{ 
           display: "flex", 
           alignItems: "center", 
-          gap: "8px",
-          fontSize: "12px"
+          gap: "0.5rem",
+          fontSize: "0.875rem",
+          color: "var(--text-secondary)"
         }}>
           <div style={{
             width: "8px",
             height: "8px",
             borderRadius: "50%",
-            background: isConnected ? "#4caf50" : "#f44336"
+            background: isConnected ? "var(--success)" : "var(--danger)"
           }}></div>
-          <span>{isConnected ? "Подключено" : "Отключено"}</span>
+          <span>{isConnected ? "Онлайн" : "Офлайн"}</span>
         </div>
       </div>
 
+      {/* Error notification */}
       {error && (
         <div style={{ 
-          padding: "8px", 
-          background: "#ffebee", 
-          color: "#c62828",
-          fontSize: "14px"
+          padding: "0.75rem", 
+          background: "var(--danger-light)", 
+          color: "var(--danger)",
+          border: "1px solid var(--danger)",
+          borderBottom: "none",
+          fontSize: "0.875rem",
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem"
         }}>
-          {error}
+          <span>⚠️</span>
+          <span>{error}</span>
         </div>
       )}
 
+      {/* Messages area */}
       <div style={{ 
         flex: 1, 
         overflowY: "auto", 
-        padding: "10px",
-        background: "#fff"
+        padding: "1rem",
+        background: "var(--bg-primary)",
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.75rem"
       }}>
         {messages.length === 0 ? (
           <div style={{ 
             textAlign: "center", 
-            color: "#999", 
-            padding: "20px" 
+            color: "var(--text-muted)", 
+            padding: "3rem 1rem",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "1rem"
           }}>
-            Нет сообщений. Начните общение!
+            <span style={{ fontSize: "3rem", opacity: 0.5 }}>💬</span>
+            <div>
+              <div style={{ fontWeight: "500", marginBottom: "0.5rem" }}>
+                Нет сообщений
+              </div>
+              <div style={{ fontSize: "0.875rem" }}>
+                Начните общение с другими игроками!
+              </div>
+            </div>
           </div>
         ) : (
-          messages.map((msg) => (
-            <div
-              key={msg.id}
-              style={{
-                marginBottom: "12px",
-                padding: "8px",
-                background: msg.userId === userId ? "#e3f2fd" : "#f5f5f5",
-                borderRadius: "8px",
-                marginLeft: msg.userId === userId ? "auto" : "0",
-                marginRight: msg.userId === userId ? "0" : "auto",
-                maxWidth: "70%",
-                wordWrap: "break-word"
-              }}
-            >
-              <div style={{ 
-                display: "flex", 
-                justifyContent: "space-between", 
-                marginBottom: "4px",
-                fontSize: "12px",
-                color: "#666"
-              }}>
-                <strong>{msg.userName}</strong>
-                <span>{formatTimestamp(msg.timestamp)}</span>
+          messages.map((msg) => {
+            const isMyMessage = msg.userId === userId;
+            
+            return (
+              <div
+                key={msg.id}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: isMyMessage ? "flex-end" : "flex-start",
+                  animation: "fadeIn 0.3s ease-out"
+                }}
+              >
+                <div
+                  style={{
+                    maxWidth: "70%",
+                    padding: "0.75rem 1rem",
+                    background: isMyMessage ? "var(--accent-primary)" : "var(--bg-secondary)",
+                    border: isMyMessage ? "none" : "1px solid var(--border)",
+                    borderRadius: isMyMessage 
+                      ? "var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg)"
+                      : "var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-sm)",
+                    wordWrap: "break-word",
+                    boxShadow: "var(--shadow-sm)"
+                  }}
+                >
+                  {!isMyMessage && (
+                    <div style={{ 
+                      fontSize: "0.75rem",
+                      fontWeight: "600",
+                      color: "var(--accent-primary)",
+                      marginBottom: "0.25rem"
+                    }}>
+                      {msg.userName}
+                    </div>
+                  )}
+                  <div style={{ fontSize: "0.9375rem" }}>{msg.message}</div>
+                  <div style={{ 
+                    fontSize: "0.6875rem",
+                    color: isMyMessage ? "rgba(255,255,255,0.7)" : "var(--text-muted)",
+                    marginTop: "0.25rem",
+                    textAlign: "right"
+                  }}>
+                    {formatTimestamp(msg.timestamp)}
+                  </div>
+                </div>
               </div>
-              <div style={{ fontSize: "14px" }}>{msg.message}</div>
-            </div>
-          ))
+            );
+          })
         )}
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Input area */}
       <form onSubmit={handleSendMessage} style={{ 
-        padding: "10px", 
-        borderTop: "1px solid #ccc",
+        padding: "1rem", 
+        borderTop: "1px solid var(--border)",
         display: "flex",
-        gap: "8px"
+        gap: "0.75rem",
+        flexShrink: 0
       }}>
         <input
           type="text"
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
-          placeholder="Введите сообщение..."
+          placeholder={isConnected ? "Введите сообщение..." : "Подключение..."}
           disabled={!isConnected}
           style={{
             flex: 1,
-            padding: "8px",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            fontSize: "14px"
+            padding: "0.75rem 1rem"
           }}
         />
         <button
           type="submit"
           disabled={!isConnected || !inputMessage.trim()}
+          className="btn-primary"
           style={{
-            padding: "8px 16px",
-            background: isConnected && inputMessage.trim() ? "#2196f3" : "#ccc",
-            color: "#fff",
-            border: "none",
-            borderRadius: "4px",
-            cursor: isConnected && inputMessage.trim() ? "pointer" : "not-allowed",
-            fontSize: "14px"
+            padding: "0.75rem 1.5rem",
+            opacity: (!isConnected || !inputMessage.trim()) ? 0.5 : 1
           }}
         >
-          Отправить
+          <span style={{ fontSize: "1.125rem" }}>📤</span>
         </button>
       </form>
     </div>
   );
 }
-
