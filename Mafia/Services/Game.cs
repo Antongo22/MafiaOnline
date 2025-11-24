@@ -9,6 +9,7 @@ namespace Mafia.Services;
 public static class Game
 {
     public static List<RoomDTO> Rooms = new();
+    public static Dictionary<string, List<ChatMessageDTO>> ChatMessages = new();
     
     
     public static Dictionary<string, Role> ShufflePlayersWithRoles(GameCreateDTO game)

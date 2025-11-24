@@ -1,0 +1,39 @@
+services:
+  backend:
+    build:
+      context: ./Mafia
+      dockerfile: Dockerfile.dev
+    container_name: mafia-backend-dev
+    ports:
+      - "5141:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+    volumes:
+      - ./Mafia:/src
+    networks:
+      - mafia-network
+    restart: unless-stopped
+    command: dotnet watch run --project /src/Mafia.csproj
+
+  frontend:
+    build:
+      context: ./mafia_fe
+      dockerfile: Dockerfile.dev
+    container_name: mafia-frontend-dev
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:5141
+    volumes:
+      - ./mafia_fe:/app
+      - /app/node_modules
+    networks:
+      - mafia-network
+    restart: unless-stopped
+    command: npm run dev
+
+networks:
+  mafia-network:
+    driver: bridge
+

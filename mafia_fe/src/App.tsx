@@ -1,9 +1,9 @@
-import { FetchPage } from "./pages/FetchPage.tsx";
+import { RoomPage } from "./pages/RoomPage.tsx";
 
 function App() {
   return (
     <>
-      <FetchPage url="https://jsonplaceholder.typicode.com/todos/1" />
+      <RoomPage />
     </>
   );
 }

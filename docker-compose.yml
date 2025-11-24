@@ -1,0 +1,31 @@
+services:
+  backend:
+    build:
+      context: ./Mafia
+      dockerfile: Dockerfile
+    container_name: mafia-backend
+    ports:
+      - "5141:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+    networks:
+      - mafia-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./mafia_fe
+      dockerfile: Dockerfile
+    container_name: mafia-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - mafia-network
+    restart: unless-stopped
+
+networks:
+  mafia-network:
+    driver: bridge

@@ -1,0 +1,16 @@
+FROM mcr.microsoft.com/dotnet/sdk:9.0
+WORKDIR /src
+
+# Копируем csproj и восстанавливаем зависимости
+COPY Mafia.csproj .
+RUN dotnet restore
+
+# Устанавливаем dotnet-ef для миграций (если понадобится)
+RUN dotnet tool install --global dotnet-ef
+ENV PATH="$PATH:/root/.dotnet/tools"
+
+EXPOSE 8080
+
+# Команда будет переопределена в docker-compose
+CMD ["dotnet", "watch", "run"]
+

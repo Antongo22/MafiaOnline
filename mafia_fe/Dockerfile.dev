@@ -1,0 +1,14 @@
+FROM node:20-alpine
+WORKDIR /app
+
+# Копируем package.json
+COPY package*.json ./
+RUN npm ci
+
+# Копируем остальные файлы будут через volume
+
+EXPOSE 5173
+
+# Команда будет переопределена в docker-compose
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
