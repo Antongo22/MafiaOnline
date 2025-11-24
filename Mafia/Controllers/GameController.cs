@@ -249,5 +249,12 @@ public class GameController : ControllerBase
         
         return Ok(rolesWithNames);
     }
+
+    [HttpGet("available-roles")]
+    public ActionResult GetAvailableRoles()
+    {
+        var roles = RoleInfo.GetAllRoles();
+        return Ok(roles);
+    }
 }
 

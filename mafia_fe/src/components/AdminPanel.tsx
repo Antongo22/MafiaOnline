@@ -14,26 +14,11 @@ interface RoleCount {
 }
 
 interface RoleInfo {
+  roleValue: string;
   name: string;
-  value: string;
   description: string;
-  team: "good" | "evil" | "neutral";
+  team: string;
 }
-
-const AVAILABLE_ROLES: RoleInfo[] = [
-  { name: "Мирный житель", value: "Citizen", description: "Обычный игрок, его цель выжить", team: "good" },
-  { name: "Доктор", value: "Doctor", description: "Задача каждую ночь лечить потенциальных жертв мафии", team: "good" },
-  { name: "Шериф", value: "Sheriff", description: "Главный враг мафии, ведь он может проверить документы, и тем самым обнаруживать мафию", team: "good" },
-  { name: "Бессмертный", value: "Immortal", description: "Его нельзя убить ночью, но на голосовании он не защищён", team: "good" },
-  { name: "Путана", value: "Prostitute", description: "Ночью забирает одного игрока к себе. Если его пытались убить - он выживает. Однако если убьют путану, то игрок тоже умрёт", team: "good" },
-  { name: "Вор", value: "Thief", description: "Крадёт у игрока все его инструменты и голос. Ночью его действия не считаются, а так же днём он не может голосовать", team: "good" },
-  { name: "Наблюдатель", value: "Spy", description: "Мирный игрок, которому не спится. Просыпается вместе с мафией, и эмитирует что он тоже мафия", team: "good" },
-  { name: "Охотник", value: "Hunter", description: "Мирный житель с немирными целями. Охотится на мафию и может убивать ночью. Но от ошибок никто не застрахован", team: "good" },
-  { name: "Дон мафии", value: "Don", description: "Главарь мафии, который может искать шерифа. Так же его голос считается за 2", team: "evil" },
-  { name: "Мафия", value: "Mafia", description: "Само зло. Цель - сделать так, чтобы в живых остались только члены мафии", team: "evil" },
-  { name: "Ниндзя", value: "Ninja", description: "Играет за мафию. В свой ход кидает сюрикен на жертву. Если на игроке 2 сюрикена, то он умирает", team: "evil" },
-  { name: "Маньяк", value: "Maniac", description: "Настоящий псих одиночка. Все ему враги и он враг всем. Если останется 1 на 1 с мафией/мирным, то он победил", team: "neutral" },
-];
 
 // Минимальная конфигурация для разного количества игроков
 const getDefaultRoles = (playerCount: number): RoleCount => {
@@ -64,11 +49,47 @@ const getDefaultRoles = (playerCount: number): RoleCount => {
   }
 };
 
+const getTeamColor = (team: string) => {
+  switch (team) {
+    case "Good": return "#10b981"; // зеленый
+    case "Evil": return "#ef4444"; // красный
+    case "Neutral": return "#a855f7"; // фиолетовый
+    default: return "var(--text-primary)";
+  }
+};
+
+const getTeamName = (team: string) => {
+  switch (team) {
+    case "Good": return "Мирные";
+    case "Evil": return "Мафия";
+    case "Neutral": return "Нейтрал";
+    default: return "";
+  }
+};
+
 export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, onStatusChange }: AdminPanelProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [roleCounts, setRoleCounts] = useState<RoleCount>({});
   const [hoveredRole, setHoveredRole] = useState<string | null>(null);
+  const [availableRoles, setAvailableRoles] = useState<RoleInfo[]>([]);
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+
+  // Загружаем доступные роли с backend
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/api/Game/available-roles`);
+        if (response.ok) {
+          const roles: RoleInfo[] = await response.json();
+          setAvailableRoles(roles);
+        }
+      } catch (err) {
+        console.error("Failed to fetch roles:", err);
+      }
+    };
+    fetchRoles();
+  }, [apiUrl]);
 
   // Инициализируем роли при изменении количества игроков
   useEffect(() => {
@@ -84,6 +105,20 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
       ...prev,
       [role]: Math.max(0, (prev[role] || 0) + delta)
     }));
+  };
+
+  const handleMouseEnter = (roleValue: string, event: React.MouseEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setHoveredRole(roleValue);
+    setTooltipPosition({
+      x: rect.left + rect.width / 2,
+      y: rect.top - 10
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredRole(null);
+    setTooltipPosition(null);
   };
 
   const handleStartGame = async () => {
@@ -176,14 +211,7 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
     }
   };
 
-  const getRoleColor = (team: string) => {
-    switch (team) {
-      case "good": return "#10b981";
-      case "evil": return "#ef4444";
-      case "neutral": return "#f59e0b";
-      default: return "var(--text-primary)";
-    }
-  };
+  const hoveredRoleInfo = availableRoles.find(r => r.roleValue === hoveredRole);
 
   return (
     <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -239,84 +267,67 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
             overflowY: "auto",
             paddingRight: "0.5rem"
           }}>
-            {AVAILABLE_ROLES.map(role => {
-              const count = roleCounts[role.value] || 0;
-              const isHovered = hoveredRole === role.value;
+            {availableRoles.map(role => {
+              const count = roleCounts[role.roleValue] || 0;
+              const teamColor = getTeamColor(role.team);
               
               return (
-                <div key={role.value}>
-                  <div 
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "0.75rem",
-                      background: count > 0 ? "var(--bg-hover)" : "var(--bg-tertiary)",
-                      borderRadius: "var(--radius)",
-                      border: `1px solid ${count > 0 ? getRoleColor(role.team) : "var(--border)"}`,
-                      position: "relative",
-                      cursor: "help",
-                    }}
-                    onMouseEnter={() => setHoveredRole(role.value)}
-                    onMouseLeave={() => setHoveredRole(null)}
-                  >
-                    <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-                      <span style={{ 
-                        fontSize: "0.875rem", 
-                        fontWeight: "500",
-                        color: count > 0 ? getRoleColor(role.team) : "inherit"
-                      }}>
-                        {role.name}
-                      </span>
-                      {count > 0 && (
-                        <span style={{ fontSize: "0.625rem", color: "var(--text-muted)", marginTop: "2px" }}>
-                          {role.team === "good" ? "Мирные" : role.team === "evil" ? "Мафия" : "Нейтрал"}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <button
-                        onClick={() => handleRoleChange(role.value, -1)}
-                        disabled={loading || count === 0}
-                        className="btn-secondary btn-sm"
-                        style={{ padding: "0.25rem 0.5rem", minWidth: "30px" }}
-                      >
-                        −
-                      </button>
-                      <span style={{
-                        minWidth: "30px",
-                        textAlign: "center",
-                        fontWeight: "600",
-                        color: count > 0 ? getRoleColor(role.team) : "var(--text-muted)"
-                      }}>
-                        {count}
-                      </span>
-                      <button
-                        onClick={() => handleRoleChange(role.value, 1)}
-                        disabled={loading}
-                        className="btn-secondary btn-sm"
-                        style={{ padding: "0.25rem 0.5rem", minWidth: "30px" }}
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Подсказка при наведении */}
-                  {isHovered && (
-                    <div style={{
-                      marginTop: "0.25rem",
-                      padding: "0.5rem",
-                      background: "var(--bg-primary)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "var(--radius)",
-                      fontSize: "0.75rem",
-                      color: "var(--text-secondary)",
-                      animation: "fadeIn 0.2s ease-out"
+                <div 
+                  key={role.roleValue}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "0.75rem",
+                    background: count > 0 ? "var(--bg-hover)" : "var(--bg-tertiary)",
+                    borderRadius: "var(--radius)",
+                    border: `1px solid ${count > 0 ? teamColor : "var(--border)"}`,
+                    position: "relative",
+                    cursor: "help",
+                  }}
+                  onMouseEnter={(e) => handleMouseEnter(role.roleValue, e)}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+                    <span style={{ 
+                      fontSize: "0.875rem", 
+                      fontWeight: "500",
+                      color: count > 0 ? teamColor : "inherit"
                     }}>
-                      {role.description}
-                    </div>
-                  )}
+                      {role.name}
+                    </span>
+                    {count > 0 && (
+                      <span style={{ fontSize: "0.625rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                        {getTeamName(role.team)}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <button
+                      onClick={() => handleRoleChange(role.roleValue, -1)}
+                      disabled={loading || count === 0}
+                      className="btn-secondary btn-sm"
+                      style={{ padding: "0.25rem 0.5rem", minWidth: "30px" }}
+                    >
+                      −
+                    </button>
+                    <span style={{
+                      minWidth: "30px",
+                      textAlign: "center",
+                      fontWeight: "600",
+                      color: count > 0 ? teamColor : "var(--text-muted)"
+                    }}>
+                      {count}
+                    </span>
+                    <button
+                      onClick={() => handleRoleChange(role.roleValue, 1)}
+                      disabled={loading}
+                      className="btn-secondary btn-sm"
+                      style={{ padding: "0.25rem 0.5rem", minWidth: "30px" }}
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -372,6 +383,53 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
             {loading ? "..." : "🔄 Играть заново"}
           </button>
         </>
+      )}
+
+      {/* Всплывающая подсказка */}
+      {hoveredRole && hoveredRoleInfo && tooltipPosition && (
+        <div style={{
+          position: "fixed",
+          left: `${tooltipPosition.x}px`,
+          top: `${tooltipPosition.y}px`,
+          transform: "translate(-50%, -100%)",
+          padding: "0.75rem 1rem",
+          background: "var(--bg-primary)",
+          border: `2px solid ${getTeamColor(hoveredRoleInfo.team)}`,
+          borderRadius: "var(--radius)",
+          boxShadow: "0 10px 25px rgba(0, 0, 0, 0.5)",
+          zIndex: 9999,
+          maxWidth: "300px",
+          pointerEvents: "none",
+          animation: "fadeIn 0.15s ease-out"
+        }}>
+          <div style={{
+            fontSize: "0.875rem",
+            fontWeight: "600",
+            color: getTeamColor(hoveredRoleInfo.team),
+            marginBottom: "0.25rem"
+          }}>
+            {hoveredRoleInfo.name}
+          </div>
+          <div style={{
+            fontSize: "0.75rem",
+            color: "var(--text-secondary)",
+            lineHeight: "1.4"
+          }}>
+            {hoveredRoleInfo.description}
+          </div>
+          {/* Стрелка вниз */}
+          <div style={{
+            position: "absolute",
+            bottom: "-8px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 0,
+            height: 0,
+            borderLeft: "8px solid transparent",
+            borderRight: "8px solid transparent",
+            borderTop: `8px solid ${getTeamColor(hoveredRoleInfo.team)}`
+          }} />
+        </div>
       )}
     </div>
   );

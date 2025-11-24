@@ -7,7 +7,7 @@ interface RoleDisplayProps {
 interface RoleInfo {
   name: string;
   description: string;
-  team: "good" | "evil" | "neutral";
+  team: "Good" | "Evil" | "Neutral";
   emoji: string;
 }
 
@@ -15,91 +15,91 @@ const ROLE_INFO: { [key: string]: RoleInfo } = {
   Citizen: { 
     name: "Мирный житель", 
     description: "Обычный игрок, его цель выжить", 
-    team: "good",
+    team: "Good",
     emoji: "👤"
   },
   Doctor: { 
     name: "Доктор", 
     description: "Задача каждую ночь лечить потенциальных жертв мафии", 
-    team: "good",
+    team: "Good",
     emoji: "⚕️"
   },
   Sheriff: { 
     name: "Шериф", 
     description: "Главный враг мафии, ведь он может проверить документы, и тем самым обнаруживать мафию", 
-    team: "good",
+    team: "Good",
     emoji: "🎖️"
   },
   Immortal: { 
     name: "Бессмертный", 
     description: "Его нельзя убить ночью, но на голосовании он не защищён", 
-    team: "good",
+    team: "Good",
     emoji: "💎"
   },
   Prostitute: { 
     name: "Путана", 
     description: "Ночью забирает одного игрока к себе. Если его пытались убить - он выживает. Однако если убьют путану, то игрок тоже умрёт", 
-    team: "good",
+    team: "Good",
     emoji: "💋"
   },
   Thief: { 
     name: "Вор", 
     description: "Крадёт у игрока все его инструменты и голос. Ночью его действия не считаются, а так же днём он не может голосовать", 
-    team: "good",
+    team: "Good",
     emoji: "🥷"
   },
   Spy: { 
     name: "Наблюдатель", 
     description: "Мирный игрок, которому не спится. Просыпается вместе с мафией, и эмитирует что он тоже мафия", 
-    team: "good",
+    team: "Good",
     emoji: "👁️"
   },
   Hunter: { 
     name: "Охотник", 
     description: "Мирный житель с немирными целями. Охотится на мафию и может убивать ночью. Но от ошибок никто не застрахован", 
-    team: "good",
+    team: "Good",
     emoji: "🏹"
   },
   Don: { 
     name: "Дон мафии", 
     description: "Главарь мафии, который может искать шерифа. Так же его голос считается за 2", 
-    team: "evil",
+    team: "Evil",
     emoji: "🎩"
   },
   Mafia: { 
     name: "Мафия", 
     description: "Само зло. Цель - сделать так, чтобы в живых остались только члены мафии", 
-    team: "evil",
+    team: "Evil",
     emoji: "🔫"
   },
   Ninja: { 
     name: "Ниндзя", 
     description: "Играет за мафию. В свой ход кидает сюрикен на жертву. Если на игроке 2 сюрикена, то он умирает", 
-    team: "evil",
+    team: "Evil",
     emoji: "⚔️"
   },
   Maniac: { 
     name: "Маньяк", 
     description: "Настоящий псих одиночка. Все ему враги и он враг всем. Если останется 1 на 1 с мафией/мирным, то он победил", 
-    team: "neutral",
+    team: "Neutral",
     emoji: "🔪"
   },
 };
 
 const getTeamColor = (team: string) => {
   switch (team) {
-    case "good": return { bg: "#10b98133", border: "#10b981", text: "#10b981" };
-    case "evil": return { bg: "#ef444433", border: "#ef4444", text: "#ef4444" };
-    case "neutral": return { bg: "#f59e0b33", border: "#f59e0b", text: "#f59e0b" };
+    case "Good": return { bg: "#10b98133", border: "#10b981", text: "#10b981" };
+    case "Evil": return { bg: "#ef444433", border: "#ef4444", text: "#ef4444" };
+    case "Neutral": return { bg: "#a855f733", border: "#a855f7", text: "#a855f7" };
     default: return { bg: "var(--bg-secondary)", border: "var(--border)", text: "var(--text-primary)" };
   }
 };
 
 const getTeamName = (team: string) => {
   switch (team) {
-    case "good": return "Мирные жители";
-    case "evil": return "Мафия";
-    case "neutral": return "Нейтральный";
+    case "Good": return "Мирные жители";
+    case "Evil": return "Мафия";
+    case "Neutral": return "Нейтральный";
     default: return "Неизвестно";
   }
 };
