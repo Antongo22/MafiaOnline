@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Chat } from "../components/Chat";
+import { type User } from "../services/chatService";
+import { saveRoomState, loadRoomState, clearRoomState } from "../utils/storage";
 
 interface Room {
   id: string;
   name: string;
   inviteCode: string;
-  users: Array<{ id: string; name: string }>;
+  users: Array<{ id: string; name: string; status: string }>;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5141";
@@ -19,6 +21,36 @@ export function RoomPage() {
   const [mode, setMode] = useState<"create" | "join">("create");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+
+  // Проверяем localStorage при загрузке компонента
+  useEffect(() => {
+    const checkExistingRoom = async () => {
+      const savedState = loadRoomState();
+      if (!savedState) return;
+
+      // Проверяем, существует ли комната на сервере
+      try {
+        const response = await fetch(`${API_URL}/api/Room/my?userId=${savedState.userId}`);
+        if (response.ok) {
+          const data: Room = await response.json();
+          setRoom(data);
+          setUserId(savedState.userId);
+          setUserName(savedState.userName);
+          // Инициализируем список пользователей
+          setUsers(data.users.filter(u => u.status !== "Leave"));
+        } else {
+          // Комната не найдена, очищаем localStorage
+          clearRoomState();
+        }
+      } catch (err) {
+        console.error("Failed to check existing room:", err);
+        clearRoomState();
+      }
+    };
+
+    checkExistingRoom();
+  }, []);
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +78,19 @@ export function RoomPage() {
       const data: Room = await response.json();
       setRoom(data);
       setUserId(data.users[0].id);
+      setUserName(userName);
+      
+      // Сохраняем в localStorage
+      saveRoomState({
+        roomId: data.id,
+        userId: data.users[0].id,
+        userName: userName,
+        roomName: data.name,
+        inviteCode: data.inviteCode,
+      });
+
+      // Инициализируем список пользователей
+      setUsers(data.users.filter(u => u.status !== "Leave"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create room");
     } finally {
@@ -81,6 +126,19 @@ export function RoomPage() {
       const user = data.users.find((u) => u.name === userName);
       if (user) {
         setUserId(user.id);
+        setUserName(userName);
+        
+        // Сохраняем в localStorage
+        saveRoomState({
+          roomId: data.id,
+          userId: user.id,
+          userName: userName,
+          roomName: data.name,
+          inviteCode: data.inviteCode,
+        });
+
+        // Инициализируем список пользователей
+        setUsers(data.users.filter(u => u.status !== "Leave"));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to join room");
@@ -89,27 +147,148 @@ export function RoomPage() {
     }
   };
 
+  const handleLeaveRoom = async () => {
+    if (!userId || !room) return;
+
+    const confirmLeave = window.confirm("Вы уверены, что хотите покинуть комнату?");
+    if (!confirmLeave) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/Room/leave?userId=${userId}`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to leave room");
+      }
+
+      // Очищаем состояние
+      clearRoomState();
+      setRoom(null);
+      setUserId(null);
+      setUserName("");
+      setUsers([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to leave room");
+    }
+  };
+
   if (room && userId) {
     return (
       <div style={{ 
         display: "flex", 
-        flexDirection: "column", 
+        flexDirection: "row",
         height: "100vh", 
         padding: "20px",
-        maxWidth: "1200px",
+        gap: "20px",
+        maxWidth: "1400px",
         margin: "0 auto"
       }}>
-        <div style={{ marginBottom: "20px" }}>
-          <h1 style={{ margin: 0, marginBottom: "8px" }}>Комната: {room.name}</h1>
-          <p style={{ margin: 0, color: "#666", fontSize: "14px" }}>
-            Код приглашения: <strong>{room.inviteCode}</strong>
-          </p>
-          <p style={{ margin: "4px 0", color: "#666", fontSize: "14px" }}>
-            Игроков в комнате: {room.users.length}
-          </p>
+        {/* Левая панель - информация о комнате и список пользователей */}
+        <div style={{ 
+          width: "300px", 
+          display: "flex", 
+          flexDirection: "column",
+          gap: "20px"
+        }}>
+          {/* Информация о комнате */}
+          <div style={{
+            padding: "20px",
+            background: "#fff",
+            borderRadius: "8px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+          }}>
+            <h2 style={{ margin: 0, marginBottom: "12px", fontSize: "20px" }}>
+              {room.name}
+            </h2>
+            <div style={{ marginBottom: "8px" }}>
+              <span style={{ color: "#666", fontSize: "14px" }}>Код приглашения:</span>
+              <div style={{ 
+                marginTop: "4px",
+                padding: "8px",
+                background: "#f5f5f5",
+                borderRadius: "4px",
+                fontWeight: "bold",
+                fontSize: "18px",
+                textAlign: "center",
+                letterSpacing: "2px"
+              }}>
+                {room.inviteCode}
+              </div>
+            </div>
+            <button
+              onClick={handleLeaveRoom}
+              style={{
+                width: "100%",
+                marginTop: "12px",
+                padding: "10px",
+                background: "#f44336",
+                color: "#fff",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "500"
+              }}
+            >
+              Покинуть комнату
+            </button>
+          </div>
+
+          {/* Список пользователей */}
+          <div style={{
+            padding: "20px",
+            background: "#fff",
+            borderRadius: "8px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            flex: 1,
+            overflowY: "auto"
+          }}>
+            <h3 style={{ margin: 0, marginBottom: "12px", fontSize: "16px" }}>
+              Участники ({users.length})
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {users.map((user) => (
+                <div
+                  key={user.id}
+                  style={{
+                    padding: "10px",
+                    background: user.id === userId ? "#e3f2fd" : "#f5f5f5",
+                    borderRadius: "4px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}
+                >
+                  <div style={{
+                    width: "8px",
+                    height: "8px",
+                    borderRadius: "50%",
+                    background: "#4caf50"
+                  }}></div>
+                  <span style={{ 
+                    fontSize: "14px",
+                    fontWeight: user.id === userId ? "bold" : "normal"
+                  }}>
+                    {user.name}
+                    {user.id === userId && " (вы)"}
+                    {user.status === "Admin" && " 👑"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-        <div style={{ flex: 1, minHeight: 0 }}>
-          <Chat roomId={room.id} userId={userId} userName={userName} apiUrl={API_URL} />
+
+        {/* Правая панель - чат */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Chat 
+            roomId={room.id} 
+            userId={userId} 
+            userName={userName} 
+            apiUrl={API_URL}
+            onUserListUpdate={setUsers}
+          />
         </div>
       </div>
     );
@@ -290,4 +469,3 @@ export function RoomPage() {
     </div>
   );
 }
-

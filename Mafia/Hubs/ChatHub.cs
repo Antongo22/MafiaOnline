@@ -36,6 +36,40 @@ public class ChatHub : Hub
         {
             await Clients.Caller.SendAsync("ReceiveMessageHistory", new List<ChatMessageDTO>());
         }
+
+        // Отправляем всем обновленный список пользователей
+        var activeUsers = room.Users.Where(u => u.Status != Enums.UserStatus.Leave).ToList();
+        await Clients.Group(roomId).SendAsync("UpdateUserList", activeUsers);
+        
+        // Отправляем системное сообщение о входе
+        await Clients.Group(roomId).SendAsync("UserJoined", new { userName = user.Name, userId = user.Id });
+    }
+
+    public async Task LeaveRoom(string roomId, string userId)
+    {
+        // Проверяем существование комнаты
+        var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
+        if (room == null)
+        {
+            return;
+        }
+
+        // Проверяем, что пользователь в комнате
+        var user = room.Users.FirstOrDefault(u => u.Id == userId);
+        if (user == null)
+        {
+            return;
+        }
+
+        // Удаляем из группы SignalR
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId);
+
+        // Отправляем всем обновленный список пользователей
+        var activeUsers = room.Users.Where(u => u.Status != Enums.UserStatus.Leave).ToList();
+        await Clients.Group(roomId).SendAsync("UpdateUserList", activeUsers);
+        
+        // Отправляем системное сообщение о выходе
+        await Clients.Group(roomId).SendAsync("UserLeft", new { userName = user.Name, userId = user.Id });
     }
 
     public async Task SendMessage(string roomId, string userId, string userName, string message)

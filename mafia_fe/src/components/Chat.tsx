@@ -1,14 +1,15 @@
 import { useEffect, useState, useRef } from "react";
-import { chatService, type ChatMessage } from "../services/chatService";
+import { chatService, type ChatMessage, type User } from "../services/chatService";
 
 interface ChatProps {
   roomId: string;
   userId: string;
   userName: string;
   apiUrl?: string;
+  onUserListUpdate?: (users: User[]) => void;
 }
 
-export function Chat({ roomId, userId, userName, apiUrl }: ChatProps) {
+export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: ChatProps) {
   const defaultApiUrl = import.meta.env.VITE_API_URL || "http://localhost:5141";
   const actualApiUrl = apiUrl || defaultApiUrl;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -30,9 +31,28 @@ export function Chat({ roomId, userId, userName, apiUrl }: ChatProps) {
       setError(errorMessage);
     };
 
+    const handleUserListUpdate = (users: User[]) => {
+      if (onUserListUpdate) {
+        onUserListUpdate(users);
+      }
+    };
+
+    const handleUserJoined = (data: { userName: string }) => {
+      // Можно добавить системное сообщение о входе пользователя
+      console.log(`${data.userName} присоединился к комнате`);
+    };
+
+    const handleUserLeft = (data: { userName: string }) => {
+      // Можно добавить системное сообщение о выходе пользователя
+      console.log(`${data.userName} покинул комнату`);
+    };
+
     chatService.onMessage(handleMessage);
     chatService.onMessageHistory(handleHistory);
     chatService.onError(handleError);
+    chatService.onUserListUpdate(handleUserListUpdate);
+    chatService.onUserJoined(handleUserJoined);
+    chatService.onUserLeft(handleUserLeft);
 
     const connect = async () => {
       try {
@@ -52,9 +72,13 @@ export function Chat({ roomId, userId, userName, apiUrl }: ChatProps) {
       chatService.removeMessageHandler(handleMessage);
       chatService.removeHistoryHandler(handleHistory);
       chatService.removeErrorHandler(handleError);
+      chatService.removeUserListHandler(handleUserListUpdate);
+      chatService.removeUserJoinedHandler(handleUserJoined);
+      chatService.removeUserLeftHandler(handleUserLeft);
+      chatService.leaveRoom(roomId, userId).catch(console.error);
       chatService.disconnect();
     };
-  }, [roomId, userId, actualApiUrl]);
+  }, [roomId, userId, actualApiUrl, onUserListUpdate]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

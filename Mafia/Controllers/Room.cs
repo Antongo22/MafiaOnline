@@ -58,4 +58,31 @@ public class Room : ControllerBase
         
         return Ok(room);
     }
+
+    [HttpPost("leave")]
+    public ActionResult LeaveRoom(string userId)
+    {
+        var room = Game.Rooms.FirstOrDefault(r => r.Users.Any(u => u.Id == userId));
+        if (room == null)
+            return NotFound("Room not found");
+        
+        var user = room.Users.FirstOrDefault(u => u.Id == userId);
+        if (user == null)
+            return NotFound("User not found");
+        
+        // Помечаем пользователя как покинувшего
+        user.Status = UserStatus.Leave;
+        
+        // Если это был админ и в комнате остались активные игроки, назначаем нового админа
+        if (user.Status == UserStatus.Admin)
+        {
+            var activeUser = room.Users.FirstOrDefault(u => u.Status == UserStatus.Player);
+            if (activeUser != null)
+            {
+                activeUser.Status = UserStatus.Admin;
+            }
+        }
+        
+        return Ok(new { message = "Left room successfully" });
+    }
 }

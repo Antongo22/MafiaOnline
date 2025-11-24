@@ -4,7 +4,7 @@ namespace Mafia.DTOs;
 
 public class UserDTO
 {
-    public string Id { get; init; }
-    public string Name { get; init; }
-    public UserStatus Status { get; init; }
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public UserStatus Status { get; set; }
 }
