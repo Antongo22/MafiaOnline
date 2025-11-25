@@ -8,6 +8,7 @@ interface GamePhaseDisplayProps {
   nightPhase?: string;
   dayNumber: number;
   isMyTurn?: boolean;
+  winningTeam?: string;
 }
 
 const PHASE_NAMES: Record<GamePhase, string> = {
@@ -28,6 +29,12 @@ const NIGHT_PHASE_NAMES: Record<string, string> = {
   Prostitute: "Путана забирает игрока"
 };
 
+const TEAM_NAMES: Record<string, string> = {
+  Good: "Мирные жители",
+  Evil: "Мафия",
+  Neutral: "Маньяк"
+};
+
 export function GamePhaseDisplay({
   phase,
   timeLeft,
@@ -35,7 +42,8 @@ export function GamePhaseDisplay({
   currentVoterName,
   nightPhase,
   dayNumber,
-  isMyTurn
+  isMyTurn,
+  winningTeam
 }: GamePhaseDisplayProps) {
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -123,32 +131,49 @@ export function GamePhaseDisplay({
         </div>
       )}
 
-      {/* Таймер */}
-      <div style={{
-        fontSize: "3rem",
-        fontWeight: "bold",
-        color: timeLeft <= 5 ? "var(--danger)" : "var(--text-primary)",
-        fontFamily: "monospace",
-        animation: timeLeft <= 5 ? "pulse 1s infinite" : "none"
-      }}>
-        {formatTime(timeLeft)}
-      </div>
-
-      {/* Индикатор прогресса */}
-      <div style={{
-        width: "100%",
-        height: "8px",
-        background: "var(--bg-tertiary)",
-        borderRadius: "4px",
-        overflow: "hidden"
-      }}>
+      {/* Таймер или Победитель */}
+      {phase === GamePhase.GameOver && winningTeam ? (
         <div style={{
-          width: `${(timeLeft / 30) * 100}%`, // Примерно, нужно знать общее время
-          height: "100%",
-          background: getPhaseColor(),
-          transition: "width 1s linear"
-        }} />
-      </div>
+          fontSize: "2.5rem",
+          fontWeight: "bold",
+          color: "var(--success)",
+          textAlign: "center",
+          padding: "1rem",
+          background: "var(--bg-tertiary)",
+          borderRadius: "var(--radius)",
+          animation: "pulse 2s infinite"
+        }}>
+          🎉 Победили: {TEAM_NAMES[winningTeam] || winningTeam}!
+        </div>
+      ) : (
+        <>
+          <div style={{
+            fontSize: "3rem",
+            fontWeight: "bold",
+            color: timeLeft <= 5 ? "var(--danger)" : "var(--text-primary)",
+            fontFamily: "monospace",
+            animation: timeLeft <= 5 ? "pulse 1s infinite" : "none"
+          }}>
+            {formatTime(timeLeft)}
+          </div>
+
+          {/* Индикатор прогресса */}
+          <div style={{
+            width: "100%",
+            height: "8px",
+            background: "var(--bg-tertiary)",
+            borderRadius: "4px",
+            overflow: "hidden"
+          }}>
+            <div style={{
+              width: `${(timeLeft / 30) * 100}%`, // Примерно, нужно знать общее время
+              height: "100%",
+              background: getPhaseColor(),
+              transition: "width 1s linear"
+            }} />
+          </div>
+        </>
+      )}
     </div>
   );
 }

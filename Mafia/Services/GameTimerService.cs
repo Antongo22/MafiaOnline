@@ -233,9 +233,24 @@ public class GameTimerService : BackgroundService
                 eliminated.Clear();
             }
 
+            // Преобразуем голоса в формат с именами для отображения
+            var votesWithNames = gameState.Votes.Select(v => new
+            {
+                voterName = room.Users.FirstOrDefault(u => u.Id == v.Key)?.Name,
+                targetName = room.Users.FirstOrDefault(u => u.Id == v.Value)?.Name
+            }).ToList();
+
+            // Подсчёт голосов по именам игроков
+            var voteCountsByName = voteCounts.ToDictionary(
+                v => room.Users.FirstOrDefault(u => u.Id == v.PlayerId)?.Name ?? "Unknown",
+                v => v.Count
+            );
+
             await _hubContext.Clients.Group(room.Id).SendAsync("VotingResults", new
             {
                 votes = gameState.Votes,
+                votesWithNames = votesWithNames,
+                voteCounts = voteCountsByName,
                 eliminated = eliminated.Select(id => new
                 {
                     userId = id,

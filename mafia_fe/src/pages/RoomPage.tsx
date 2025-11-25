@@ -6,6 +6,7 @@ import { RoleDisplay } from "../components/RoleDisplay";
 import { GamePhaseDisplay } from "../components/GamePhaseDisplay";
 import { VotingPanel } from "../components/VotingPanel";
 import { NightActionPanel } from "../components/NightActionPanel";
+import { VotingResultsDisplay } from "../components/VotingResultsDisplay";
 import { type User, chatService } from "../services/chatService";
 import { gameService } from "../services/gameService";
 import { GamePhase } from "../types/game";
@@ -46,6 +47,13 @@ export function RoomPage() {
   const [dayNumber, setDayNumber] = useState<number>(1);
   const [gameCycleStarted, setGameCycleStarted] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [winningTeam, setWinningTeam] = useState<string | undefined>();
+  const [votingResults, setVotingResults] = useState<{
+    votesWithNames: Array<{ voterName: string; targetName: string }>;
+    voteCounts: Record<string, number>;
+    eliminated: Array<{ userName: string; role: string }>;
+    tie: boolean;
+  } | null>(null);
   
   // Alerts
   const [alert, setAlert] = useState<{ message: string; type: "info" | "success" | "warning" | "danger" } | null>(null);
@@ -195,6 +203,8 @@ export function RoomPage() {
       setGameStatus("Created");
       setGameCycleStarted(false);
       setGamePhase(GamePhase.Lobby);
+      setVotingResults(null);
+      setWinningTeam(undefined);
     };
 
     // Game cycle events
@@ -222,6 +232,11 @@ export function RoomPage() {
     const handlePhaseChanged = (data: { phase: string }) => {
       setGamePhase(data.phase);
       setCurrentSpeakerName(undefined);
+      
+      // Очищаем результаты голосования при смене фазы
+      if (data.phase !== GamePhase.Voting) {
+        setVotingResults(null);
+      }
       
       if (data.phase === "FreeDiscussion") {
         showAlert("💬 Свободное обсуждение начато!", "info");
@@ -253,7 +268,21 @@ export function RoomPage() {
       showAlert(data.message, "info");
     };
 
-    const handleVotingResults = (data: { votes: Record<string, string>; eliminated: Array<{ userName: string; role: string }>; tie?: boolean }) => {
+    const handleVotingResults = (data: { 
+      votes: Record<string, string>; 
+      votesWithNames: Array<{ voterName: string; targetName: string }>;
+      voteCounts: Record<string, number>;
+      eliminated: Array<{ userName: string; role: string }>; 
+      tie?: boolean 
+    }) => {
+      // Сохраняем результаты голосования для отображения
+      setVotingResults({
+        votesWithNames: data.votesWithNames || [],
+        voteCounts: data.voteCounts || {},
+        eliminated: data.eliminated || [],
+        tie: data.tie || false
+      });
+
       if (data.tie) {
         showAlert("🤝 Ничья! Все игроки получили равное количество голосов. Никто не исключён.", "info");
       } else if (data.eliminated.length > 0) {
@@ -299,6 +328,7 @@ export function RoomPage() {
       setGamePhase(GamePhase.GameOver);
       setGameStatus("Finished");
       setRevealedRoles(data.roles);
+      setWinningTeam(data.winner);
       
       const winnerNames: Record<string, string> = {
         Good: "Мирные жители",
@@ -870,7 +900,16 @@ export function RoomPage() {
         </div>
 
         {/* Центральная панель - игровой контент */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "1rem", overflowY: "auto" }}>
+        <div style={{ 
+          flex: 1, 
+          display: "flex", 
+          flexDirection: "column", 
+          gap: "1rem", 
+          overflowY: "auto",
+          overflowX: "hidden",
+          maxHeight: "100vh",
+          paddingRight: "0.5rem"
+        }}>
           {/* Фаза игры и таймер */}
           {gameCycleStarted && (
             <GamePhaseDisplay
@@ -884,6 +923,17 @@ export function RoomPage() {
                 (gamePhase === GamePhase.IndividualSpeech && currentSpeakerId === userId) ||
                 (gamePhase === GamePhase.Voting && currentVoterId === userId)
               }
+              winningTeam={winningTeam}
+            />
+          )}
+
+          {/* Результаты голосования */}
+          {votingResults && (
+            <VotingResultsDisplay
+              votesWithNames={votingResults.votesWithNames}
+              voteCounts={votingResults.voteCounts}
+              eliminated={votingResults.eliminated}
+              tie={votingResults.tie}
             />
           )}
 
@@ -891,8 +941,14 @@ export function RoomPage() {
           {renderGameContent()}
 
           {/* Чаты */}
-          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "1rem" }}>
-            <div style={{ flex: 1, minHeight: 0 }}>
+          <div style={{ 
+            display: "flex", 
+            flexDirection: "column", 
+            gap: "1rem",
+            minHeight: "400px",
+            flexShrink: 0
+          }}>
+            <div style={{ minHeight: "400px" }}>
               <Chat 
                 roomId={room.id} 
                 userId={userId} 
@@ -903,7 +959,7 @@ export function RoomPage() {
             </div>
 
             {isMafia && gameStatus === "InProgress" && gamePhase === GamePhase.Night && (
-              <div style={{ flex: 1, minHeight: 0 }}>
+              <div style={{ minHeight: "300px" }}>
                 <MafiaChat 
                   roomId={room.id} 
                   userId={userId} 

@@ -1,89 +1,25 @@
+import { useState, useEffect } from "react";
+import { rolesService, type RoleInfo } from "../services/rolesService";
+
 interface RoleDisplayProps {
   myRole: string | null;
   revealedRoles: { [key: string]: string };
   gameStatus: string;
 }
 
-interface RoleInfo {
-  name: string;
-  description: string;
-  team: "Good" | "Evil" | "Neutral";
-  emoji: string;
-}
-
-const ROLE_INFO: { [key: string]: RoleInfo } = {
-  Citizen: { 
-    name: "Мирный житель", 
-    description: "Обычный игрок, его цель выжить", 
-    team: "Good",
-    emoji: "👤"
-  },
-  Doctor: { 
-    name: "Доктор", 
-    description: "Задача каждую ночь лечить потенциальных жертв мафии", 
-    team: "Good",
-    emoji: "⚕️"
-  },
-  Sheriff: { 
-    name: "Шериф", 
-    description: "Главный враг мафии, ведь он может проверить документы, и тем самым обнаруживать мафию", 
-    team: "Good",
-    emoji: "🎖️"
-  },
-  Immortal: { 
-    name: "Бессмертный", 
-    description: "Его нельзя убить ночью, но на голосовании он не защищён", 
-    team: "Good",
-    emoji: "💎"
-  },
-  Prostitute: { 
-    name: "Путана", 
-    description: "Ночью забирает одного игрока к себе. Если его пытались убить - он выживает. Однако если убьют путану, то игрок тоже умрёт", 
-    team: "Good",
-    emoji: "💋"
-  },
-  Thief: { 
-    name: "Вор", 
-    description: "Крадёт у игрока все его инструменты и голос. Ночью его действия не считаются, а так же днём он не может голосовать", 
-    team: "Good",
-    emoji: "🥷"
-  },
-  Spy: { 
-    name: "Наблюдатель", 
-    description: "Мирный игрок, которому не спится. Просыпается вместе с мафией, и эмитирует что он тоже мафия", 
-    team: "Good",
-    emoji: "👁️"
-  },
-  Hunter: { 
-    name: "Охотник", 
-    description: "Мирный житель с немирными целями. Охотится на мафию и может убивать ночью. Но от ошибок никто не застрахован", 
-    team: "Good",
-    emoji: "🏹"
-  },
-  Don: { 
-    name: "Дон мафии", 
-    description: "Главарь мафии, который может искать шерифа. Так же его голос считается за 2", 
-    team: "Evil",
-    emoji: "🎩"
-  },
-  Mafia: { 
-    name: "Мафия", 
-    description: "Само зло. Цель - сделать так, чтобы в живых остались только члены мафии", 
-    team: "Evil",
-    emoji: "🔫"
-  },
-  Ninja: { 
-    name: "Ниндзя", 
-    description: "Играет за мафию. В свой ход кидает сюрикен на жертву. Если на игроке 2 сюрикена, то он умирает", 
-    team: "Evil",
-    emoji: "⚔️"
-  },
-  Maniac: { 
-    name: "Маньяк", 
-    description: "Настоящий псих одиночка. Все ему враги и он враг всем. Если останется 1 на 1 с мафией/мирным, то он победил", 
-    team: "Neutral",
-    emoji: "🔪"
-  },
+const ROLE_EMOJI: { [key: string]: string } = {
+  Citizen: "👤",
+  Doctor: "⚕️",
+  Sheriff: "🎖️",
+  Immortal: "💎",
+  Prostitute: "💋",
+  Thief: "🥷",
+  Spy: "👁️",
+  Hunter: "🏹",
+  Don: "🎩",
+  Mafia: "🔫",
+  Ninja: "⚔️",
+  Maniac: "🔪",
 };
 
 const getTeamColor = (team: string) => {
@@ -105,9 +41,27 @@ const getTeamName = (team: string) => {
 };
 
 export function RoleDisplay({ myRole, revealedRoles, gameStatus }: RoleDisplayProps) {
+  const [roles, setRoles] = useState<RoleInfo[]>([]);
+
+  useEffect(() => {
+    const loadRoles = async () => {
+      const rolesData = await rolesService.getRoles();
+      setRoles(rolesData);
+    };
+    loadRoles();
+  }, []);
+
+  const getRoleInfo = (roleValue: string): RoleInfo | undefined => {
+    return roles.find(r => r.roleValue === roleValue);
+  };
+
+  const getRoleEmoji = (roleValue: string): string => {
+    return ROLE_EMOJI[roleValue] || "❓";
+  };
+
   // Показываем роль игрока во время игры
   if (gameStatus === "InProgress" && myRole) {
-    const roleInfo = ROLE_INFO[myRole];
+    const roleInfo = getRoleInfo(myRole);
     if (!roleInfo) return null;
     
     const colors = getTeamColor(roleInfo.team);
@@ -125,7 +79,7 @@ export function RoleDisplay({ myRole, revealedRoles, gameStatus }: RoleDisplayPr
           alignItems: "center",
           textAlign: "center"
         }}>
-          <div style={{ fontSize: "4rem" }}>{roleInfo.emoji}</div>
+          <div style={{ fontSize: "4rem" }}>{getRoleEmoji(myRole)}</div>
           
           <div>
             <h2 style={{ 
@@ -186,7 +140,7 @@ export function RoleDisplay({ myRole, revealedRoles, gameStatus }: RoleDisplayPr
           gap: "0.75rem"
         }}>
           {Object.entries(revealedRoles).map(([playerName, role]) => {
-            const roleInfo = ROLE_INFO[role];
+            const roleInfo = getRoleInfo(role);
             if (!roleInfo) return null;
             
             const colors = getTeamColor(roleInfo.team);
@@ -205,7 +159,7 @@ export function RoleDisplay({ myRole, revealedRoles, gameStatus }: RoleDisplayPr
                   animation: "fadeIn 0.3s ease-out"
                 }}
               >
-                <div style={{ fontSize: "2rem" }}>{roleInfo.emoji}</div>
+                <div style={{ fontSize: "2rem" }}>{getRoleEmoji(role)}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ 
                     fontWeight: "600",

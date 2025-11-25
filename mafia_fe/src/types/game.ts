@@ -58,11 +58,14 @@ export interface VoterInfo {
 
 export interface VotingResults {
   votes: Record<string, string>;
+  votesWithNames: Array<{ voterName: string; targetName: string }>;
+  voteCounts: Record<string, number>;
   eliminated: Array<{
     userId: string;
     userName: string;
     role: string;
   }>;
+  tie?: boolean;
 }
 
 export interface NightResults {
