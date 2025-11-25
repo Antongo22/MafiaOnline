@@ -1,5 +1,6 @@
 using Mafia.Services;
 using Mafia.Enums;
+using Mafia.Models;
 
 namespace Mafia.DTOs;
 
@@ -16,4 +17,7 @@ public class RoomDTO
     
     // Настройка ролей для игры (Role -> количество)
     public Dictionary<Role, int>? RoleSettings { get; set; }
+    
+    // Состояние игрового цикла
+    public GameState? CurrentGameState { get; set; }
 }

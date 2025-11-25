@@ -1,4 +1,13 @@
 import * as signalR from "@microsoft/signalr";
+import type { 
+  TimerUpdate, 
+  SpeakerInfo, 
+  VoterInfo, 
+  VotingResults, 
+  NightResults, 
+  CardRevealed, 
+  GameOverData 
+} from "../types/game";
 
 export interface ChatMessage {
   id: string;
@@ -33,6 +42,22 @@ class ChatService {
   private gameResetHandlers: (() => void)[] = [];
   private mafiaMessageHandlers: ((message: ChatMessage) => void)[] = [];
   private mafiaHistoryHandlers: ((messages: ChatMessage[]) => void)[] = [];
+  
+  // Game cycle handlers
+  private timerUpdateHandlers: ((data: TimerUpdate) => void)[] = [];
+  private gameCycleStartedHandlers: ((data: any) => void)[] = [];
+  private speakerChangedHandlers: ((data: SpeakerInfo) => void)[] = [];
+  private phaseChangedHandlers: ((data: any) => void)[] = [];
+  private votingStartedHandlers: ((data: VoterInfo) => void)[] = [];
+  private voterChangedHandlers: ((data: VoterInfo) => void)[] = [];
+  private voteReceivedHandlers: ((data: { voterId: string }) => void)[] = [];
+  private votingResultsHandlers: ((data: VotingResults) => void)[] = [];
+  private nightPhaseChangedHandlers: ((data: { nightPhase: string; timeSeconds: number }) => void)[] = [];
+  private nightResultsHandlers: ((data: NightResults) => void)[] = [];
+  private cardRevealedHandlers: ((data: CardRevealed) => void)[] = [];
+  private gameOverHandlers: ((data: GameOverData) => void)[] = [];
+  private gamePausedHandlers: ((data: { pausedBy: string; remainingTime: number }) => void)[] = [];
+  private gameResumedHandlers: ((data: { resumedBy: string; remainingTime: number }) => void)[] = [];
 
   async connect(apiUrl: string = "http://localhost:5141"): Promise<void> {
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
@@ -112,6 +137,67 @@ class ChatService {
     // Обработчик получения истории чата мафии
     this.connection.on("ReceiveMafiaMessageHistory", (messages: ChatMessage[]) => {
       this.mafiaHistoryHandlers.forEach((handler) => handler(messages));
+    });
+
+    // Game cycle handlers
+    this.connection.on("TimerUpdate", (data: TimerUpdate) => {
+      this.timerUpdateHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("GameCycleStarted", (data: any) => {
+      this.gameCycleStartedHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("IndividualSpeechStarted", (data: any) => {
+      this.gameCycleStartedHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("SpeakerChanged", (data: SpeakerInfo) => {
+      this.speakerChangedHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("PhaseChanged", (data: any) => {
+      this.phaseChangedHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("VotingStarted", (data: VoterInfo) => {
+      this.votingStartedHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("VoterChanged", (data: VoterInfo) => {
+      this.voterChangedHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("VoteReceived", (data: { voterId: string }) => {
+      this.voteReceivedHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("VotingResults", (data: VotingResults) => {
+      this.votingResultsHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("NightPhaseChanged", (data: { nightPhase: string; timeSeconds: number }) => {
+      this.nightPhaseChangedHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("NightResults", (data: NightResults) => {
+      this.nightResultsHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("CardRevealed", (data: CardRevealed) => {
+      this.cardRevealedHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("GameOver", (data: GameOverData) => {
+      this.gameOverHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("GamePaused", (data: { pausedBy: string; remainingTime: number }) => {
+      this.gamePausedHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("GameResumed", (data: { resumedBy: string; remainingTime: number }) => {
+      this.gameResumedHandlers.forEach((handler) => handler(data));
     });
 
     await this.connection.start();
@@ -297,6 +383,119 @@ class ChatService {
       throw new Error("Connection is not established");
     }
     await this.connection.invoke("NotifyAllRolesRevealed", roomId, rolesData);
+  }
+
+  // Game cycle event handlers
+  onTimerUpdate(handler: (data: TimerUpdate) => void): void {
+    this.timerUpdateHandlers.push(handler);
+  }
+
+  removeTimerUpdateHandler(handler: (data: TimerUpdate) => void): void {
+    this.timerUpdateHandlers = this.timerUpdateHandlers.filter((h) => h !== handler);
+  }
+
+  onGameCycleStarted(handler: (data: any) => void): void {
+    this.gameCycleStartedHandlers.push(handler);
+  }
+
+  removeGameCycleStartedHandler(handler: (data: any) => void): void {
+    this.gameCycleStartedHandlers = this.gameCycleStartedHandlers.filter((h) => h !== handler);
+  }
+
+  onSpeakerChanged(handler: (data: SpeakerInfo) => void): void {
+    this.speakerChangedHandlers.push(handler);
+  }
+
+  removeSpeakerChangedHandler(handler: (data: SpeakerInfo) => void): void {
+    this.speakerChangedHandlers = this.speakerChangedHandlers.filter((h) => h !== handler);
+  }
+
+  onPhaseChanged(handler: (data: any) => void): void {
+    this.phaseChangedHandlers.push(handler);
+  }
+
+  removePhaseChangedHandler(handler: (data: any) => void): void {
+    this.phaseChangedHandlers = this.phaseChangedHandlers.filter((h) => h !== handler);
+  }
+
+  onVotingStarted(handler: (data: VoterInfo) => void): void {
+    this.votingStartedHandlers.push(handler);
+  }
+
+  removeVotingStartedHandler(handler: (data: VoterInfo) => void): void {
+    this.votingStartedHandlers = this.votingStartedHandlers.filter((h) => h !== handler);
+  }
+
+  onVoterChanged(handler: (data: VoterInfo) => void): void {
+    this.voterChangedHandlers.push(handler);
+  }
+
+  removeVoterChangedHandler(handler: (data: VoterInfo) => void): void {
+    this.voterChangedHandlers = this.voterChangedHandlers.filter((h) => h !== handler);
+  }
+
+  onVoteReceived(handler: (data: { voterId: string }) => void): void {
+    this.voteReceivedHandlers.push(handler);
+  }
+
+  removeVoteReceivedHandler(handler: (data: { voterId: string }) => void): void {
+    this.voteReceivedHandlers = this.voteReceivedHandlers.filter((h) => h !== handler);
+  }
+
+  onVotingResults(handler: (data: VotingResults) => void): void {
+    this.votingResultsHandlers.push(handler);
+  }
+
+  removeVotingResultsHandler(handler: (data: VotingResults) => void): void {
+    this.votingResultsHandlers = this.votingResultsHandlers.filter((h) => h !== handler);
+  }
+
+  onNightPhaseChanged(handler: (data: { nightPhase: string; timeSeconds: number }) => void): void {
+    this.nightPhaseChangedHandlers.push(handler);
+  }
+
+  removeNightPhaseChangedHandler(handler: (data: { nightPhase: string; timeSeconds: number }) => void): void {
+    this.nightPhaseChangedHandlers = this.nightPhaseChangedHandlers.filter((h) => h !== handler);
+  }
+
+  onNightResults(handler: (data: NightResults) => void): void {
+    this.nightResultsHandlers.push(handler);
+  }
+
+  removeNightResultsHandler(handler: (data: NightResults) => void): void {
+    this.nightResultsHandlers = this.nightResultsHandlers.filter((h) => h !== handler);
+  }
+
+  onCardRevealed(handler: (data: CardRevealed) => void): void {
+    this.cardRevealedHandlers.push(handler);
+  }
+
+  removeCardRevealedHandler(handler: (data: CardRevealed) => void): void {
+    this.cardRevealedHandlers = this.cardRevealedHandlers.filter((h) => h !== handler);
+  }
+
+  onGameOver(handler: (data: GameOverData) => void): void {
+    this.gameOverHandlers.push(handler);
+  }
+
+  removeGameOverHandler(handler: (data: GameOverData) => void): void {
+    this.gameOverHandlers = this.gameOverHandlers.filter((h) => h !== handler);
+  }
+
+  onGamePaused(handler: (data: { pausedBy: string; remainingTime: number }) => void): void {
+    this.gamePausedHandlers.push(handler);
+  }
+
+  removeGamePausedHandler(handler: (data: { pausedBy: string; remainingTime: number }) => void): void {
+    this.gamePausedHandlers = this.gamePausedHandlers.filter((h) => h !== handler);
+  }
+
+  onGameResumed(handler: (data: { resumedBy: string; remainingTime: number }) => void): void {
+    this.gameResumedHandlers.push(handler);
+  }
+
+  removeGameResumedHandler(handler: (data: { resumedBy: string; remainingTime: number }) => void): void {
+    this.gameResumedHandlers = this.gameResumedHandlers.filter((h) => h !== handler);
   }
 
   isConnected(): boolean {

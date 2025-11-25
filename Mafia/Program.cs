@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Mafia.Filters;
 using Mafia.Hubs;
+using Mafia.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +24,9 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddSignalR();
+
+// Background services
+builder.Services.AddHostedService<GameTimerService>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>

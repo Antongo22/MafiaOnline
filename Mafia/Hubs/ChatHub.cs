@@ -90,6 +90,44 @@ public class ChatHub : Hub
             return;
         }
 
+        // Проверяем, может ли игрок писать в текущей фазе
+        if (room.CurrentGameState != null)
+        {
+            var gameState = room.CurrentGameState;
+            
+            if (gameState.Phase == Enums.GamePhase.IndividualSpeech)
+            {
+                // Только текущий спикер может писать
+                if (gameState.CurrentSpeakerId != userId)
+                {
+                    await Clients.Caller.SendAsync("Error", "Not your turn to speak");
+                    return;
+                }
+                
+                // Спикер может отправить только 1 сообщение
+                if (gameState.HasSpoken.ContainsKey(userId) && gameState.HasSpoken[userId])
+                {
+                    await Clients.Caller.SendAsync("Error", "You have already spoken");
+                    return;
+                }
+                
+                // Помечаем что спикер отправил сообщение
+                gameState.HasSpoken[userId] = true;
+            }
+            else if (gameState.Phase == Enums.GamePhase.FreeDiscussion)
+            {
+                // Все могут писать
+            }
+            else if (gameState.Phase == Enums.GamePhase.Voting || 
+                     gameState.Phase == Enums.GamePhase.Night || 
+                     gameState.Phase == Enums.GamePhase.GameOver)
+            {
+                // Во время голосования и ночи чат заблокирован
+                await Clients.Caller.SendAsync("Error", "Chat is disabled during this phase");
+                return;
+            }
+        }
+
         // Создаем сообщение
         var chatMessage = new ChatMessageDTO
         {

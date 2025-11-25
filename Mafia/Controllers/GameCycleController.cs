@@ -1,0 +1,340 @@
+using Microsoft.AspNetCore.Mvc;
+using Mafia.Services;
+using Mafia.DTOs;
+using Mafia.Enums;
+using Mafia.Models;
+using Mafia.Hubs;
+using Microsoft.AspNetCore.SignalR;
+using System.Text.Json;
+
+namespace Mafia.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class GameCycleController : ControllerBase
+{
+    private readonly IHubContext<ChatHub> _hubContext;
+    private readonly ILogger<GameCycleController> _logger;
+
+    public GameCycleController(IHubContext<ChatHub> hubContext, ILogger<GameCycleController> logger)
+    {
+        _hubContext = hubContext;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Поставить игру на паузу (только админ)
+    /// </summary>
+    [HttpPost("pause")]
+    public async Task<ActionResult> PauseGame(string roomId, string adminId)
+    {
+        var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
+        if (room == null)
+            return NotFound("Room not found");
+
+        var admin = room.Users.FirstOrDefault(u => u.Id == adminId);
+        if (admin == null || admin.Status != UserStatus.Admin)
+            return Unauthorized("Only admin can pause the game");
+
+        if (room.CurrentGameState == null)
+            return BadRequest("Game is not started");
+
+        if (room.CurrentGameState.IsPaused)
+            return BadRequest("Game is already paused");
+
+        // Сохраняем оставшееся время
+        var elapsed = (DateTime.UtcNow - room.CurrentGameState.PhaseStartTime).TotalSeconds;
+        room.CurrentGameState.RemainingTimeBeforePause = Math.Max(0, room.CurrentGameState.PhaseTimeSeconds - (int)elapsed);
+        room.CurrentGameState.IsPaused = true;
+        room.CurrentGameState.PauseStartTime = DateTime.UtcNow;
+
+        await _hubContext.Clients.Group(roomId).SendAsync("GamePaused", new
+        {
+            pausedBy = admin.Name,
+            remainingTime = room.CurrentGameState.RemainingTimeBeforePause
+        });
+
+        return Ok(new { message = "Game paused" });
+    }
+
+    /// <summary>
+    /// Продолжить игру после паузы (только админ)
+    /// </summary>
+    [HttpPost("resume")]
+    public async Task<ActionResult> ResumeGame(string roomId, string adminId)
+    {
+        var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
+        if (room == null)
+            return NotFound("Room not found");
+
+        var admin = room.Users.FirstOrDefault(u => u.Id == adminId);
+        if (admin == null || admin.Status != UserStatus.Admin)
+            return Unauthorized("Only admin can resume the game");
+
+        if (room.CurrentGameState == null)
+            return BadRequest("Game is not started");
+
+        if (!room.CurrentGameState.IsPaused)
+            return BadRequest("Game is not paused");
+
+        // Восстанавливаем время
+        room.CurrentGameState.PhaseStartTime = DateTime.UtcNow;
+        room.CurrentGameState.PhaseTimeSeconds = room.CurrentGameState.RemainingTimeBeforePause;
+        room.CurrentGameState.IsPaused = false;
+        room.CurrentGameState.PauseStartTime = null;
+
+        await _hubContext.Clients.Group(roomId).SendAsync("GameResumed", new
+        {
+            resumedBy = admin.Name,
+            remainingTime = room.CurrentGameState.RemainingTimeBeforePause
+        });
+
+        return Ok(new { message = "Game resumed" });
+    }
+
+    /// <summary>
+    /// Начать игровой цикл (только админ)
+    /// </summary>
+    [HttpPost("start")]
+    public async Task<ActionResult> StartGameCycle(string roomId, string adminId)
+    {
+        var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
+        if (room == null)
+            return NotFound("Room not found");
+
+        var admin = room.Users.FirstOrDefault(u => u.Id == adminId);
+        if (admin == null || admin.Status != UserStatus.Admin)
+            return Unauthorized("Only admin can start the game");
+
+        if (room.Status != GameStatus.InProgress)
+            return BadRequest("Game must be in InProgress status");
+
+        if (room.PlayerRoles == null || !room.PlayerRoles.Any())
+            return BadRequest("Roles must be distributed first");
+
+        // Инициализируем игровое состояние
+        var alivePlayers = room.Users
+            .Where(u => u.Status != UserStatus.Leave && room.PlayerRoles.ContainsKey(u.Id))
+            .Select(u => u.Id)
+            .OrderBy(_ => Guid.NewGuid())
+            .ToList();
+
+        room.CurrentGameState = new GameState
+        {
+            Phase = GamePhase.IndividualSpeech,
+            IsFirstCycle = true,
+            DayNumber = 1,
+            PhaseStartTime = DateTime.UtcNow,
+            PhaseTimeSeconds = 30,
+            SpeakerOrder = alivePlayers,
+            CurrentSpeakerIndex = 0,
+            CurrentSpeakerId = alivePlayers.FirstOrDefault(),
+            SheriffId = room.PlayerRoles.FirstOrDefault(p => p.Value == Role.Sheriff).Key
+        };
+
+        await _hubContext.Clients.Group(roomId).SendAsync("GameCycleStarted", new
+        {
+            phase = "IndividualSpeech",
+            speakerId = room.CurrentGameState.CurrentSpeakerId,
+            speakerName = room.Users.FirstOrDefault(u => u.Id == room.CurrentGameState.CurrentSpeakerId)?.Name,
+            timeSeconds = 30
+        });
+
+        return Ok(new { message = "Game cycle started" });
+    }
+
+    /// <summary>
+    /// Голосование игрока
+    /// </summary>
+    [HttpPost("vote")]
+    public async Task<ActionResult> Vote(string roomId, string voterId, string targetId)
+    {
+        var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
+        if (room == null)
+            return NotFound("Room not found");
+
+        var gameState = room.CurrentGameState;
+        if (gameState == null || gameState.Phase != GamePhase.Voting)
+            return BadRequest("Not in voting phase");
+
+        if (gameState.CurrentVoterId != voterId)
+            return BadRequest("Not your turn to vote");
+
+        var voter = room.Users.FirstOrDefault(u => u.Id == voterId);
+        if (voter == null || voter.Status == UserStatus.Dead || voter.Status == UserStatus.Leave)
+            return BadRequest("You cannot vote");
+
+        // Записываем голос
+        gameState.Votes[voterId] = targetId;
+
+        await _hubContext.Clients.Group(roomId).SendAsync("VoteReceived", new
+        {
+            voterId,
+            // Не показываем за кого проголосовал
+        });
+
+        // Переходим к следующему голосующему
+        gameState.CurrentVoterIndex++;
+        if (gameState.CurrentVoterIndex < gameState.VoterOrder.Count)
+        {
+            gameState.CurrentVoterId = gameState.VoterOrder[gameState.CurrentVoterIndex];
+            gameState.PhaseStartTime = DateTime.UtcNow;
+
+            await _hubContext.Clients.Group(roomId).SendAsync("VoterChanged", new
+            {
+                voterId = gameState.CurrentVoterId,
+                voterName = room.Users.FirstOrDefault(u => u.Id == gameState.CurrentVoterId)?.Name,
+                timeSeconds = 15
+            });
+        }
+
+        return Ok(new { message = "Vote recorded" });
+    }
+
+    /// <summary>
+    /// Ночное действие игрока
+    /// </summary>
+    [HttpPost("night-action")]
+    public async Task<ActionResult> NightAction(string roomId, string userId, [FromBody] NightActionDTO action)
+    {
+        var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
+        if (room == null)
+            return NotFound("Room not found");
+
+        var gameState = room.CurrentGameState;
+        if (gameState == null || gameState.Phase != GamePhase.Night)
+            return BadRequest("Not in night phase");
+
+        var user = room.Users.FirstOrDefault(u => u.Id == userId);
+        if (user == null || user.Status == UserStatus.Dead || user.Status == UserStatus.Leave)
+            return BadRequest("You cannot act");
+
+        if (!room.PlayerRoles!.ContainsKey(userId))
+            return BadRequest("You don't have a role");
+
+        var userRole = room.PlayerRoles[userId];
+        var currentNightPhase = gameState.CurrentNightPhase;
+
+        // Проверяем, что игрок действует в свою фазу
+        bool canAct = currentNightPhase switch
+        {
+            NightPhase.Don => userRole == Role.Don,
+            NightPhase.Mafia => RoleInfo.GetTeam(userRole) == Team.Evil,
+            NightPhase.Maniac => userRole == Role.Maniac,
+            NightPhase.Sheriff => userRole == Role.Sheriff,
+            NightPhase.Doctor => userRole == Role.Doctor,
+            NightPhase.Prostitute => userRole == Role.Prostitute,
+            _ => false
+        };
+
+        if (!canAct)
+            return BadRequest("Not your turn");
+
+        // Обрабатываем действие
+        await ProcessNightAction(room, userId, userRole, action);
+
+        return Ok(new { message = "Action recorded" });
+    }
+
+    private async Task ProcessNightAction(RoomDTO room, string userId, Role role, NightActionDTO action)
+    {
+        var gameState = room.CurrentGameState!;
+
+        switch (gameState.CurrentNightPhase)
+        {
+            case NightPhase.Don:
+                // Дон проверяет игрока на шерифа
+                if (!string.IsNullOrEmpty(action.TargetId))
+                {
+                    if (action.TargetId == gameState.SheriffId)
+                    {
+                        gameState.DonHasFoundSheriff = true;
+                        
+                        // Открываем карту шерифа для дона
+                        if (!gameState.RevealedCards.ContainsKey(userId))
+                            gameState.RevealedCards[userId] = new List<string>();
+                        if (!gameState.RevealedCards[userId].Contains(gameState.SheriffId))
+                            gameState.RevealedCards[userId].Add(gameState.SheriffId);
+
+                        await _hubContext.Clients.Client(userId).SendAsync("CardRevealed", new
+                        {
+                            targetId = gameState.SheriffId,
+                            role = Role.Sheriff.ToString(),
+                            reason = "Don found Sheriff"
+                        });
+                    }
+                }
+                break;
+
+            case NightPhase.Mafia:
+                // Мафия голосует за убийство
+                if (!string.IsNullOrEmpty(action.TargetId))
+                {
+                    gameState.NightActions[userId] = JsonSerializer.Serialize(new { action = "kill", targetId = action.TargetId });
+                }
+                break;
+
+            case NightPhase.Maniac:
+                // Маньяк убивает или лечит себя
+                if (action.ActionType == "heal_self" && gameState.ManiacSelfHealsLeft > 0)
+                {
+                    gameState.ManiacSelfHealsLeft--;
+                    gameState.NightActions[userId] = JsonSerializer.Serialize(new { action = "heal_self" });
+                }
+                else if (!string.IsNullOrEmpty(action.TargetId))
+                {
+                    gameState.NightActions[userId] = JsonSerializer.Serialize(new { action = "kill", targetId = action.TargetId });
+                }
+                break;
+
+            case NightPhase.Sheriff:
+                // Шериф проверяет игрока
+                if (!string.IsNullOrEmpty(action.TargetId))
+                {
+                    var targetRole = room.PlayerRoles![action.TargetId];
+                    if (RoleInfo.GetTeam(targetRole) == Team.Evil)
+                    {
+                        // Открываем карту мафии для шерифа
+                        if (!gameState.RevealedCards.ContainsKey(userId))
+                            gameState.RevealedCards[userId] = new List<string>();
+                        if (!gameState.RevealedCards[userId].Contains(action.TargetId))
+                            gameState.RevealedCards[userId].Add(action.TargetId);
+
+                        await _hubContext.Clients.Client(userId).SendAsync("CardRevealed", new
+                        {
+                            targetId = action.TargetId,
+                            role = targetRole.ToString(),
+                            reason = "Sheriff checked"
+                        });
+                    }
+                }
+                break;
+
+            case NightPhase.Doctor:
+                // Доктор лечит игрока
+                if (!string.IsNullOrEmpty(action.TargetId))
+                {
+                    gameState.NightActions[userId] = JsonSerializer.Serialize(new { action = "heal", targetId = action.TargetId });
+                }
+                break;
+
+            case NightPhase.Prostitute:
+                // Путана забирает игрока
+                if (!string.IsNullOrEmpty(action.TargetId))
+                {
+                    gameState.NightActions[userId] = JsonSerializer.Serialize(new { action = "protect", targetId = action.TargetId });
+                }
+                break;
+        }
+
+        // Автоматически переходим к следующей фазе (опционально, можно ждать всех)
+        // gameState.PhaseStartTime = DateTime.UtcNow; // Сброс таймера
+    }
+}
+
+public class NightActionDTO
+{
+    public string? TargetId { get; set; }
+    public string? ActionType { get; set; } // "kill", "heal", "check", "protect", "heal_self"
+}
+

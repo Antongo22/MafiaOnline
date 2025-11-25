@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { gameService } from "../services/gameService";
 
 interface AdminPanelProps {
   roomId: string;
@@ -7,6 +8,8 @@ interface AdminPanelProps {
   playerCount: number;
   apiUrl: string;
   onStatusChange: (newStatus: string) => void;
+  gameCycleStarted?: boolean;
+  isPaused?: boolean;
 }
 
 interface RoleCount {
@@ -68,7 +71,7 @@ const getTeamName = (team: string) => {
   }
 };
 
-export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, onStatusChange }: AdminPanelProps) {
+export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, onStatusChange, gameCycleStarted, isPaused }: AdminPanelProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [roleCounts, setRoleCounts] = useState<RoleCount>({});
@@ -169,6 +172,47 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
       onStatusChange(result.status);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to distribute roles");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartGameCycle = async () => {
+    if (!window.confirm("Начать игровой цикл? Игра автоматически пройдёт все фазы.")) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await gameService.startGameCycle(roomId, userId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start game cycle");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePauseGame = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      await gameService.pauseGame(roomId, userId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to pause game");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResumeGame = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      await gameService.resumeGame(roomId, userId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to resume game");
     } finally {
       setLoading(false);
     }
@@ -365,8 +409,37 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
       {gameStatus === "InProgress" && (
         <>
           <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: "0.875rem" }}>
-            Игра в процессе. Роли розданы.
+            {gameCycleStarted 
+              ? isPaused 
+                ? "⏸️ Игра на паузе" 
+                : "▶️ Игра в процессе. Следите за фазами игры." 
+              : "Игра в процессе. Роли розданы."}
           </p>
+          
+          {!gameCycleStarted && (
+            <button
+              onClick={handleStartGameCycle}
+              disabled={loading}
+              className="btn-primary w-full"
+              style={{ marginBottom: "0.5rem" }}
+            >
+              {loading ? "..." : "▶️ Начать игровой цикл"}
+            </button>
+          )}
+          
+          {gameCycleStarted && (
+            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+              <button
+                onClick={isPaused ? handleResumeGame : handlePauseGame}
+                disabled={loading}
+                className={isPaused ? "btn-primary" : "btn-secondary"}
+                style={{ flex: 1 }}
+              >
+                {loading ? "..." : isPaused ? "▶️ Продолжить" : "⏸️ Пауза"}
+              </button>
+            </div>
+          )}
+          
           <button
             onClick={handleFinishGame}
             disabled={loading}
