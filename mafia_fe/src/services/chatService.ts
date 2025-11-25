@@ -24,6 +24,7 @@ export interface User {
   id: string;
   name: string;
   status: string;
+  isAlive?: boolean;
 }
 
 class ChatService {

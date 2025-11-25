@@ -41,6 +41,7 @@ export function RoomPage() {
   const [currentSpeakerName, setCurrentSpeakerName] = useState<string | undefined>();
   const [currentVoterName, setCurrentVoterName] = useState<string | undefined>();
   const [currentVoterId, setCurrentVoterId] = useState<string | undefined>();
+  const [currentSpeakerId, setCurrentSpeakerId] = useState<string | undefined>();
   const [nightPhase, setNightPhase] = useState<string | undefined>();
   const [dayNumber, setDayNumber] = useState<number>(1);
   const [gameCycleStarted, setGameCycleStarted] = useState(false);
@@ -74,6 +75,37 @@ export function RoomPage() {
           setUserId(savedState.userId);
           setUserName(savedState.userName);
           setUsers(data.users.filter(u => u.status !== "Leave"));
+          setGameStatus(data.status);
+
+          // Подключаемся к SignalR
+          try {
+            await chatService.connect(API_URL);
+            await chatService.joinRoom(data.id, savedState.userId);
+          } catch (signalRError) {
+            console.error("Failed to connect to SignalR:", signalRError);
+          }
+
+          // Загружаем текущее состояние игры
+          try {
+            const gameStateResponse = await fetch(`${API_URL}/api/GameCycle/state?roomId=${data.id}`);
+            if (gameStateResponse.ok) {
+              const gameStateData = await gameStateResponse.json();
+              if (gameStateData.isActive) {
+                setGameCycleStarted(true);
+                setGamePhase(gameStateData.phase);
+                setTimeLeft(gameStateData.timeLeft);
+                setDayNumber(gameStateData.dayNumber);
+                setNightPhase(gameStateData.nightPhase);
+                setCurrentSpeakerName(gameStateData.currentSpeakerName);
+                setCurrentSpeakerId(gameStateData.currentSpeakerId);
+                setCurrentVoterName(gameStateData.currentVoterName);
+                setCurrentVoterId(gameStateData.currentVoterId);
+                setIsPaused(gameStateData.isPaused);
+              }
+            }
+          } catch (gameStateError) {
+            console.error("Failed to load game state:", gameStateError);
+          }
         } else {
           clearRoomState();
         }
@@ -134,12 +166,14 @@ export function RoomPage() {
       setGameCycleStarted(true);
       setGamePhase(GamePhase.IndividualSpeech);
       setCurrentSpeakerName(data.speakerName);
+      setCurrentSpeakerId(data.speakerId);
       setDayNumber(1);
       showAlert("🎮 Игра начинается! Индивидуальные выступления.", "success");
     };
 
-    const handleSpeakerChanged = (data: { speakerName: string }) => {
+    const handleSpeakerChanged = (data: { speakerName: string; speakerId: string }) => {
       setCurrentSpeakerName(data.speakerName);
+      setCurrentSpeakerId(data.speakerId);
       showAlert(`🎤 Сейчас говорит: ${data.speakerName}`, "info");
     };
 
@@ -315,6 +349,14 @@ export function RoomPage() {
       });
 
       setUsers(data.users.filter(u => u.status !== "Leave"));
+
+      // Подключаемся к SignalR
+      try {
+        await chatService.connect(API_URL);
+        await chatService.joinRoom(data.id, data.users[0].id);
+      } catch (signalRError) {
+        console.error("Failed to connect to SignalR:", signalRError);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create room");
     } finally {
@@ -362,6 +404,38 @@ export function RoomPage() {
         });
 
         setUsers(data.users.filter(u => u.status !== "Leave"));
+
+        // Подключаемся к SignalR
+        try {
+          await chatService.connect(API_URL);
+          await chatService.joinRoom(data.id, user.id);
+        } catch (signalRError) {
+          console.error("Failed to connect to SignalR:", signalRError);
+        }
+
+        // Загружаем текущее состояние игры если она уже идёт
+        if (data.status === "InProgress") {
+          try {
+            const gameStateResponse = await fetch(`${API_URL}/api/GameCycle/state?roomId=${data.id}`);
+            if (gameStateResponse.ok) {
+              const gameStateData = await gameStateResponse.json();
+              if (gameStateData.isActive) {
+                setGameCycleStarted(true);
+                setGamePhase(gameStateData.phase);
+                setTimeLeft(gameStateData.timeLeft);
+                setDayNumber(gameStateData.dayNumber);
+                setNightPhase(gameStateData.nightPhase);
+                setCurrentSpeakerName(gameStateData.currentSpeakerName);
+                setCurrentSpeakerId(gameStateData.currentSpeakerId);
+                setCurrentVoterName(gameStateData.currentVoterName);
+                setCurrentVoterId(gameStateData.currentVoterId);
+                setIsPaused(gameStateData.isPaused);
+              }
+            }
+          } catch (gameStateError) {
+            console.error("Failed to load game state:", gameStateError);
+          }
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to join room");
@@ -644,22 +718,36 @@ export function RoomPage() {
               {users.map((user) => {
                 const isCurrentUser = user.id === userId;
                 const isUserAdmin = user.status === "Admin";
-                const isDead = user.status === "Dead";
+                const isDead = user.isAlive === false;
+                const isActivePlayer = 
+                  (gamePhase === GamePhase.IndividualSpeech && user.id === currentSpeakerId) ||
+                  (gamePhase === GamePhase.Voting && user.id === currentVoterId);
                 
                 return (
                   <div
                     key={user.id}
                     style={{
                       padding: "0.75rem",
-                      background: isCurrentUser ? "var(--accent-light)" : "var(--bg-tertiary)",
-                      border: `1px solid ${isCurrentUser ? "var(--accent-primary)" : "var(--border)"}`,
+                      background: isActivePlayer 
+                        ? "var(--warning)" 
+                        : isCurrentUser 
+                          ? "var(--accent-light)" 
+                          : "var(--bg-tertiary)",
+                      border: `2px solid ${
+                        isActivePlayer 
+                          ? "var(--warning)" 
+                          : isCurrentUser 
+                            ? "var(--accent-primary)" 
+                            : "var(--border)"
+                      }`,
                       borderRadius: "var(--radius)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
                       gap: "0.75rem",
                       transition: "var(--transition)",
-                      opacity: isDead ? 0.5 : 1
+                      opacity: isDead ? 0.5 : 1,
+                      boxShadow: isActivePlayer ? "0 0 20px rgba(251, 191, 36, 0.4)" : "none"
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, minWidth: 0 }}>
@@ -672,11 +760,13 @@ export function RoomPage() {
                       }}></div>
                       <span style={{ 
                         fontSize: "0.875rem",
-                        fontWeight: isCurrentUser ? "600" : "normal",
+                        fontWeight: isCurrentUser || isActivePlayer ? "600" : "normal",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
-                        whiteSpace: "nowrap"
+                        whiteSpace: "nowrap",
+                        color: isActivePlayer ? "var(--bg-primary)" : "inherit"
                       }}>
+                        {isActivePlayer && "▶️ "}
                         {user.name}
                         {isCurrentUser && " (вы)"}
                         {isUserAdmin && " 👑"}
@@ -715,6 +805,10 @@ export function RoomPage() {
               currentVoterName={currentVoterName}
               nightPhase={nightPhase}
               dayNumber={dayNumber}
+              isMyTurn={
+                (gamePhase === GamePhase.IndividualSpeech && currentSpeakerId === userId) ||
+                (gamePhase === GamePhase.Voting && currentVoterId === userId)
+              }
             />
           )}
 
@@ -733,7 +827,7 @@ export function RoomPage() {
               />
             </div>
 
-            {isMafia && gameStatus === "InProgress" && (
+            {isMafia && gameStatus === "InProgress" && gamePhase === GamePhase.Night && (
               <div style={{ flex: 1, minHeight: 0 }}>
                 <MafiaChat 
                   roomId={room.id} 

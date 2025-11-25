@@ -23,6 +23,61 @@ public class GameCycleController : ControllerBase
     }
 
     /// <summary>
+    /// Получить текущее состояние игры
+    /// </summary>
+    [HttpGet("state")]
+    public ActionResult GetGameState(string roomId)
+    {
+        var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
+        if (room == null)
+            return NotFound("Room not found");
+
+        if (room.CurrentGameState == null)
+            return Ok(new { 
+                isActive = false,
+                phase = "Lobby",
+                gameStatus = room.Status.ToString()
+            });
+
+        var gameState = room.CurrentGameState;
+        var elapsed = (DateTime.UtcNow - gameState.PhaseStartTime).TotalSeconds;
+        var timeLeft = Math.Max(0, gameState.PhaseTimeSeconds - (int)elapsed);
+
+        string? currentSpeakerName = null;
+        string? currentSpeakerId = null;
+        if (gameState.Phase == GamePhase.IndividualSpeech && gameState.CurrentSpeakerId != null)
+        {
+            var speaker = room.Users.FirstOrDefault(u => u.Id == gameState.CurrentSpeakerId);
+            currentSpeakerName = speaker?.Name;
+            currentSpeakerId = speaker?.Id;
+        }
+
+        string? currentVoterName = null;
+        string? currentVoterId = null;
+        if (gameState.Phase == GamePhase.Voting && gameState.VoterOrder != null && gameState.VoterOrder.Any())
+        {
+            var voterId = gameState.VoterOrder[gameState.CurrentVoterIndex];
+            var voter = room.Users.FirstOrDefault(u => u.Id == voterId);
+            currentVoterName = voter?.Name;
+            currentVoterId = voter?.Id;
+        }
+
+        return Ok(new {
+            isActive = true,
+            phase = gameState.Phase.ToString(),
+            nightPhase = gameState.CurrentNightPhase?.ToString(),
+            dayNumber = gameState.DayNumber,
+            timeLeft = timeLeft,
+            currentSpeakerName = currentSpeakerName,
+            currentSpeakerId = currentSpeakerId,
+            currentVoterName = currentVoterName,
+            currentVoterId = currentVoterId,
+            isPaused = gameState.IsPaused,
+            gameStatus = room.Status.ToString()
+        });
+    }
+
+    /// <summary>
     /// Поставить игру на паузу (только админ)
     /// </summary>
     [HttpPost("pause")]
@@ -161,7 +216,7 @@ public class GameCycleController : ControllerBase
             return BadRequest("Not your turn to vote");
 
         var voter = room.Users.FirstOrDefault(u => u.Id == voterId);
-        if (voter == null || voter.Status == UserStatus.Dead || voter.Status == UserStatus.Leave)
+        if (voter == null || !voter.IsAlive || voter.Status == UserStatus.Leave)
             return BadRequest("You cannot vote");
 
         // Записываем голос
@@ -206,7 +261,7 @@ public class GameCycleController : ControllerBase
             return BadRequest("Not in night phase");
 
         var user = room.Users.FirstOrDefault(u => u.Id == userId);
-        if (user == null || user.Status == UserStatus.Dead || user.Status == UserStatus.Leave)
+        if (user == null || !user.IsAlive || user.Status == UserStatus.Leave)
             return BadRequest("You cannot act");
 
         if (!room.PlayerRoles!.ContainsKey(userId))

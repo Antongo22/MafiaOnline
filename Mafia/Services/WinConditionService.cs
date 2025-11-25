@@ -10,7 +10,7 @@ public class WinConditionService
     /// </summary>
     public static Team? CheckWinCondition(RoomDTO room)
     {
-        var alivePlayers = room.Users.Where(u => u.Status != UserStatus.Leave && u.Status != UserStatus.Dead).ToList();
+        var alivePlayers = room.Users.Where(u => u.Status != UserStatus.Leave && u.IsAlive).ToList();
         
         if (alivePlayers.Count == 0)
             return Team.Good; // По умолчанию

@@ -147,7 +147,7 @@ public class GameTimerService : BackgroundService
 
         // Создаем порядок голосования (только живые игроки)
         var alivePlayers = room.Users
-            .Where(u => u.Status != UserStatus.Leave && u.Status != UserStatus.Dead && room.PlayerRoles!.ContainsKey(u.Id))
+            .Where(u => u.Status != UserStatus.Leave && u.IsAlive && room.PlayerRoles!.ContainsKey(u.Id))
             .Select(u => u.Id)
             .ToList();
         
@@ -217,7 +217,8 @@ public class GameTimerService : BackgroundService
                 var player = room.Users.FirstOrDefault(u => u.Id == playerId);
                 if (player != null)
                 {
-                    player.Status = UserStatus.Dead;
+                    // Помечаем игрока как мертвого, но сохраняем его статус (Admin/Player)
+                    player.IsAlive = false;
                 }
             }
 
@@ -298,7 +299,7 @@ public class GameTimerService : BackgroundService
     private NightPhase? GetNextNightPhase(RoomDTO room, NightPhase? currentPhase)
     {
         var availableRoles = room.PlayerRoles!.Values.Distinct().ToList();
-        var alivePlayers = room.Users.Where(u => u.Status != UserStatus.Leave && u.Status != UserStatus.Dead).ToList();
+        var alivePlayers = room.Users.Where(u => u.Status != UserStatus.Leave && u.IsAlive).ToList();
         var aliveRoles = alivePlayers
             .Where(u => room.PlayerRoles.ContainsKey(u.Id))
             .Select(u => room.PlayerRoles[u.Id])
@@ -370,9 +371,10 @@ public class GameTimerService : BackgroundService
         foreach (var playerId in gameState.PendingDeaths.Distinct())
         {
             var player = room.Users.FirstOrDefault(u => u.Id == playerId);
-            if (player != null && player.Status != UserStatus.Dead)
+            if (player != null && player.IsAlive)
             {
-                player.Status = UserStatus.Dead;
+                // Помечаем игрока как мертвого, но сохраняем его статус
+                player.IsAlive = false;
                 killed.Add(playerId);
             }
         }
@@ -412,7 +414,7 @@ public class GameTimerService : BackgroundService
 
         // Создаем порядок выступлений (только живые игроки, случайный порядок)
         var alivePlayers = room.Users
-            .Where(u => u.Status != UserStatus.Leave && u.Status != UserStatus.Dead && room.PlayerRoles!.ContainsKey(u.Id))
+            .Where(u => u.Status != UserStatus.Leave && u.IsAlive && room.PlayerRoles!.ContainsKey(u.Id))
             .Select(u => u.Id)
             .OrderBy(_ => Guid.NewGuid())
             .ToList();

@@ -25,7 +25,7 @@ public class Room : ControllerBase
             return BadRequest("Room is not in created state");
         
         var userId = Guid.NewGuid().ToString();
-        room.Users.Add(new UserDTO { Id = userId, Name = playerName, Status = UserStatus.Player });
+        room.Users.Add(new UserDTO { Id = userId, Name = playerName, Status = UserStatus.Player, IsAlive = true });
         
         return Ok(room);
     }
@@ -39,7 +39,7 @@ public class Room : ControllerBase
         {
             Id = Guid.NewGuid().ToString(),
             Name = roomName,
-            Users = new List<UserDTO> { new UserDTO { Id = userId, Name = playerName, Status = UserStatus.Admin } },
+            Users = new List<UserDTO> { new UserDTO { Id = userId, Name = playerName, Status = UserStatus.Admin, IsAlive = true } },
             InviteCode = Guid.NewGuid().ToString().Substring(0, 6).ToUpper(),
             Status = GameStatus.Created
         };

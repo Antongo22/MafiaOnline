@@ -184,6 +184,12 @@ public class GameController : ControllerBase
         // Удаляем игроков со статусом Leave
         room.Users.RemoveAll(u => u.Status == UserStatus.Leave);
         
+        // Воскрешаем всех игроков
+        foreach (var user in room.Users)
+        {
+            user.IsAlive = true;
+        }
+        
         // Сбрасываем роли
         room.PlayerRoles = null;
         room.RoleSettings = null;

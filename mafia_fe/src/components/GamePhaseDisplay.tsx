@@ -7,6 +7,7 @@ interface GamePhaseDisplayProps {
   currentVoterName?: string;
   nightPhase?: string;
   dayNumber: number;
+  isMyTurn?: boolean;
 }
 
 const PHASE_NAMES: Record<GamePhase, string> = {
@@ -33,7 +34,8 @@ export function GamePhaseDisplay({
   currentSpeakerName,
   currentVoterName,
   nightPhase,
-  dayNumber
+  dayNumber,
+  isMyTurn
 }: GamePhaseDisplayProps) {
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -42,6 +44,11 @@ export function GamePhaseDisplay({
   };
 
   const getPhaseColor = (): string => {
+    // Если это мой ход - зелёный цвет
+    if (isMyTurn) {
+      return "var(--success)";
+    }
+    
     switch (phase) {
       case GamePhase.IndividualSpeech:
       case GamePhase.FreeDiscussion:
