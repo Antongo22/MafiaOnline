@@ -242,6 +242,19 @@ public class GameCycleController : ControllerBase
                 timeSeconds = 15
             });
         }
+        else
+        {
+            // Все проголосовали - завершаем фазу немедленно
+            _logger.LogInformation($"Room {roomId}: All players voted, ending voting phase immediately");
+            gameState.CurrentVoterId = null; // Сбрасываем текущего голосующего
+            gameState.PhaseStartTime = DateTime.UtcNow.AddSeconds(-gameState.PhaseTimeSeconds);
+            
+            // Отправляем событие что голосование завершено
+            await _hubContext.Clients.Group(roomId).SendAsync("AllVotesCompleted", new
+            {
+                message = "Все проголосовали, подсчитываем голоса..."
+            });
+        }
 
         return Ok(new { message = "Vote recorded" });
     }
@@ -287,6 +300,10 @@ public class GameCycleController : ControllerBase
 
         // Обрабатываем действие
         await ProcessNightAction(room, userId, userRole, action);
+        
+        // Завершаем таймер немедленно - переходим к следующей ночной фазе
+        _logger.LogInformation($"Room {roomId}: Player {userId} completed night action, ending phase immediately");
+        gameState.PhaseStartTime = DateTime.UtcNow.AddSeconds(-gameState.PhaseTimeSeconds);
 
         return Ok(new { message = "Action recorded" });
     }

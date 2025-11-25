@@ -61,6 +61,20 @@ export function RoomPage() {
     setTimeout(() => setAlert(null), 5000);
   };
 
+  // Сохраняем состояние игры при изменениях
+  useEffect(() => {
+    if (room && userId) {
+      const savedState = loadRoomState();
+      if (savedState) {
+        saveRoomState({
+          ...savedState,
+          myRole: myRole,
+          gameStatus: gameStatus
+        });
+      }
+    }
+  }, [myRole, gameStatus, room, userId]);
+
   // Проверяем localStorage при загрузке
   useEffect(() => {
     const checkExistingRoom = async () => {
@@ -76,6 +90,11 @@ export function RoomPage() {
           setUserName(savedState.userName);
           setUsers(data.users.filter(u => u.status !== "Leave"));
           setGameStatus(data.status);
+          
+          // Восстанавливаем роль из localStorage
+          if (savedState.myRole) {
+            setMyRole(savedState.myRole);
+          }
 
           // Подключаемся к SignalR
           try {
@@ -83,6 +102,28 @@ export function RoomPage() {
             await chatService.joinRoom(data.id, savedState.userId);
           } catch (signalRError) {
             console.error("Failed to connect to SignalR:", signalRError);
+          }
+
+          // Загружаем роль игрока
+          if (data.status === "InProgress" || data.status === "Finished") {
+            try {
+              const roleResponse = await fetch(`${API_URL}/api/Game/my-role?roomId=${data.id}&userId=${savedState.userId}`);
+              if (roleResponse.ok) {
+                const roleData = await roleResponse.json();
+                setMyRole(roleData.role);
+                
+                // Если игра закончена, загружаем все роли
+                if (data.status === "Finished" && roleData.allRoles) {
+                  setRevealedRoles(roleData.allRoles);
+                }
+              }
+            } catch (roleError) {
+              console.error("Failed to load role:", roleError);
+              // Если не удалось загрузить с сервера, используем сохранённое
+              if (savedState.myRole) {
+                setMyRole(savedState.myRole);
+              }
+            }
           }
 
           // Загружаем текущее состояние игры
@@ -144,6 +185,7 @@ export function RoomPage() {
     };
 
     const handleAllRolesRevealed = (rolesData: any) => {
+      console.log("All roles revealed:", rolesData);
       setRevealedRoles(rolesData);
     };
 
@@ -205,8 +247,16 @@ export function RoomPage() {
       // Голос получен
     };
 
-    const handleVotingResults = (data: { votes: Record<string, string>; eliminated: Array<{ userName: string; role: string }> }) => {
-      if (data.eliminated.length > 0) {
+    const handleAllVotesCompleted = (data: { message: string }) => {
+      // Все проголосовали - убираем отображение текущего голосующего
+      setCurrentVoterId(undefined);
+      showAlert(data.message, "info");
+    };
+
+    const handleVotingResults = (data: { votes: Record<string, string>; eliminated: Array<{ userName: string; role: string }>; tie?: boolean }) => {
+      if (data.tie) {
+        showAlert("🤝 Ничья! Все игроки получили равное количество голосов. Никто не исключён.", "info");
+      } else if (data.eliminated.length > 0) {
         const names = data.eliminated.map(e => `${e.userName} (${e.role})`).join(", ");
         showAlert(`☠️ Выбыли: ${names}`, "danger");
       } else {
@@ -247,6 +297,7 @@ export function RoomPage() {
 
     const handleGameOver = (data: { winner: string; roles: Record<string, string> }) => {
       setGamePhase(GamePhase.GameOver);
+      setGameStatus("Finished");
       setRevealedRoles(data.roles);
       
       const winnerNames: Record<string, string> = {
@@ -280,6 +331,7 @@ export function RoomPage() {
     chatService.onVotingStarted(handleVotingStarted);
     chatService.onVoterChanged(handleVoterChanged);
     chatService.onVoteReceived(handleVoteReceived);
+    chatService.onAllVotesCompleted(handleAllVotesCompleted);
     chatService.onVotingResults(handleVotingResults);
     chatService.onNightPhaseChanged(handleNightPhaseChanged);
     chatService.onNightResults(handleNightResults);
@@ -301,6 +353,7 @@ export function RoomPage() {
       chatService.removeVotingStartedHandler(handleVotingStarted);
       chatService.removeVoterChangedHandler(handleVoterChanged);
       chatService.removeVoteReceivedHandler(handleVoteReceived);
+      chatService.removeAllVotesCompletedHandler(handleAllVotesCompleted);
       chatService.removeVotingResultsHandler(handleVotingResults);
       chatService.removeNightPhaseChangedHandler(handleNightPhaseChanged);
       chatService.removeNightResultsHandler(handleNightResults);
@@ -346,6 +399,8 @@ export function RoomPage() {
         userName: userName,
         roomName: data.name,
         inviteCode: data.inviteCode,
+        myRole: null,
+        gameStatus: data.status || "Created"
       });
 
       setUsers(data.users.filter(u => u.status !== "Leave"));
@@ -401,6 +456,8 @@ export function RoomPage() {
           userName: userName,
           roomName: data.name,
           inviteCode: data.inviteCode,
+          myRole: null,
+          gameStatus: data.status || "Created"
         });
 
         setUsers(data.users.filter(u => u.status !== "Leave"));
@@ -411,6 +468,24 @@ export function RoomPage() {
           await chatService.joinRoom(data.id, user.id);
         } catch (signalRError) {
           console.error("Failed to connect to SignalR:", signalRError);
+        }
+
+        // Загружаем роль игрока
+        if (data.status === "InProgress" || data.status === "Finished") {
+          try {
+            const roleResponse = await fetch(`${API_URL}/api/Game/my-role?roomId=${data.id}&userId=${user.id}`);
+            if (roleResponse.ok) {
+              const roleData = await roleResponse.json();
+              setMyRole(roleData.role);
+              
+              // Если игра закончена, загружаем все роли
+              if (data.status === "Finished" && roleData.allRoles) {
+                setRevealedRoles(roleData.allRoles);
+              }
+            }
+          } catch (roleError) {
+            console.error("Failed to load role:", roleError);
+          }
         }
 
         // Загружаем текущее состояние игры если она уже идёт

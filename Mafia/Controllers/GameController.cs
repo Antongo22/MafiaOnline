@@ -264,7 +264,20 @@ public class GameController : ControllerBase
         if (room.PlayerRoles == null || !room.PlayerRoles.ContainsKey(userId))
             return NotFound("Role not assigned");
         
-        return Ok(new { role = room.PlayerRoles[userId] });
+        // Если игра закончена, возвращаем все роли
+        if (room.Status == GameStatus.Finished && room.PlayerRoles != null)
+        {
+            var allRolesWithNames = room.PlayerRoles.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value.ToString()
+            );
+            return Ok(new { 
+                role = room.PlayerRoles[userId].ToString(), 
+                allRoles = allRolesWithNames 
+            });
+        }
+        
+        return Ok(new { role = room.PlayerRoles[userId].ToString() });
     }
 
     [HttpGet("all-roles")]

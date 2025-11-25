@@ -4,6 +4,8 @@ interface RoomState {
   userName: string;
   roomName: string;
   inviteCode: string;
+  myRole?: string | null;
+  gameStatus?: string;
 }
 
 const STORAGE_KEY = "mafia_room_state";

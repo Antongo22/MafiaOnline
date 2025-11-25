@@ -113,6 +113,9 @@ public class ChatHub : Hub
                 
                 // Помечаем что спикер отправил сообщение
                 gameState.HasSpoken[userId] = true;
+                
+                // Завершаем таймер немедленно - переходим к следующему спикеру
+                gameState.PhaseStartTime = DateTime.UtcNow.AddSeconds(-gameState.PhaseTimeSeconds);
             }
             else if (gameState.Phase == Enums.GamePhase.FreeDiscussion)
             {

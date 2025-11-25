@@ -52,6 +52,7 @@ class ChatService {
   private votingStartedHandlers: ((data: VoterInfo) => void)[] = [];
   private voterChangedHandlers: ((data: VoterInfo) => void)[] = [];
   private voteReceivedHandlers: ((data: { voterId: string }) => void)[] = [];
+  private allVotesCompletedHandlers: ((data: { message: string }) => void)[] = [];
   private votingResultsHandlers: ((data: VotingResults) => void)[] = [];
   private nightPhaseChangedHandlers: ((data: { nightPhase: string; timeSeconds: number }) => void)[] = [];
   private nightResultsHandlers: ((data: NightResults) => void)[] = [];
@@ -171,6 +172,10 @@ class ChatService {
 
     this.connection.on("VoteReceived", (data: { voterId: string }) => {
       this.voteReceivedHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("AllVotesCompleted", (data: { message: string }) => {
+      this.allVotesCompletedHandlers.forEach((handler) => handler(data));
     });
 
     this.connection.on("VotingResults", (data: VotingResults) => {
@@ -441,6 +446,14 @@ class ChatService {
 
   removeVoteReceivedHandler(handler: (data: { voterId: string }) => void): void {
     this.voteReceivedHandlers = this.voteReceivedHandlers.filter((h) => h !== handler);
+  }
+
+  onAllVotesCompleted(handler: (data: { message: string }) => void): void {
+    this.allVotesCompletedHandlers.push(handler);
+  }
+
+  removeAllVotesCompletedHandler(handler: (data: { message: string }) => void): void {
+    this.allVotesCompletedHandlers = this.allVotesCompletedHandlers.filter((h) => h !== handler);
   }
 
   onVotingResults(handler: (data: VotingResults) => void): void {

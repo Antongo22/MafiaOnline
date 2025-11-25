@@ -211,15 +211,26 @@ public class GameTimerService : BackgroundService
             var maxVotes = voteCounts.Max(v => v.Count);
             var eliminated = voteCounts.Where(v => v.Count == maxVotes).Select(v => v.PlayerId).ToList();
 
-            // Убиваем игроков
-            foreach (var playerId in eliminated)
+            // Проверяем: если все игроки получили равное количество голосов (поровну), никто не умирает
+            var allPlayersEqualVotes = eliminated.Count == voteCounts.Count;
+
+            if (!allPlayersEqualVotes)
             {
-                var player = room.Users.FirstOrDefault(u => u.Id == playerId);
-                if (player != null)
+                // Убиваем игроков
+                foreach (var playerId in eliminated)
                 {
-                    // Помечаем игрока как мертвого, но сохраняем его статус (Admin/Player)
-                    player.IsAlive = false;
+                    var player = room.Users.FirstOrDefault(u => u.Id == playerId);
+                    if (player != null)
+                    {
+                        // Помечаем игрока как мертвого, но сохраняем его статус (Admin/Player)
+                        player.IsAlive = false;
+                    }
                 }
+            }
+            else
+            {
+                // Все получили поровну - никто не исключается
+                eliminated.Clear();
             }
 
             await _hubContext.Clients.Group(room.Id).SendAsync("VotingResults", new
@@ -230,7 +241,8 @@ public class GameTimerService : BackgroundService
                     userId = id,
                     userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name,
                     role = room.PlayerRoles!.ContainsKey(id) ? room.PlayerRoles[id].ToString() : null
-                })
+                }),
+                tie = allPlayersEqualVotes // Флаг что была ничья
             });
         }
 
@@ -437,11 +449,28 @@ public class GameTimerService : BackgroundService
         room.CurrentGameState!.Phase = GamePhase.GameOver;
         room.CurrentGameState.WinningTeam = winner;
 
+        // Преобразуем роли: userId -> userName, Role -> string
+        var rolesWithNames = new Dictionary<string, string>();
+        if (room.PlayerRoles != null)
+        {
+            foreach (var kvp in room.PlayerRoles)
+            {
+                var user = room.Users.FirstOrDefault(u => u.Id == kvp.Key);
+                if (user != null)
+                {
+                    rolesWithNames[user.Name] = kvp.Value.ToString();
+                }
+            }
+        }
+
         await _hubContext.Clients.Group(room.Id).SendAsync("GameOver", new
         {
             winner = winner.ToString(),
-            roles = room.PlayerRoles
+            roles = rolesWithNames
         });
+        
+        // Также отправляем событие смены статуса
+        await _hubContext.Clients.Group(room.Id).SendAsync("GameStatusChanged", new { status = room.Status.ToString() });
     }
 }
 
