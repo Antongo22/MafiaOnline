@@ -90,6 +90,13 @@ public class ChatHub : Hub
             return;
         }
 
+        // Мертвые игроки не могут писать в чат
+        if (!user.IsAlive)
+        {
+            await Clients.Caller.SendAsync("Error", "Dead players cannot send messages");
+            return;
+        }
+
         // Проверяем, может ли игрок писать в текущей фазе
         if (room.CurrentGameState != null)
         {
@@ -217,6 +224,13 @@ public class ChatHub : Hub
         if (user == null)
         {
             await Clients.Caller.SendAsync("Error", "User not in room");
+            return;
+        }
+
+        // Мертвые игроки не могут писать в чат мафии
+        if (!user.IsAlive)
+        {
+            await Clients.Caller.SendAsync("Error", "Dead players cannot send messages");
             return;
         }
 

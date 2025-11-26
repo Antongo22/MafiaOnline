@@ -219,6 +219,11 @@ public class GameCycleController : ControllerBase
         if (voter == null || !voter.IsAlive || voter.Status == UserStatus.Leave)
             return BadRequest("You cannot vote");
 
+        // Проверяем, что цель голосования жива
+        var target = room.Users.FirstOrDefault(u => u.Id == targetId);
+        if (target == null || !target.IsAlive || target.Status == UserStatus.Leave)
+            return BadRequest("Cannot vote for dead or absent player");
+
         // Записываем голос
         gameState.Votes[voterId] = targetId;
 
@@ -235,10 +240,23 @@ public class GameCycleController : ControllerBase
             gameState.CurrentVoterId = gameState.VoterOrder[gameState.CurrentVoterIndex];
             gameState.PhaseStartTime = DateTime.UtcNow;
 
+            // Формируем список кандидатов (живые игроки)
+            var alivePlayers = room.Users
+                .Where(u => u.Status != UserStatus.Leave && u.IsAlive && room.PlayerRoles!.ContainsKey(u.Id))
+                .Select(u => u.Id)
+                .ToList();
+            
+            var candidates = alivePlayers.Select(id => new
+            {
+                userId = id,
+                userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name
+            }).ToList();
+
             await _hubContext.Clients.Group(roomId).SendAsync("VoterChanged", new
             {
                 voterId = gameState.CurrentVoterId,
                 voterName = room.Users.FirstOrDefault(u => u.Id == gameState.CurrentVoterId)?.Name,
+                candidates = candidates, // Список живых игроков для голосования
                 timeSeconds = 15
             });
         }
@@ -298,12 +316,27 @@ public class GameCycleController : ControllerBase
         if (!canAct)
             return BadRequest("Not your turn");
 
+        // Проверяем, что цель действия жива (если указана)
+        if (!string.IsNullOrEmpty(action.TargetId))
+        {
+            var target = room.Users.FirstOrDefault(u => u.Id == action.TargetId);
+            if (target == null || !target.IsAlive || target.Status == UserStatus.Leave)
+                return BadRequest("Cannot target dead or absent player");
+        }
+
+        // Сохраняем текущую фазу перед обработкой действия
+        var phaseBeforeAction = gameState.CurrentNightPhase;
+
         // Обрабатываем действие
         await ProcessNightAction(room, userId, userRole, action);
         
         // Завершаем таймер немедленно - переходим к следующей ночной фазе
-        _logger.LogInformation($"Room {roomId}: Player {userId} completed night action, ending phase immediately");
-        gameState.PhaseStartTime = DateTime.UtcNow.AddSeconds(-gameState.PhaseTimeSeconds);
+        // Но только если фаза не изменилась (чтобы не сбросить таймер новой фазы)
+        if (gameState.CurrentNightPhase == phaseBeforeAction)
+        {
+            _logger.LogInformation($"Room {roomId}: Player {userId} completed night action, ending phase immediately");
+            gameState.PhaseStartTime = DateTime.UtcNow.AddSeconds(-gameState.PhaseTimeSeconds);
+        }
 
         return Ok(new { message = "Action recorded" });
     }

@@ -128,6 +128,31 @@ public class GameController : ControllerBase
             }
         }
         
+        // Открываем карты мафии друг другу
+        var mafiaMembers = room.PlayerRoles
+            .Where(kvp => RoleInfo.GetTeam(kvp.Value) == Team.Evil)
+            .Select(kvp => kvp.Key)
+            .ToList();
+        
+        if (mafiaMembers.Count > 1)
+        {
+            // Каждому мафиози открываем карты других мафиози
+            foreach (var mafiaId in mafiaMembers)
+            {
+                foreach (var otherMafiaId in mafiaMembers.Where(id => id != mafiaId))
+                {
+                    var otherRole = room.PlayerRoles[otherMafiaId];
+                    await _hubContext.Clients.Group(roomId).SendAsync("CardRevealed", new
+                    {
+                        targetUserId = mafiaId, // Кому показывать
+                        targetId = otherMafiaId, // Чью карту показывать
+                        role = otherRole.ToString(),
+                        reason = "Mafia team member"
+                    });
+                }
+            }
+        }
+        
         return Ok(new { message = "Roles distributed, game started", status = room.Status });
     }
 

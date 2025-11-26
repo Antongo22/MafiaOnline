@@ -68,7 +68,8 @@ public class GameTimerService : BackgroundService
             });
 
             // Проверяем, истекло ли время
-            if (elapsed >= gameState.PhaseTimeSeconds)
+            // Добавляем минимальную задержку 0.5 секунды чтобы избежать двойных вызовов
+            if (elapsed >= gameState.PhaseTimeSeconds && elapsed >= 0.5)
             {
                 await AdvancePhase(room);
             }
@@ -173,10 +174,18 @@ public class GameTimerService : BackgroundService
         gameState.VoterOrder = alivePlayers;
         gameState.CurrentVoterId = alivePlayers.FirstOrDefault();
 
+        // Формируем список кандидатов (живые игроки)
+        var candidates = alivePlayers.Select(id => new
+        {
+            userId = id,
+            userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name
+        }).ToList();
+
         await _hubContext.Clients.Group(room.Id).SendAsync("VotingStarted", new
         {
             voterId = gameState.CurrentVoterId,
             voterName = room.Users.FirstOrDefault(u => u.Id == gameState.CurrentVoterId)?.Name,
+            candidates = candidates, // Список живых игроков для голосования
             timeSeconds = 15
         });
     }
@@ -206,10 +215,23 @@ public class GameTimerService : BackgroundService
             gameState.PhaseStartTime = DateTime.UtcNow;
             gameState.PhaseTimeSeconds = 15;
 
+            // Формируем список кандидатов (живые игроки)
+            var alivePlayers = room.Users
+                .Where(u => u.Status != UserStatus.Leave && u.IsAlive && room.PlayerRoles!.ContainsKey(u.Id))
+                .Select(u => u.Id)
+                .ToList();
+            
+            var candidates = alivePlayers.Select(id => new
+            {
+                userId = id,
+                userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name
+            }).ToList();
+
             await _hubContext.Clients.Group(room.Id).SendAsync("VoterChanged", new
             {
                 voterId = gameState.CurrentVoterId,
                 voterName = room.Users.FirstOrDefault(u => u.Id == gameState.CurrentVoterId)?.Name,
+                candidates = candidates, // Список живых игроков для голосования
                 timeSeconds = 15
             });
         }
@@ -230,10 +252,10 @@ public class GameTimerService : BackgroundService
             var maxVotes = voteCounts.Max(v => v.Count);
             var eliminated = voteCounts.Where(v => v.Count == maxVotes).Select(v => v.PlayerId).ToList();
 
-            // Проверяем: если все игроки получили равное количество голосов (поровну), никто не умирает
-            var allPlayersEqualVotes = eliminated.Count == voteCounts.Count;
+            // Проверяем: если несколько игроков получили одинаковое максимальное количество голосов - ничья
+            var isTie = eliminated.Count > 1;
 
-            if (!allPlayersEqualVotes)
+            if (!isTie)
             {
                 // Убиваем игроков
                 foreach (var playerId in eliminated)
@@ -264,7 +286,8 @@ public class GameTimerService : BackgroundService
             }
             else
             {
-                // Все получили поровну - никто не исключается
+                // Ничья - никто не исключается
+                _logger.LogInformation($"[Room {room.Id}] Voting tie - no one eliminated. Players with max votes: {eliminated.Count}");
                 eliminated.Clear();
             }
 
@@ -292,7 +315,7 @@ public class GameTimerService : BackgroundService
                     userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name,
                     role = room.PlayerRoles!.ContainsKey(id) ? room.PlayerRoles[id].ToString() : null
                 }),
-                tie = allPlayersEqualVotes // Флаг что была ничья
+                tie = isTie // Флаг что была ничья
             });
         }
 
@@ -359,10 +382,21 @@ public class GameTimerService : BackgroundService
             gameState.PhaseStartTime = DateTime.UtcNow;
             gameState.PhaseTimeSeconds = 30;
 
+            // Формируем список живых игроков для выбора цели
+            var alivePlayers = room.Users
+                .Where(u => u.Status != UserStatus.Leave && u.IsAlive && room.PlayerRoles!.ContainsKey(u.Id))
+                .Select(u => new
+                {
+                    userId = u.Id,
+                    userName = u.Name
+                })
+                .ToList();
+
             await _hubContext.Clients.Group(room.Id).SendAsync("NightPhaseChanged", new
             {
                 nightPhase = nextPhase.ToString(),
-                timeSeconds = 30
+                timeSeconds = 30,
+                aliveTargets = alivePlayers // Список живых игроков для выбора цели
             });
         }
     }
@@ -375,6 +409,8 @@ public class GameTimerService : BackgroundService
             .Where(u => room.PlayerRoles.ContainsKey(u.Id))
             .Select(u => room.PlayerRoles[u.Id])
             .ToHashSet();
+
+        _logger.LogInformation($"[Room {room.Id}] GetNextNightPhase: currentPhase={currentPhase}, DonHasFoundSheriff={room.CurrentGameState!.DonHasFoundSheriff}, aliveRoles={string.Join(",", aliveRoles)}");
 
         var nightPhases = new[] 
         {
@@ -395,37 +431,76 @@ public class GameTimerService : BackgroundService
             switch (phase)
             {
                 case NightPhase.Don:
+                    // Дон просыпается отдельно только если еще не нашел Шерифа
                     if (aliveRoles.Contains(Role.Don) && !room.CurrentGameState!.DonHasFoundSheriff)
+                    {
+                        _logger.LogInformation($"[Room {room.Id}] Selected night phase: Don (searching for Sheriff)");
                         return phase;
+                    }
                     break;
                 
                 case NightPhase.Mafia:
-                    if (aliveRoles.Any(r => RoleInfo.GetTeam(r) == Team.Evil))
-                        return phase;
-                    break;
+                    // Проверяем есть ли живые злые
+                    var evilRoles = aliveRoles.Where(r => RoleInfo.GetTeam(r) == Team.Evil).ToList();
+                    
+                    if (evilRoles.Count == 0)
+                    {
+                        // Нет живых злых - пропускаем фазу
+                        break;
+                    }
+                    
+                    // Если Дон один и еще не нашел Шерифа - пропускаем фазу Мафии
+                    // (он сначала должен найти Шерифа в фазе Don)
+                    var donIsAlone = evilRoles.Count == 1 && evilRoles[0] == Role.Don;
+                    var donIsAliveAndSearching = aliveRoles.Contains(Role.Don) && !room.CurrentGameState!.DonHasFoundSheriff;
+                    
+                    if (donIsAlone && donIsAliveAndSearching)
+                    {
+                        // Дон один и еще не нашел Шерифа - пропускаем фазу Мафии
+                        // Он сначала должен найти Шерифа в фазе Don
+                        _logger.LogInformation($"[Room {room.Id}] Skipping Mafia phase - Don is alone and searching for Sheriff");
+                        break;
+                    }
+                    
+                    // В остальных случаях - фаза Мафии активна
+                    _logger.LogInformation($"[Room {room.Id}] Selected night phase: Mafia (evil count: {evilRoles.Count}, Don found Sheriff: {room.CurrentGameState!.DonHasFoundSheriff})");
+                    return phase;
                 
                 case NightPhase.Maniac:
                     if (aliveRoles.Contains(Role.Maniac))
+                    {
+                        _logger.LogInformation($"[Room {room.Id}] Selected night phase: Maniac");
                         return phase;
+                    }
                     break;
                 
                 case NightPhase.Sheriff:
                     if (aliveRoles.Contains(Role.Sheriff))
+                    {
+                        _logger.LogInformation($"[Room {room.Id}] Selected night phase: Sheriff");
                         return phase;
+                    }
                     break;
                 
                 case NightPhase.Doctor:
                     if (aliveRoles.Contains(Role.Doctor))
+                    {
+                        _logger.LogInformation($"[Room {room.Id}] Selected night phase: Doctor");
                         return phase;
+                    }
                     break;
                 
                 case NightPhase.Prostitute:
                     if (aliveRoles.Contains(Role.Prostitute))
+                    {
+                        _logger.LogInformation($"[Room {room.Id}] Selected night phase: Prostitute");
                         return phase;
+                    }
                     break;
             }
         }
 
+        _logger.LogInformation($"[Room {room.Id}] No more night phases - ending night");
         return null;
     }
 

@@ -53,6 +53,7 @@ export interface SpeakerInfo {
 export interface VoterInfo {
   voterId: string;
   voterName: string;
+  candidates?: Array<{ userId: string; userName: string }>; // Список живых игроков для голосования
   timeSeconds: number;
 }
 
@@ -66,6 +67,12 @@ export interface VotingResults {
     role: string;
   }>;
   tie?: boolean;
+}
+
+export interface NightPhaseInfo {
+  nightPhase: string;
+  timeSeconds: number;
+  aliveTargets?: Array<{ userId: string; userName: string }>; // Список живых игроков для выбора цели
 }
 
 export interface NightResults {
