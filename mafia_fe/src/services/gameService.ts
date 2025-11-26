@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5141";
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5141";
 
 export interface NightActionRequest {
   targetId?: string;

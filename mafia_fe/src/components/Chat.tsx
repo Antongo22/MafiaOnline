@@ -11,7 +11,7 @@ interface ChatProps {
 }
 
 export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: ChatProps) {
-  const defaultApiUrl = import.meta.env.VITE_API_URL || "http://localhost:5141";
+  const defaultApiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:5141";
   const actualApiUrl = apiUrl || defaultApiUrl;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
