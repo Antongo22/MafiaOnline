@@ -2,6 +2,7 @@ using Mafia.DTOs;
 using Mafia.Enums;
 using Mafia.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using System.Text.Json;
 
 namespace Mafia.Services;
 
@@ -78,30 +79,39 @@ public class GameTimerService : BackgroundService
     {
         var gameState = room.CurrentGameState!;
         
+        _logger.LogInformation($"[Room {room.Id}] AdvancePhase called. Current phase: {gameState.Phase}, IsFirstCycle: {gameState.IsFirstCycle}, FirstNightCompleted: {gameState.FirstNightCompleted}, DayNumber: {gameState.DayNumber}");
+        
         switch (gameState.Phase)
         {
             case GamePhase.IndividualSpeech:
+                _logger.LogInformation($"[Room {room.Id}] Advancing IndividualSpeech");
                 await AdvanceIndividualSpeech(room);
                 break;
             
             case GamePhase.FreeDiscussion:
                 // Первый цикл: Обсуждение → Ночь → Обсуждение → Голосование
                 // Последующие: Ночь → Обсуждение → Голосование
-                if (gameState.IsFirstCycle)
+                // Если это первый цикл И первая ночь ещё не была - идём в ночь
+                // Иначе - идём в голосование
+                if (gameState.IsFirstCycle && !gameState.FirstNightCompleted)
                 {
+                    _logger.LogInformation($"[Room {room.Id}] FreeDiscussion -> Night (first cycle, before first night)");
                     await StartNight(room);
                 }
                 else
                 {
+                    _logger.LogInformation($"[Room {room.Id}] FreeDiscussion -> Voting");
                     await StartVoting(room);
                 }
                 break;
             
             case GamePhase.Voting:
+                _logger.LogInformation($"[Room {room.Id}] Advancing Voting");
                 await AdvanceVoting(room);
                 break;
             
             case GamePhase.Night:
+                _logger.LogInformation($"[Room {room.Id}] Advancing Night phase: {gameState.CurrentNightPhase}");
                 await AdvanceNight(room);
                 break;
         }
@@ -117,13 +127,13 @@ public class GameTimerService : BackgroundService
             // Все выступили, переходим к свободному обсуждению
             gameState.Phase = GamePhase.FreeDiscussion;
             gameState.PhaseStartTime = DateTime.UtcNow;
-            gameState.PhaseTimeSeconds = 90; // 1.5 минуты
+            gameState.PhaseTimeSeconds = 5; // Для тестов: 5 секунд (обычно 90)
             gameState.CurrentSpeakerId = null;
 
             await _hubContext.Clients.Group(room.Id).SendAsync("PhaseChanged", new
             {
                 phase = "FreeDiscussion",
-                timeSeconds = 90
+                timeSeconds = 5
             });
         }
         else
@@ -229,10 +239,26 @@ public class GameTimerService : BackgroundService
                 foreach (var playerId in eliminated)
                 {
                     var player = room.Users.FirstOrDefault(u => u.Id == playerId);
-                    if (player != null)
+                    if (player != null && player.IsAlive)
                     {
                         // Помечаем игрока как мертвого, но сохраняем его статус (Admin/Player)
                         player.IsAlive = false;
+                        
+                        // Получаем роль убитого игрока
+                        var playerRole = room.PlayerRoles!.ContainsKey(playerId) 
+                            ? room.PlayerRoles[playerId].ToString() 
+                            : "Unknown";
+                        
+                        _logger.LogInformation($"[Room {room.Id}] Player {player.Name} ({playerId}) eliminated. Role: {playerRole}");
+                        
+                        // Отправляем отдельное событие о смерти игрока с его ролью
+                        await _hubContext.Clients.Group(room.Id).SendAsync("PlayerEliminated", new
+                        {
+                            userId = playerId,
+                            userName = player.Name,
+                            role = playerRole,
+                            reason = "voting"
+                        });
                     }
                 }
             }
@@ -274,11 +300,20 @@ public class GameTimerService : BackgroundService
         var winner = WinConditionService.CheckWinCondition(room);
         if (winner != null)
         {
+            _logger.LogInformation($"[Room {room.Id}] Game over! Winner: {winner}");
             await EndGame(room, winner.Value);
             return;
         }
 
-        // После голосования всегда ночь (в обычных циклах)
+        // Если это был первый цикл, сбрасываем флаг после голосования
+        if (gameState.IsFirstCycle)
+        {
+            _logger.LogInformation($"[Room {room.Id}] First cycle completed, resetting IsFirstCycle flag");
+            gameState.IsFirstCycle = false;
+        }
+
+        // После голосования всегда ночь
+        _logger.LogInformation($"[Room {room.Id}] Voting completed -> Starting Night (Day {gameState.DayNumber + 1})");
         await StartNight(room);
     }
 
@@ -286,10 +321,15 @@ public class GameTimerService : BackgroundService
     {
         var gameState = room.CurrentGameState!;
         
+        _logger.LogInformation($"[Room {room.Id}] StartNight called. Current day: {gameState.DayNumber}");
+        
         gameState.Phase = GamePhase.Night;
+        gameState.CurrentNightPhase = null; // Сбрасываем ночную фазу для новой ночи
         gameState.NightActions.Clear();
         gameState.PendingDeaths.Clear();
         gameState.DayNumber++;
+
+        _logger.LogInformation($"[Room {room.Id}] Night started. Day number: {gameState.DayNumber}");
 
         // Определяем первую ночную фазу
         await AdvanceNight(room);
@@ -396,9 +436,137 @@ public class GameTimerService : BackgroundService
         var saved = new List<string>();
 
         // Обрабатываем действия
-        // Здесь будет логика обработки всех ночных действий
+        var mafiaVotes = new Dictionary<string, int>(); // targetId -> vote count
+        var attackTargets = new HashSet<string>(); // Все, кого пытаются убить
+        var healed = new HashSet<string>(); // Кого вылечили
+        var protectedPlayers = new HashSet<string>(); // Кого защитили
+        var prostituteTarget = (string?)null; // Кого забрала путана
+        var maniacSelfHealed = false;
 
-        // Применяем смерти
+        // 1. Обрабатываем действия мафии (голосование)
+        var mafiaActions = new List<(string userId, string targetId)>();
+        foreach (var actionEntry in gameState.NightActions)
+        {
+            var userId = actionEntry.Key;
+            if (!room.PlayerRoles!.ContainsKey(userId))
+                continue;
+
+            var userRole = room.PlayerRoles[userId];
+            var actionJson = actionEntry.Value;
+            
+            try
+            {
+                var actionData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(actionJson);
+                if (actionData == null || !actionData.ContainsKey("action"))
+                    continue;
+
+                var actionType = actionData["action"].GetString();
+                var targetId = actionData.ContainsKey("targetId") ? actionData["targetId"].GetString() : null;
+
+                // Голосование мафии
+                if (RoleInfo.GetTeam(userRole) == Team.Evil && actionType == "kill" && !string.IsNullOrEmpty(targetId))
+                {
+                    mafiaActions.Add((userId, targetId!));
+                    if (!mafiaVotes.ContainsKey(targetId!))
+                        mafiaVotes[targetId!] = 0;
+                    mafiaVotes[targetId!]++;
+                }
+                // Действие маньяка
+                else if (userRole == Role.Maniac)
+                {
+                    if (actionType == "heal_self")
+                    {
+                        maniacSelfHealed = true;
+                    }
+                    else if (actionType == "kill" && !string.IsNullOrEmpty(targetId))
+                    {
+                        attackTargets.Add(targetId!);
+                    }
+                }
+                // Действие доктора
+                else if (userRole == Role.Doctor && actionType == "heal" && !string.IsNullOrEmpty(targetId))
+                {
+                    healed.Add(targetId!);
+                }
+                // Действие путаны
+                else if (userRole == Role.Prostitute && actionType == "protect" && !string.IsNullOrEmpty(targetId))
+                {
+                    prostituteTarget = targetId!;
+                    protectedPlayers.Add(targetId!);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to parse night action for user {userId}: {actionJson}");
+            }
+        }
+
+        // 2. Выбираем жертву мафии (по большинству голосов, при ничьей - рандом)
+        string? mafiaTarget = null;
+        if (mafiaVotes.Any())
+        {
+            var maxVotes = mafiaVotes.Max(v => v.Value);
+            var candidates = mafiaVotes.Where(v => v.Value == maxVotes).Select(v => v.Key).ToList();
+            
+            if (candidates.Count == 1)
+            {
+                mafiaTarget = candidates[0];
+            }
+            else if (candidates.Count > 1)
+            {
+                // Ничья - выбираем рандомно
+                var random = new Random();
+                mafiaTarget = candidates[random.Next(candidates.Count)];
+            }
+
+            if (mafiaTarget != null)
+            {
+                attackTargets.Add(mafiaTarget);
+            }
+        }
+
+        // 3. Проверяем защиту путаны (если путану убили, её цель тоже умирает)
+        var prostituteKilled = false;
+        if (prostituteTarget != null && attackTargets.Contains(prostituteTarget))
+        {
+            // Если цель путаны была атакована, путана её защищает
+            protectedPlayers.Add(prostituteTarget);
+        }
+
+        // Проверяем, убили ли саму путану
+        var prostituteUserId = room.PlayerRoles.FirstOrDefault(p => p.Value == Role.Prostitute).Key;
+        if (!string.IsNullOrEmpty(prostituteUserId) && attackTargets.Contains(prostituteUserId))
+        {
+            prostituteKilled = true;
+            // Если путану убили, её цель тоже умирает
+            if (prostituteTarget != null && !protectedPlayers.Contains(prostituteTarget))
+            {
+                attackTargets.Add(prostituteTarget);
+            }
+        }
+
+        // 4. Применяем лечение маньяка (если он лечил себя)
+        if (maniacSelfHealed)
+        {
+            var maniacUserId = room.PlayerRoles.FirstOrDefault(p => p.Value == Role.Maniac).Key;
+            if (!string.IsNullOrEmpty(maniacUserId) && attackTargets.Contains(maniacUserId))
+            {
+                healed.Add(maniacUserId);
+            }
+        }
+
+        // 5. Проверяем бессмертного (нельзя убить ночью)
+        var immortalUserId = room.PlayerRoles.FirstOrDefault(p => p.Value == Role.Immortal).Key;
+        if (!string.IsNullOrEmpty(immortalUserId) && attackTargets.Contains(immortalUserId))
+        {
+            protectedPlayers.Add(immortalUserId);
+        }
+
+        // 6. Определяем убитых (атакованные, но не вылеченные и не защищенные)
+        var finalKilled = attackTargets.Except(healed).Except(protectedPlayers).ToList();
+        gameState.PendingDeaths.AddRange(finalKilled);
+
+        // 7. Применяем смерти
         foreach (var playerId in gameState.PendingDeaths.Distinct())
         {
             var player = room.Users.FirstOrDefault(u => u.Id == playerId);
@@ -407,6 +575,22 @@ public class GameTimerService : BackgroundService
                 // Помечаем игрока как мертвого, но сохраняем его статус
                 player.IsAlive = false;
                 killed.Add(playerId);
+                
+                // Получаем роль убитого игрока
+                var playerRole = room.PlayerRoles!.ContainsKey(playerId) 
+                    ? room.PlayerRoles[playerId].ToString() 
+                    : "Unknown";
+                
+                _logger.LogInformation($"[Room {room.Id}] Player {player.Name} ({playerId}) died at night. Role: {playerRole}");
+                
+                // Отправляем отдельное событие о смерти игрока с его ролью
+                await _hubContext.Clients.Group(room.Id).SendAsync("PlayerDied", new
+                {
+                    userId = playerId,
+                    userName = player.Name,
+                    role = playerRole,
+                    reason = "night"
+                });
             }
         }
 
@@ -425,23 +609,28 @@ public class GameTimerService : BackgroundService
         var winner = WinConditionService.CheckWinCondition(room);
         if (winner != null)
         {
+            _logger.LogInformation($"[Room {room.Id}] Game over after night! Winner: {winner}");
             await EndGame(room, winner.Value);
             return;
         }
 
-        // Если это была первая ночь, сбрасываем флаг
-        if (gameState.IsFirstCycle)
+        // Если это была первая ночь, отмечаем это
+        if (gameState.IsFirstCycle && !gameState.FirstNightCompleted)
         {
-            gameState.IsFirstCycle = false;
+            _logger.LogInformation($"[Room {room.Id}] First night completed, setting FirstNightCompleted flag");
+            gameState.FirstNightCompleted = true;
         }
 
         // Начинаем новый день
+        _logger.LogInformation($"[Room {room.Id}] Night completed -> Starting IndividualSpeech (Day {gameState.DayNumber})");
         await StartIndividualSpeech(room);
     }
 
     private async Task StartIndividualSpeech(RoomDTO room)
     {
         var gameState = room.CurrentGameState!;
+        
+        _logger.LogInformation($"[Room {room.Id}] StartIndividualSpeech called. Day: {gameState.DayNumber}");
         
         gameState.Phase = GamePhase.IndividualSpeech;
         gameState.HasSpoken.Clear();
@@ -458,6 +647,8 @@ public class GameTimerService : BackgroundService
         
         gameState.SpeakerOrder = alivePlayers;
         gameState.CurrentSpeakerId = alivePlayers.FirstOrDefault();
+
+        _logger.LogInformation($"[Room {room.Id}] IndividualSpeech started. Alive players: {alivePlayers.Count}, First speaker: {gameState.CurrentSpeakerId}");
 
         await _hubContext.Clients.Group(room.Id).SendAsync("IndividualSpeechStarted", new
         {

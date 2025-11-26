@@ -328,8 +328,10 @@ public class GameCycleController : ControllerBase
                         if (!gameState.RevealedCards[userId].Contains(gameState.SheriffId))
                             gameState.RevealedCards[userId].Add(gameState.SheriffId);
 
-                        await _hubContext.Clients.Client(userId).SendAsync("CardRevealed", new
+                        // Отправляем через группу комнаты с указанием targetUserId для фильтрации на фронтенде
+                        await _hubContext.Clients.Group(room.Id).SendAsync("CardRevealed", new
                         {
+                            targetUserId = userId, // Кому показывать
                             targetId = gameState.SheriffId,
                             role = Role.Sheriff.ToString(),
                             reason = "Don found Sheriff"
@@ -372,8 +374,10 @@ public class GameCycleController : ControllerBase
                         if (!gameState.RevealedCards[userId].Contains(action.TargetId))
                             gameState.RevealedCards[userId].Add(action.TargetId);
 
-                        await _hubContext.Clients.Client(userId).SendAsync("CardRevealed", new
+                        // Отправляем через группу комнаты с указанием targetUserId для фильтрации на фронтенде
+                        await _hubContext.Clients.Group(room.Id).SendAsync("CardRevealed", new
                         {
+                            targetUserId = userId, // Кому показывать
                             targetId = action.TargetId,
                             role = targetRole.ToString(),
                             reason = "Sheriff checked"

@@ -46,6 +46,9 @@ public class GameState
     // Первый цикл или нет
     public bool IsFirstCycle { get; set; } = true;
     
+    // Первая ночь завершена
+    public bool FirstNightCompleted { get; set; } = false;
+    
     // Команда-победитель (если игра окончена)
     public Team? WinningTeam { get; set; }
     

@@ -240,7 +240,7 @@ button:disabled {
 
 .justify-center {
   justify-content: center;
-}
+  }
 
 .gap-2 {
   gap: 0.5rem;
@@ -268,7 +268,7 @@ button:disabled {
 
 .mb-4 {
   margin-bottom: 1rem;
-}
+  }
 
 .p-4 {
   padding: 1rem;

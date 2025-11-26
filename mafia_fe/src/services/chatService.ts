@@ -60,6 +60,8 @@ class ChatService {
   private gameOverHandlers: ((data: GameOverData) => void)[] = [];
   private gamePausedHandlers: ((data: { pausedBy: string; remainingTime: number }) => void)[] = [];
   private gameResumedHandlers: ((data: { resumedBy: string; remainingTime: number }) => void)[] = [];
+  private playerDiedHandlers: ((data: { userId: string; userName: string; role: string; reason: string }) => void)[] = [];
+  private playerEliminatedHandlers: ((data: { userId: string; userName: string; role: string; reason: string }) => void)[] = [];
 
   async connect(apiUrl: string = "http://localhost:5141"): Promise<void> {
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
@@ -204,6 +206,14 @@ class ChatService {
 
     this.connection.on("GameResumed", (data: { resumedBy: string; remainingTime: number }) => {
       this.gameResumedHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("PlayerDied", (data: { userId: string; userName: string; role: string; reason: string }) => {
+      this.playerDiedHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("PlayerEliminated", (data: { userId: string; userName: string; role: string; reason: string }) => {
+      this.playerEliminatedHandlers.forEach((handler) => handler(data));
     });
 
     await this.connection.start();
@@ -510,6 +520,22 @@ class ChatService {
 
   removeGameResumedHandler(handler: (data: { resumedBy: string; remainingTime: number }) => void): void {
     this.gameResumedHandlers = this.gameResumedHandlers.filter((h) => h !== handler);
+  }
+
+  onPlayerDied(handler: (data: { userId: string; userName: string; role: string; reason: string }) => void): void {
+    this.playerDiedHandlers.push(handler);
+  }
+
+  removePlayerDiedHandler(handler: (data: { userId: string; userName: string; role: string; reason: string }) => void): void {
+    this.playerDiedHandlers = this.playerDiedHandlers.filter((h) => h !== handler);
+  }
+
+  onPlayerEliminated(handler: (data: { userId: string; userName: string; role: string; reason: string }) => void): void {
+    this.playerEliminatedHandlers.push(handler);
+  }
+
+  removePlayerEliminatedHandler(handler: (data: { userId: string; userName: string; role: string; reason: string }) => void): void {
+    this.playerEliminatedHandlers = this.playerEliminatedHandlers.filter((h) => h !== handler);
   }
 
   isConnected(): boolean {

@@ -78,6 +78,7 @@ export interface NightResults {
 }
 
 export interface CardRevealed {
+  targetUserId?: string; // Кому показывать (если не указано, показывать всем)
   targetId: string;
   role: string;
   reason: string;

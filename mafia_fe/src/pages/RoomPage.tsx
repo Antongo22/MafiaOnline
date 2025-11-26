@@ -305,7 +305,7 @@ export function RoomPage() {
       votes: Record<string, string>; 
       votesWithNames: Array<{ voterName: string; targetName: string }>;
       voteCounts: Record<string, number>;
-      eliminated: Array<{ userName: string; role: string }>; 
+      eliminated: Array<{ userId: string; userName: string; role: string }>; 
       tie?: boolean 
     }) => {
       // Сохраняем результаты голосования для отображения
@@ -315,6 +315,15 @@ export function RoomPage() {
         eliminated: data.eliminated || [],
         tie: data.tie || false
       });
+
+      // Раскрываем роли всех исключённых игроков для всех
+      if (data.eliminated && data.eliminated.length > 0) {
+        const newRevealedRoles: { [key: string]: string } = {};
+        data.eliminated.forEach(e => {
+          newRevealedRoles[e.userId] = e.role;
+        });
+        setRevealedRoles(prev => ({ ...prev, ...newRevealedRoles }));
+      }
 
       if (data.tie) {
         showAlert("🤝 Ничья! Все игроки получили равное количество голосов. Никто не исключён.", "info");
@@ -342,16 +351,28 @@ export function RoomPage() {
       showAlert(`🌙 ${nightPhaseNames[data.nightPhase] || data.nightPhase}`, "info");
     };
 
-    const handleNightResults = (data: { killed: Array<{ userName: string; role: string }>; saved: string[] }) => {
+    const handleNightResults = (data: { killed: Array<{ userId: string; userName: string; role: string }>; saved: string[] }) => {
       if (data.killed.length > 0) {
         const names = data.killed.map(k => `${k.userName} (${k.role})`).join(", ");
         showAlert(`☠️ Этой ночью погибли: ${names}`, "danger");
+        
+        // Раскрываем роли всех убитых игроков для всех
+        const newRevealedRoles: { [key: string]: string } = {};
+        data.killed.forEach(k => {
+          newRevealedRoles[k.userId] = k.role;
+        });
+        setRevealedRoles(prev => ({ ...prev, ...newRevealedRoles }));
       } else {
         showAlert("🌅 Эта ночь прошла спокойно", "success");
       }
     };
 
-    const handleCardRevealed = (data: { targetId: string; role: string; reason: string }) => {
+    const handleCardRevealed = (data: { targetUserId?: string; targetId: string; role: string; reason: string }) => {
+      // Показываем карту только если это для текущего пользователя (или если targetUserId не указан)
+      if (data.targetUserId && data.targetUserId !== userId) {
+        return; // Это не для нас, игнорируем
+      }
+      
       setRevealedRoles(prev => ({ ...prev, [data.targetId]: data.role }));
       const targetName = users.find(u => u.id === data.targetId)?.name;
       showAlert(`🔍 Карта раскрыта: ${targetName} - ${data.role}`, "info");
@@ -861,6 +882,10 @@ export function RoomPage() {
                   (gamePhase === GamePhase.IndividualSpeech && user.id === currentSpeakerId) ||
                   (gamePhase === GamePhase.Voting && user.id === currentVoterId);
                 
+                // Показываем роль, если игрок мёртв или его карта раскрыта
+                const revealedRole = revealedRoles[user.id];
+                const shouldShowRole = isDead || revealedRole;
+                
                 return (
                   <div
                     key={user.id}
@@ -880,50 +905,68 @@ export function RoomPage() {
                       }`,
                       borderRadius: "var(--radius)",
                       display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "0.75rem",
+                      flexDirection: "column",
+                      gap: "0.5rem",
                       transition: "var(--transition)",
                       opacity: isDead ? 0.5 : 1,
                       boxShadow: isActivePlayer ? "0 0 20px rgba(251, 191, 36, 0.4)" : "none"
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        width: "8px",
-                        height: "8px",
-                        borderRadius: "50%",
-                        background: isDead ? "var(--danger)" : "var(--success)",
-                        flexShrink: 0
-                      }}></div>
-                      <span style={{ 
-                        fontSize: "0.875rem",
-                        fontWeight: isCurrentUser || isActivePlayer ? "600" : "normal",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        color: isActivePlayer ? "var(--bg-primary)" : "inherit"
-                      }}>
-                        {isActivePlayer && "▶️ "}
-                        {user.name}
-                        {isCurrentUser && " (вы)"}
-                        {isUserAdmin && " 👑"}
-                        {isDead && " ☠️"}
-                      </span>
-                    </div>
-                    {isAdmin && !isCurrentUser && !isDead && gamePhase === GamePhase.Lobby && (
-                      <button
-                        onClick={() => handleKickPlayer(user.id)}
-                        className="btn-danger btn-sm"
-                        style={{ 
-                          padding: "0.25rem 0.5rem",
-                          fontSize: "0.75rem",
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          width: "8px",
+                          height: "8px",
+                          borderRadius: "50%",
+                          background: isDead ? "var(--danger)" : "var(--success)",
                           flexShrink: 0
-                        }}
-                        title="Исключить игрока"
-                      >
-                        ✕
-                      </button>
+                        }}></div>
+                        <span style={{ 
+                          fontSize: "0.875rem",
+                          fontWeight: isCurrentUser || isActivePlayer ? "600" : "normal",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          color: isActivePlayer ? "var(--bg-primary)" : "inherit"
+                        }}>
+                          {isActivePlayer && "▶️ "}
+                          {user.name}
+                          {isCurrentUser && " (вы)"}
+                          {isUserAdmin && " 👑"}
+                          {isDead && " ☠️"}
+                        </span>
+                      </div>
+                      {isAdmin && !isCurrentUser && !isDead && gamePhase === GamePhase.Lobby && (
+                        <button
+                          onClick={() => handleKickPlayer(user.id)}
+                          className="btn-danger btn-sm"
+                          style={{ 
+                            padding: "0.25rem 0.5rem",
+                            fontSize: "0.75rem",
+                            flexShrink: 0
+                          }}
+                          title="Исключить игрока"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    {shouldShowRole && revealedRole && (
+                      <div style={{
+                        padding: "0.5rem",
+                        background: "var(--bg-primary)",
+                        borderRadius: "var(--radius-sm)",
+                        fontSize: "0.75rem",
+                        color: "var(--text-secondary)",
+                        border: "1px solid var(--border)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem"
+                      }}>
+                        <span>🎭</span>
+                        <span style={{ fontWeight: "500" }}>{revealedRole}</span>
+                        {!isDead && <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>(раскрыто)</span>}
+                      </div>
                     )}
                   </div>
                 );
