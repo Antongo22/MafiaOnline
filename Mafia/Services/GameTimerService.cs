@@ -85,7 +85,16 @@ public class GameTimerService : BackgroundService
                 break;
             
             case GamePhase.FreeDiscussion:
-                await StartVoting(room);
+                // Первый цикл: Обсуждение → Ночь → Обсуждение → Голосование
+                // Последующие: Ночь → Обсуждение → Голосование
+                if (gameState.IsFirstCycle)
+                {
+                    await StartNight(room);
+                }
+                else
+                {
+                    await StartVoting(room);
+                }
                 break;
             
             case GamePhase.Voting:
@@ -269,12 +278,7 @@ public class GameTimerService : BackgroundService
             return;
         }
 
-        // Переходим к следующей фазе
-        if (gameState.IsFirstCycle)
-        {
-            gameState.IsFirstCycle = false;
-        }
-
+        // После голосования всегда ночь (в обычных циклах)
         await StartNight(room);
     }
 
@@ -423,6 +427,12 @@ public class GameTimerService : BackgroundService
         {
             await EndGame(room, winner.Value);
             return;
+        }
+
+        // Если это была первая ночь, сбрасываем флаг
+        if (gameState.IsFirstCycle)
+        {
+            gameState.IsFirstCycle = false;
         }
 
         // Начинаем новый день

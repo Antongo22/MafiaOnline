@@ -194,6 +194,9 @@ public class GameController : ControllerBase
         room.PlayerRoles = null;
         room.RoleSettings = null;
         
+        // Сбрасываем игровое состояние
+        room.CurrentGameState = null;
+        
         // Переводим в начальный статус
         room.Status = GameStatus.Created;
         

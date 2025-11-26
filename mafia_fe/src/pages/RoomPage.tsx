@@ -198,13 +198,35 @@ export function RoomPage() {
     };
 
     const handleGameReset = () => {
+      // Сбрасываем роли
       setMyRole(null);
       setRevealedRoles({});
+      
+      // Сбрасываем статус игры
       setGameStatus("Created");
       setGameCycleStarted(false);
+      
+      // Сбрасываем фазы
       setGamePhase(GamePhase.Lobby);
+      setNightPhase(undefined);
+      setDayNumber(1);
+      
+      // Сбрасываем таймеры и текущие игроки
+      setTimeLeft(0);
+      setCurrentSpeakerName(undefined);
+      setCurrentSpeakerId(undefined);
+      setCurrentVoterName(undefined);
+      setCurrentVoterId(undefined);
+      
+      // Сбрасываем результаты и победителей
       setVotingResults(null);
       setWinningTeam(undefined);
+      
+      // Сбрасываем паузу
+      setIsPaused(false);
+      
+      // Очищаем алерты
+      setAlert(null);
     };
 
     // Game cycle events
@@ -215,11 +237,22 @@ export function RoomPage() {
     };
 
     const handleGameCycleStarted = (data: any) => {
+      // Очищаем предыдущие состояния перед началом новой игры
+      setVotingResults(null);
+      setWinningTeam(undefined);
+      setNightPhase(undefined);
+      setCurrentVoterName(undefined);
+      setCurrentVoterId(undefined);
+      setIsPaused(false);
+      
+      // Устанавливаем начальное состояние
       setGameCycleStarted(true);
       setGamePhase(GamePhase.IndividualSpeech);
       setCurrentSpeakerName(data.speakerName);
       setCurrentSpeakerId(data.speakerId);
       setDayNumber(1);
+      setTimeLeft(data.timeSeconds || 30);
+      
       showAlert("🎮 Игра начинается! Индивидуальные выступления.", "success");
     };
 
