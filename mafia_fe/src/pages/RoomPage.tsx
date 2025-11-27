@@ -227,6 +227,11 @@ export function RoomPage() {
       
       // Очищаем алерты
       setAlert(null);
+      
+      // Восстанавливаем всех игроков как живых
+      setUsers(prevUsers => 
+        prevUsers.map(u => ({ ...u, isAlive: true }))
+      );
     };
 
     // Game cycle events
@@ -403,6 +408,24 @@ export function RoomPage() {
       showAlert(`▶️ Игра продолжена админом ${data.resumedBy}`, "success");
     };
 
+    const handlePlayerDied = (data: { userId: string; userName: string; role: string; reason: string }) => {
+      // Обновляем список пользователей, помечая игрока как мёртвого
+      setUsers(prevUsers => 
+        prevUsers.map(u => 
+          u.id === data.userId ? { ...u, isAlive: false } : u
+        )
+      );
+    };
+
+    const handlePlayerEliminated = (data: { userId: string; userName: string; role: string; reason: string }) => {
+      // Обновляем список пользователей, помечая игрока как мёртвого
+      setUsers(prevUsers => 
+        prevUsers.map(u => 
+          u.id === data.userId ? { ...u, isAlive: false } : u
+        )
+      );
+    };
+
     // Subscribe
     chatService.onGameStatusChanged(handleGameStatusChanged);
     chatService.onRoleAssigned(handleRoleAssigned);
@@ -423,6 +446,8 @@ export function RoomPage() {
     chatService.onGameOver(handleGameOver);
     chatService.onGamePaused(handleGamePaused);
     chatService.onGameResumed(handleGameResumed);
+    chatService.onPlayerDied(handlePlayerDied);
+    chatService.onPlayerEliminated(handlePlayerEliminated);
 
     // Unsubscribe
     return () => {
@@ -445,6 +470,8 @@ export function RoomPage() {
       chatService.removeGameOverHandler(handleGameOver);
       chatService.removeGamePausedHandler(handleGamePaused);
       chatService.removeGameResumedHandler(handleGameResumed);
+      chatService.removePlayerDiedHandler(handlePlayerDied);
+      chatService.removePlayerEliminatedHandler(handlePlayerEliminated);
     };
   }, [room, userId, users]);
 

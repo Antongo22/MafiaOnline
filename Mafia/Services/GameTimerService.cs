@@ -431,8 +431,9 @@ public class GameTimerService : BackgroundService
             switch (phase)
             {
                 case NightPhase.Don:
-                    // Дон просыпается отдельно только если еще не нашел Шерифа
-                    if (aliveRoles.Contains(Role.Don) && !room.CurrentGameState!.DonHasFoundSheriff)
+                    // Дон просыпается отдельно только если еще не нашел Шерифа И шериф есть в игре
+                    var sheriffInGame = availableRoles.Contains(Role.Sheriff);
+                    if (aliveRoles.Contains(Role.Don) && !room.CurrentGameState!.DonHasFoundSheriff && sheriffInGame)
                     {
                         _logger.LogInformation($"[Room {room.Id}] Selected night phase: Don (searching for Sheriff)");
                         return phase;
@@ -449,10 +450,11 @@ public class GameTimerService : BackgroundService
                         break;
                     }
                     
-                    // Если Дон один и еще не нашел Шерифа - пропускаем фазу Мафии
+                    // Если Дон один и еще не нашел Шерифа И шериф есть в игре - пропускаем фазу Мафии
                     // (он сначала должен найти Шерифа в фазе Don)
                     var donIsAlone = evilRoles.Count == 1 && evilRoles[0] == Role.Don;
-                    var donIsAliveAndSearching = aliveRoles.Contains(Role.Don) && !room.CurrentGameState!.DonHasFoundSheriff;
+                    var sheriffExistsInGame = availableRoles.Contains(Role.Sheriff);
+                    var donIsAliveAndSearching = aliveRoles.Contains(Role.Don) && !room.CurrentGameState!.DonHasFoundSheriff && sheriffExistsInGame;
                     
                     if (donIsAlone && donIsAliveAndSearching)
                     {
