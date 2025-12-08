@@ -94,6 +94,7 @@ public class GameTimerService : BackgroundService
                 // Последующие: Ночь → Обсуждение → Голосование
                 // Если это первый цикл И первая ночь ещё не была - идём в ночь
                 // Иначе - идём в голосование
+                _logger.LogInformation($"[Room {room.Id}] FreeDiscussion: IsFirstCycle={gameState.IsFirstCycle}, FirstNightCompleted={gameState.FirstNightCompleted}, DayNumber={gameState.DayNumber}");
                 if (gameState.IsFirstCycle && !gameState.FirstNightCompleted)
                 {
                     _logger.LogInformation($"[Room {room.Id}] FreeDiscussion -> Night (first cycle, before first night)");
@@ -101,7 +102,7 @@ public class GameTimerService : BackgroundService
                 }
                 else
                 {
-                    _logger.LogInformation($"[Room {room.Id}] FreeDiscussion -> Voting");
+                    _logger.LogInformation($"[Room {room.Id}] FreeDiscussion -> Voting (IsFirstCycle={gameState.IsFirstCycle}, FirstNightCompleted={gameState.FirstNightCompleted})");
                     await StartVoting(room);
                 }
                 break;
@@ -431,13 +432,25 @@ public class GameTimerService : BackgroundService
             switch (phase)
             {
                 case NightPhase.Don:
-                    // Дон просыпается отдельно только если еще не нашел Шерифа И шериф есть в игре
+                    // Дон просыпается отдельно ТОЛЬКО если:
+                    // 1. Дон жив
+                    // 2. Дон один (нет других злых)
+                    // 3. Еще не нашел Шерифа
+                    // 4. Шериф есть в игре
+                    var evilRolesForDon = aliveRoles.Where(r => RoleInfo.GetTeam(r) == Team.Evil).ToList();
+                    var donIsAloneForDon = evilRolesForDon.Count == 1 && evilRolesForDon[0] == Role.Don;
                     var sheriffInGame = availableRoles.Contains(Role.Sheriff);
-                    if (aliveRoles.Contains(Role.Don) && !room.CurrentGameState!.DonHasFoundSheriff && sheriffInGame)
+                    var donNeedsToSearch = aliveRoles.Contains(Role.Don) && !room.CurrentGameState!.DonHasFoundSheriff && sheriffInGame;
+                    
+                    if (donIsAloneForDon && donNeedsToSearch)
                     {
-                        _logger.LogInformation($"[Room {room.Id}] Selected night phase: Don (searching for Sheriff)");
+                        // Дон один и должен найти Шерифа - отдельная фаза Don
+                        _logger.LogInformation($"[Room {room.Id}] Selected night phase: Don (alone, searching for Sheriff)");
                         return phase;
                     }
+                    // Если Дон не один, или уже нашел Шерифа, или Шерифа нет - пропускаем фазу Don
+                    // Дон просыпается в фазе Mafia вместе с другими
+                    _logger.LogInformation($"[Room {room.Id}] Skipping Don phase - Don is not alone or already found Sheriff or Sheriff not in game");
                     break;
                 
                 case NightPhase.Mafia:
@@ -450,21 +463,7 @@ public class GameTimerService : BackgroundService
                         break;
                     }
                     
-                    // Если Дон один и еще не нашел Шерифа И шериф есть в игре - пропускаем фазу Мафии
-                    // (он сначала должен найти Шерифа в фазе Don)
-                    var donIsAlone = evilRoles.Count == 1 && evilRoles[0] == Role.Don;
-                    var sheriffExistsInGame = availableRoles.Contains(Role.Sheriff);
-                    var donIsAliveAndSearching = aliveRoles.Contains(Role.Don) && !room.CurrentGameState!.DonHasFoundSheriff && sheriffExistsInGame;
-                    
-                    if (donIsAlone && donIsAliveAndSearching)
-                    {
-                        // Дон один и еще не нашел Шерифа - пропускаем фазу Мафии
-                        // Он сначала должен найти Шерифа в фазе Don
-                        _logger.LogInformation($"[Room {room.Id}] Skipping Mafia phase - Don is alone and searching for Sheriff");
-                        break;
-                    }
-                    
-                    // В остальных случаях - фаза Мафии активна
+                    // Фаза Мафии активна всегда, когда есть злые (включая Дона)
                     _logger.LogInformation($"[Room {room.Id}] Selected night phase: Mafia (evil count: {evilRoles.Count}, Don found Sheriff: {room.CurrentGameState!.DonHasFoundSheriff})");
                     return phase;
                 
