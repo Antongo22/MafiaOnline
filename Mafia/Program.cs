@@ -81,3 +81,6 @@ app.MapHub<ChatHub>("/chatHub");
 app.MapControllers();
 
 app.Run();
+
+// Делаем Program публичным для интеграционных тестов
+public partial class Program { }
