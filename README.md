@@ -58,7 +58,7 @@ docker-compose -f docker-compose.dev.yml up --build
 3. Откройте браузер:
 
 **Production:**
-- Frontend: http://localhost:3000
+- Frontend: http://localhost
 - Backend API: http://localhost:5141
 
 **Development:**
