@@ -21,20 +21,6 @@
 - Docker
 - Docker Compose
 
-### Самый быстрый запуск
-
-**Для новичков** (используйте интерактивный скрипт):
-```bash
-./start.sh
-```
-
-**С Makefile** (если установлен `make`):
-```bash
-make up          # Production режим
-make dev-up      # Development режим с hot-reload
-make down        # Остановить
-make logs        # Показать логи
-```
 
 ### Подробный запуск
 
