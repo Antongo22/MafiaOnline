@@ -9,7 +9,7 @@ import { NightActionPanel } from "../components/NightActionPanel";
 import { VotingResultsDisplay } from "../components/VotingResultsDisplay";
 import { type User, chatService } from "../services/chatService";
 import { gameService } from "../services/gameService";
-import { GamePhase } from "../types/game";
+import { GamePhase, type VoterInfo } from "../types/game";
 import { saveRoomState, loadRoomState, clearRoomState } from "../utils/storage";
 
 interface Room {
@@ -48,6 +48,7 @@ export function RoomPage() {
   const [gameCycleStarted, setGameCycleStarted] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [winningTeam, setWinningTeam] = useState<string | undefined>();
+  const [votingCandidates, setVotingCandidates] = useState<Array<{ userId: string; userName: string }>>([]);
   const [votingResults, setVotingResults] = useState<{
     votesWithNames: Array<{ voterName: string; targetName: string }>;
     voteCounts: Record<string, number>;
@@ -281,16 +282,18 @@ export function RoomPage() {
       }
     };
 
-    const handleVotingStarted = (data: { voterName: string; voterId: string }) => {
+    const handleVotingStarted = (data: VoterInfo) => {
       setGamePhase(GamePhase.Voting);
       setCurrentVoterName(data.voterName);
       setCurrentVoterId(data.voterId);
+      setVotingCandidates(data.candidates || []); // Сохраняем список живых игроков
       showAlert("🗳️ Голосование началось!", "warning");
     };
 
-    const handleVoterChanged = (data: { voterName: string; voterId: string }) => {
+    const handleVoterChanged = (data: VoterInfo) => {
       setCurrentVoterName(data.voterName);
       setCurrentVoterId(data.voterId);
+      setVotingCandidates(data.candidates || []); // Обновляем список кандидатов
       if (data.voterId === userId) {
         showAlert("⏰ Ваш ход голосовать!", "warning");
       }
@@ -730,7 +733,7 @@ export function RoomPage() {
     if (gamePhase === GamePhase.Voting) {
       return (
         <VotingPanel
-          users={users}
+          candidates={votingCandidates}
           currentUserId={userId!}
           isMyTurn={currentVoterId === userId}
           onVote={handleVote}

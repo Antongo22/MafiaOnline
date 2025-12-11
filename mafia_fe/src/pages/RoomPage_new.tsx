@@ -8,7 +8,7 @@ import { VotingPanel } from "../components/VotingPanel";
 import { NightActionPanel } from "../components/NightActionPanel";
 import { type User, chatService } from "../services/chatService";
 import { gameService } from "../services/gameService";
-import { GamePhase } from "../types/game";
+import { GamePhase, type VoterInfo } from "../types/game";
 import { saveRoomState, loadRoomState, clearRoomState } from "../utils/storage";
 
 interface Room {
@@ -45,6 +45,7 @@ export function RoomPage() {
   const [dayNumber, setDayNumber] = useState<number>(1);
   const [gameCycleStarted, setGameCycleStarted] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [votingCandidates, setVotingCandidates] = useState<Array<{ userId: string; userName: string }>>([]);
   
   // Alerts
   const [alert, setAlert] = useState<{ message: string; type: "info" | "success" | "warning" | "danger" } | null>(null);
@@ -152,16 +153,18 @@ export function RoomPage() {
       }
     };
 
-    const handleVotingStarted = (data: { voterName: string; voterId: string }) => {
+    const handleVotingStarted = (data: VoterInfo) => {
       setGamePhase(GamePhase.Voting);
       setCurrentVoterName(data.voterName);
       setCurrentVoterId(data.voterId);
+      setVotingCandidates(data.candidates || []); // Сохраняем список живых игроков
       showAlert("🗳️ Голосование началось!", "warning");
     };
 
-    const handleVoterChanged = (data: { voterName: string; voterId: string }) => {
+    const handleVoterChanged = (data: VoterInfo) => {
       setCurrentVoterName(data.voterName);
       setCurrentVoterId(data.voterId);
+      setVotingCandidates(data.candidates || []); // Обновляем список кандидатов
       if (data.voterId === userId) {
         showAlert("⏰ Ваш ход голосовать!", "warning");
       }
@@ -470,7 +473,7 @@ export function RoomPage() {
     if (gamePhase === GamePhase.Voting) {
       return (
         <VotingPanel
-          users={users}
+          candidates={votingCandidates}
           currentUserId={userId!}
           isMyTurn={currentVoterId === userId}
           onVote={handleVote}

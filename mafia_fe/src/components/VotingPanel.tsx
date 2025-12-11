@@ -1,18 +1,15 @@
 import { useState } from "react";
-import type { User } from "../services/chatService";
 
 interface VotingPanelProps {
-  users: User[];
+  candidates: Array<{ userId: string; userName: string }>;
   currentUserId: string;
   isMyTurn: boolean;
   onVote: (targetId: string) => void;
 }
 
-export function VotingPanel({ users, currentUserId, isMyTurn, onVote }: VotingPanelProps) {
+export function VotingPanel({ candidates, currentUserId, isMyTurn, onVote }: VotingPanelProps) {
   const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
-
-  const aliveUsers = users.filter(u => u.status !== "Leave" && u.status !== "Dead");
 
   const handleVote = () => {
     if (selectedTarget && !hasVoted) {
@@ -60,30 +57,29 @@ export function VotingPanel({ users, currentUserId, isMyTurn, onVote }: VotingPa
         gap: "1rem",
         marginBottom: "1.5rem"
       }}>
-        {aliveUsers.map((user) => (
+        {candidates.map((candidate) => (
           <button
-            key={user.id}
-            onClick={() => setSelectedTarget(user.id)}
+            key={candidate.userId}
+            onClick={() => setSelectedTarget(candidate.userId)}
             disabled={hasVoted}
             style={{
               padding: "1rem",
-              background: selectedTarget === user.id 
+              background: selectedTarget === candidate.userId 
                 ? "var(--warning)" 
                 : "var(--bg-tertiary)",
-              color: selectedTarget === user.id 
+              color: selectedTarget === candidate.userId 
                 ? "var(--bg-primary)" 
                 : "var(--text-primary)",
-              border: `2px solid ${selectedTarget === user.id ? "var(--warning)" : "var(--border)"}`,
+              border: `2px solid ${selectedTarget === candidate.userId ? "var(--warning)" : "var(--border)"}`,
               borderRadius: "var(--radius)",
               cursor: hasVoted ? "not-allowed" : "pointer",
-              fontWeight: selectedTarget === user.id ? "600" : "normal",
+              fontWeight: selectedTarget === candidate.userId ? "600" : "normal",
               transition: "all 0.2s",
               opacity: hasVoted ? 0.5 : 1
             }}
           >
-            {user.name}
-            {user.id === currentUserId && " (вы)"}
-            {user.status === "Admin" && " 👑"}
+            {candidate.userName}
+            {candidate.userId === currentUserId && " (вы)"}
           </button>
         ))}
       </div>

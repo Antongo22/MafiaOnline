@@ -4,6 +4,7 @@ using Mafia.DTOs;
 using Mafia.Enums;
 using Mafia.Models;
 using Mafia.Hubs;
+using Mafia.Helpers;
 using Microsoft.AspNetCore.SignalR;
 using System.Text.Json;
 
@@ -204,6 +205,10 @@ public class GameCycleController : ControllerBase
     [HttpPost("vote")]
     public async Task<ActionResult> Vote(string roomId, string voterId, string targetId)
     {
+        ValidationHelper.ValidateNotEmpty(roomId, nameof(roomId));
+        ValidationHelper.ValidateNotEmpty(voterId, nameof(voterId));
+        ValidationHelper.ValidateNotEmpty(targetId, nameof(targetId));
+        
         var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
         if (room == null)
             return NotFound("Room not found");
@@ -219,10 +224,16 @@ public class GameCycleController : ControllerBase
         if (voter == null || !voter.IsAlive || voter.Status == UserStatus.Leave)
             return BadRequest("You cannot vote");
 
-        // Проверяем, что цель голосования жива
+        // КРИТИЧЕСКАЯ ПРОВЕРКА: цель голосования должна быть жива
         var target = room.Users.FirstOrDefault(u => u.Id == targetId);
-        if (target == null || !target.IsAlive || target.Status == UserStatus.Leave)
-            return BadRequest("Cannot vote for dead or absent player");
+        if (target == null)
+            return NotFound("Target player not found");
+            
+        if (!target.IsAlive)
+            return BadRequest("Cannot vote for dead player");
+            
+        if (target.Status == UserStatus.Leave)
+            return BadRequest("Cannot vote for player who left");
 
         // Записываем голос
         gameState.Votes[voterId] = targetId;
