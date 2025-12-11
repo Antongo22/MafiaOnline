@@ -6,6 +6,9 @@ using System.Text.Json;
 
 namespace Mafia.Services;
 
+/// <summary>
+/// Фоновый сервис для управления таймерами игровых фаз
+/// </summary>
 public class GameTimerService : BackgroundService
 {
     private readonly IHubContext<ChatHub> _hubContext;

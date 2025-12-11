@@ -3,6 +3,9 @@ using Mafia.Enums;
 
 namespace Mafia.Services;
 
+/// <summary>
+/// Сервис для проверки условий победы в игре
+/// </summary>
 public class WinConditionService
 {
     /// <summary>

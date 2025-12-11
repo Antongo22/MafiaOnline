@@ -7,6 +7,7 @@ using Microsoft.OpenApi.Models;
 using Mafia.Filters;
 using Mafia.Hubs;
 using Mafia.Services;
+using Mafia.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,6 +62,9 @@ builder.Services.AddSwaggerGen(c =>
 
 
 var app = builder.Build();
+
+// Глобальный перехват ошибок
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {

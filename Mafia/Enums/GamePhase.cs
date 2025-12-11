@@ -1,23 +1,79 @@
 namespace Mafia.Enums;
 
+/// <summary>
+/// Фазы игрового цикла
+/// </summary>
 public enum GamePhase
 {
-    Lobby,              // До начала игры
-    IndividualSpeech,   // Индивидуальные выступления (30 сек каждый)
-    FreeDiscussion,     // Свободное обсуждение (1.5 мин)
-    Voting,             // Голосование (15 сек каждый)
-    Night,              // Ночь (различные роли действуют)
-    GameOver            // Игра окончена
+    /// <summary>
+    /// Лобби, до начала игры
+    /// </summary>
+    Lobby,
+    
+    /// <summary>
+    /// Индивидуальные выступления (30 секунд каждый)
+    /// </summary>
+    IndividualSpeech,
+    
+    /// <summary>
+    /// Свободное обсуждение (1.5 минуты)
+    /// </summary>
+    FreeDiscussion,
+    
+    /// <summary>
+    /// Голосование за исключение игрока (15 секунд каждый)
+    /// </summary>
+    Voting,
+    
+    /// <summary>
+    /// Ночная фаза, роли выполняют свои действия
+    /// </summary>
+    Night,
+    
+    /// <summary>
+    /// Игра завершена
+    /// </summary>
+    GameOver
 }
 
+/// <summary>
+/// Фазы ночи (порядок действий ролей)
+/// </summary>
 public enum NightPhase
 {
-    Don,        // Дон ищет шерифа
-    Mafia,      // Мафия голосует за убийство
-    Maniac,     // Маньяк действует
-    Sheriff,    // Шериф проверяет игрока
-    Doctor,     // Доктор лечит
-    Prostitute, // Путана забирает игрока
-    Processing  // Обработка результатов ночи
+    /// <summary>
+    /// Дон мафии ищет шерифа
+    /// </summary>
+    Don,
+    
+    /// <summary>
+    /// Мафия голосует за убийство
+    /// </summary>
+    Mafia,
+    
+    /// <summary>
+    /// Маньяк выбирает жертву или лечит себя
+    /// </summary>
+    Maniac,
+    
+    /// <summary>
+    /// Шериф проверяет игрока
+    /// </summary>
+    Sheriff,
+    
+    /// <summary>
+    /// Доктор лечит игрока
+    /// </summary>
+    Doctor,
+    
+    /// <summary>
+    /// Путана забирает игрока к себе
+    /// </summary>
+    Prostitute,
+    
+    /// <summary>
+    /// Обработка результатов ночи
+    /// </summary>
+    Processing
 }
 

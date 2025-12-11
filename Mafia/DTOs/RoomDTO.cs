@@ -4,6 +4,9 @@ using Mafia.Models;
 
 namespace Mafia.DTOs;
 
+/// <summary>
+/// Модель игровой комнаты
+/// </summary>
 public class RoomDTO
 {
     public string Id { get; set; }

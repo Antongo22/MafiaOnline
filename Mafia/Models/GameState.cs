@@ -2,6 +2,9 @@ using Mafia.Enums;
 
 namespace Mafia.Models;
 
+/// <summary>
+/// Модель состояния игрового цикла
+/// </summary>
 public class GameState
 {
     // Текущая фаза игры

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Mafia.Services;
 using Mafia.DTOs;
+using Mafia.Helpers;
 
 namespace Mafia.Controllers;
 
@@ -17,6 +18,9 @@ public class Room : ControllerBase
     [HttpPost("invite")]
     public ActionResult<RoomDTO> Rooms(string inviteCode, string playerName)
     {
+        ValidationHelper.ValidateNotEmpty(inviteCode, nameof(inviteCode));
+        ValidationHelper.ValidateNotEmpty(playerName, nameof(playerName));
+        
         var room = Game.Rooms.FirstOrDefault(x => x.InviteCode == inviteCode);
         if (room == null)
             return NotFound("Room not found");
@@ -40,6 +44,9 @@ public class Room : ControllerBase
     [HttpPost("create")]
     public ActionResult<RoomDTO> CreateRoom(string roomName, string playerName)
     {
+        ValidationHelper.ValidateNotEmpty(roomName, nameof(roomName));
+        ValidationHelper.ValidateNotEmpty(playerName, nameof(playerName));
+        
         var userId = Guid.NewGuid().ToString();
         var room = new RoomDTO
         {
@@ -61,6 +68,8 @@ public class Room : ControllerBase
     [HttpGet("my")]
     public ActionResult<RoomDTO> GetMyRoom(string userId)
     {
+        ValidationHelper.ValidateNotEmpty(userId, nameof(userId));
+        
         var room = Game.Rooms.FirstOrDefault(r => r.Users.Any(u => u.Id == userId));
         if (room == null)
             return NotFound("Room not found");
@@ -74,6 +83,8 @@ public class Room : ControllerBase
     [HttpPost("leave")]
     public ActionResult LeaveRoom(string userId)
     {
+        ValidationHelper.ValidateNotEmpty(userId, nameof(userId));
+        
         var room = Game.Rooms.FirstOrDefault(r => r.Users.Any(u => u.Id == userId));
         if (room == null)
             return NotFound("Room not found");
@@ -107,6 +118,9 @@ public class Room : ControllerBase
     [HttpPost("kick")]
     public ActionResult KickPlayer(string adminId, string targetUserId)
     {
+        ValidationHelper.ValidateNotEmpty(adminId, nameof(adminId));
+        ValidationHelper.ValidateNotEmpty(targetUserId, nameof(targetUserId));
+        
         var room = Game.Rooms.FirstOrDefault(r => r.Users.Any(u => u.Id == adminId));
         if (room == null)
             return NotFound("Room not found");

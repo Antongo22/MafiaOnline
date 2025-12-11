@@ -4,6 +4,7 @@ using Mafia.Services;
 using Mafia.DTOs;
 using Microsoft.AspNetCore.SignalR;
 using Mafia.Hubs;
+using Mafia.Helpers;
 
 namespace Mafia.Controllers;
 
@@ -24,6 +25,9 @@ public class GameController : ControllerBase
     [HttpPost("start")]
     public async Task<ActionResult> StartGame(string roomId, string adminId)
     {
+        ValidationHelper.ValidateNotEmpty(roomId, nameof(roomId));
+        ValidationHelper.ValidateNotEmpty(adminId, nameof(adminId));
+        
         var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
         if (room == null)
             return NotFound("Room not found");
@@ -50,6 +54,10 @@ public class GameController : ControllerBase
     [HttpPost("select-roles")]
     public ActionResult SelectRoles(string roomId, string adminId, [FromBody] Dictionary<Role, int> roles)
     {
+        ValidationHelper.ValidateNotEmpty(roomId, nameof(roomId));
+        ValidationHelper.ValidateNotEmpty(adminId, nameof(adminId));
+        ValidationHelper.ValidateNotNull(roles, nameof(roles));
+        
         var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
         if (room == null)
             return NotFound("Room not found");
@@ -80,6 +88,9 @@ public class GameController : ControllerBase
     [HttpPost("distribute-roles")]
     public async Task<ActionResult> DistributeRoles(string roomId, string adminId)
     {
+        ValidationHelper.ValidateNotEmpty(roomId, nameof(roomId));
+        ValidationHelper.ValidateNotEmpty(adminId, nameof(adminId));
+        
         var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
         if (room == null)
             return NotFound("Room not found");

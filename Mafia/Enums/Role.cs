@@ -2,31 +2,54 @@ namespace Mafia.Enums;
 
 using Mafia.DTOs;
 
+/// <summary>
+/// Роли в игре Мафия
+/// </summary>
 public enum Role
 {
-    Citizen, //  мирный
-    Doctor, // доктор
-    Sheriff, // шериф
-    Immortal, // бессмертный 
-    Prostitute, // путана/любовница
-    // Thief, // вор
-    // Spy, // Шпион
-    // Hunter, // Охотник
+    /// <summary>Мирный житель</summary>
+    Citizen,
     
-    Don, // дон мафии
-    Mafia, // мафия
-    // Ninja,  // Ниндзя
+    /// <summary>Доктор - лечит игроков ночью</summary>
+    Doctor,
     
-    Maniac, // маньяк
+    /// <summary>Шериф - проверяет игроков на принадлежность к мафии</summary>
+    Sheriff,
+    
+    /// <summary>Бессмертный - не может быть убит ночью</summary>
+    Immortal,
+    
+    /// <summary>Путана - забирает игрока к себе на ночь</summary>
+    Prostitute,
+    
+    /// <summary>Дон мафии - главарь мафии, ищет шерифа</summary>
+    Don,
+    
+    /// <summary>Мафия - убивает мирных жителей</summary>
+    Mafia,
+    
+    /// <summary>Маньяк - нейтральная роль, играет сам за себя</summary>
+    Maniac
 }
 
+/// <summary>
+/// Команды в игре
+/// </summary>
 public enum Team
 {
-    Good,    // Мирные жители
-    Evil,    // Мафия
-    Neutral  // Нейтральные (маньяк и т.д.)
+    /// <summary>Команда мирных жителей</summary>
+    Good,
+    
+    /// <summary>Команда мафии</summary>
+    Evil,
+    
+    /// <summary>Нейтральная команда</summary>
+    Neutral
 }
 
+/// <summary>
+/// Статический класс с информацией о ролях
+/// </summary>
 public static class RoleInfo
 {
     private static Dictionary<Role, (string, string, Team, bool)> roles;
@@ -56,21 +79,33 @@ public static class RoleInfo
         };
     }
     
+    /// <summary>
+    /// Получить полную информацию о роли
+    /// </summary>
     public static (string, string, Team, bool) GetRole(Role role)
     {
         return roles[role];
     }
 
+    /// <summary>
+    /// Получить команду, к которой принадлежит роль
+    /// </summary>
     public static Team GetTeam(Role role)
     {
         return roles[role].Item3;
     }
 
+    /// <summary>
+    /// Проверить, является ли роль уникальной
+    /// </summary>
     public static bool IsUnique(Role role)
     {
         return roles[role].Item4;
     }
 
+    /// <summary>
+    /// Получить список всех доступных ролей
+    /// </summary>
     public static IEnumerable<RolesDTO> GetAllRoles()
     {
         return roles.Select(role => new RolesDTO()

@@ -4,15 +4,29 @@ using Mafia.DTOs;
 
 namespace Mafia.Services;
 
-
-
+/// <summary>
+/// Статический класс для хранения глобального состояния игры
+/// </summary>
 public static class Game
 {
+    /// <summary>
+    /// Список всех активных игровых комнат
+    /// </summary>
     public static List<RoomDTO> Rooms = new();
+    
+    /// <summary>
+    /// История сообщений общего чата по комнатам
+    /// </summary>
     public static Dictionary<string, List<ChatMessageDTO>> ChatMessages = new();
-    public static Dictionary<string, List<ChatMessageDTO>> MafiaChatMessages = new(); // Чат мафии
     
+    /// <summary>
+    /// История сообщений чата мафии по комнатам
+    /// </summary>
+    public static Dictionary<string, List<ChatMessageDTO>> MafiaChatMessages = new();
     
+    /// <summary>
+    /// Распределяет роли случайным образом между игроками
+    /// </summary>
     public static Dictionary<string, Role> ShufflePlayersWithRoles(GameCreateDTO game)
     {
         if (game.PlayersNames == null || game.Roles == null)
