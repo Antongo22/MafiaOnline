@@ -11,6 +11,9 @@ namespace Mafia.Controllers;
 [Route("api/[controller]")]
 public class Room : ControllerBase
 {
+    /// <summary>
+    /// Присоединиться к комнате по инвайт-коду
+    /// </summary>
     [HttpPost("invite")]
     public ActionResult<RoomDTO> Rooms(string inviteCode, string playerName)
     {
@@ -31,6 +34,9 @@ public class Room : ControllerBase
     }
 
 
+    /// <summary>
+    /// Создать новую игровую комнату
+    /// </summary>
     [HttpPost("create")]
     public ActionResult<RoomDTO> CreateRoom(string roomName, string playerName)
     {
@@ -49,6 +55,9 @@ public class Room : ControllerBase
         return Ok(room);
     }
 
+    /// <summary>
+    /// Получить информацию о комнате, в которой находится игрок
+    /// </summary>
     [HttpGet("my")]
     public ActionResult<RoomDTO> GetMyRoom(string userId)
     {
@@ -59,6 +68,9 @@ public class Room : ControllerBase
         return Ok(room);
     }
 
+    /// <summary>
+    /// Покинуть комнату (если админ - комната расформируется)
+    /// </summary>
     [HttpPost("leave")]
     public ActionResult LeaveRoom(string userId)
     {
@@ -89,6 +101,9 @@ public class Room : ControllerBase
         return Ok(new { message = "Left room successfully", disbanded = false });
     }
 
+    /// <summary>
+    /// Выгнать игрока из комнаты (только админ)
+    /// </summary>
     [HttpPost("kick")]
     public ActionResult KickPlayer(string adminId, string targetUserId)
     {

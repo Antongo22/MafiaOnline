@@ -9,6 +9,9 @@ using Mafia.Services;
 [Route("api/[controller]")]
 public class RoleController : ControllerBase
 {
+    /// <summary>
+    /// Получить список всех доступных ролей с описанием
+    /// </summary>
     [HttpGet("roles")]
     public ActionResult<IEnumerable<RolesDTO>> Roles()
     {
@@ -16,6 +19,9 @@ public class RoleController : ControllerBase
         return Ok(roles); 
     }
     
+    /// <summary>
+    /// Раздать роли игрокам случайным образом
+    /// </summary>
     [HttpPost("set")]
     public ActionResult<Dictionary<string, Role>> CreateRole(GameCreateDTO gameCreateDTO)
     {

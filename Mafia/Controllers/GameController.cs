@@ -18,6 +18,9 @@ public class GameController : ControllerBase
         _hubContext = hubContext;
     }
 
+    /// <summary>
+    /// Запускает игру и переводит комнату в статус ожидания выбора ролей
+    /// </summary>
     [HttpPost("start")]
     public async Task<ActionResult> StartGame(string roomId, string adminId)
     {
@@ -41,6 +44,9 @@ public class GameController : ControllerBase
         return Ok(new { message = "Game started, waiting for role selection", status = room.Status });
     }
 
+    /// <summary>
+    /// Настройка ролей для игры (только админ)
+    /// </summary>
     [HttpPost("select-roles")]
     public ActionResult SelectRoles(string roomId, string adminId, [FromBody] Dictionary<Role, int> roles)
     {
@@ -68,6 +74,9 @@ public class GameController : ControllerBase
         return Ok(new { message = "Roles selected", roleSettings = room.RoleSettings });
     }
 
+    /// <summary>
+    /// Раздает роли игрокам и начинает игру
+    /// </summary>
     [HttpPost("distribute-roles")]
     public async Task<ActionResult> DistributeRoles(string roomId, string adminId)
     {
@@ -156,6 +165,9 @@ public class GameController : ControllerBase
         return Ok(new { message = "Roles distributed, game started", status = room.Status });
     }
 
+    /// <summary>
+    /// Завершает игру и раскрывает все роли (только админ)
+    /// </summary>
     [HttpPost("finish")]
     public async Task<ActionResult> FinishGame(string roomId, string adminId)
     {
@@ -192,6 +204,9 @@ public class GameController : ControllerBase
         return Ok(new { message = "Game finished", status = room.Status, playerRoles = room.PlayerRoles });
     }
 
+    /// <summary>
+    /// Сбрасывает игру в начальное состояние для новой партии (только админ)
+    /// </summary>
     [HttpPost("reset")]
     public async Task<ActionResult> ResetGame(string roomId, string adminId)
     {
@@ -275,6 +290,9 @@ public class GameController : ControllerBase
         return Ok(new { message = "Game reset", status = room.Status });
     }
 
+    /// <summary>
+    /// Получить свою роль в игре
+    /// </summary>
     [HttpGet("my-role")]
     public ActionResult GetMyRole(string roomId, string userId)
     {
@@ -308,6 +326,9 @@ public class GameController : ControllerBase
         return Ok(new { role = room.PlayerRoles[userId].ToString() });
     }
 
+    /// <summary>
+    /// Получить все роли игроков (доступно только после завершения игры)
+    /// </summary>
     [HttpGet("all-roles")]
     public ActionResult GetAllRoles(string roomId, string userId)
     {
@@ -336,6 +357,9 @@ public class GameController : ControllerBase
         return Ok(rolesWithNames);
     }
 
+    /// <summary>
+    /// Получить список всех доступных ролей в игре
+    /// </summary>
     [HttpGet("available-roles")]
     public ActionResult GetAvailableRoles()
     {

@@ -9,12 +9,12 @@ namespace Mafia.Controllers;
 public class TestComtroller : ControllerBase
 {
 
+    /// <summary>
+    /// Тестовый эндпоинт для проверки работы API
+    /// </summary>
     [HttpGet("test")]
     public ActionResult<string> Test()
     {
         return Ok("Test");
     }
-
-
-    
 }

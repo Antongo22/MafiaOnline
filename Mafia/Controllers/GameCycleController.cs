@@ -199,7 +199,7 @@ public class GameCycleController : ControllerBase
     }
 
     /// <summary>
-    /// Голосование игрока
+    /// Проголосовать за игрока во время фазы голосования
     /// </summary>
     [HttpPost("vote")]
     public async Task<ActionResult> Vote(string roomId, string voterId, string targetId)
@@ -278,7 +278,7 @@ public class GameCycleController : ControllerBase
     }
 
     /// <summary>
-    /// Ночное действие игрока
+    /// Выполнить ночное действие (убийство, проверка, лечение и т.д.)
     /// </summary>
     [HttpPost("night-action")]
     public async Task<ActionResult> NightAction(string roomId, string userId, [FromBody] NightActionDTO action)
