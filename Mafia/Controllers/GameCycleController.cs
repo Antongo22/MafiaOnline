@@ -74,7 +74,8 @@ public class GameCycleController : ControllerBase
             currentVoterName = currentVoterName,
             currentVoterId = currentVoterId,
             isPaused = gameState.IsPaused,
-            gameStatus = room.Status.ToString()
+            gameStatus = room.Status.ToString(),
+            winningTeam = gameState.WinningTeam?.ToString()
         });
     }
 

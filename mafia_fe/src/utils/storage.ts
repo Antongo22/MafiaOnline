@@ -6,6 +6,7 @@ interface RoomState {
   inviteCode: string;
   myRole?: string | null;
   gameStatus?: string;
+  winningTeam?: string;
 }
 
 const STORAGE_KEY = "mafia_room_state";

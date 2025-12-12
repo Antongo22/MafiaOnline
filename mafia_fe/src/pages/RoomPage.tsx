@@ -93,11 +93,12 @@ export function RoomPage() {
         saveRoomState({
           ...savedState,
           myRole: myRole,
-          gameStatus: gameStatus
+          gameStatus: gameStatus,
+          winningTeam: winningTeam
         });
       }
     }
-  }, [myRole, gameStatus, room, userId]);
+  }, [myRole, gameStatus, winningTeam, room, userId]);
 
   // Проверяем localStorage при загрузке
   useEffect(() => {
@@ -118,6 +119,11 @@ export function RoomPage() {
           // Восстанавливаем роль из localStorage
           if (savedState.myRole) {
             setMyRole(savedState.myRole);
+          }
+          
+          // Восстанавливаем информацию о победителе
+          if (savedState.winningTeam) {
+            setWinningTeam(savedState.winningTeam);
           }
 
           // Подключаемся к SignalR
@@ -166,6 +172,11 @@ export function RoomPage() {
                 setCurrentVoterName(gameStateData.currentVoterName);
                 setCurrentVoterId(gameStateData.currentVoterId);
                 setIsPaused(gameStateData.isPaused);
+                
+                // Восстанавливаем информацию о победителе, если игра закончена
+                if (gameStateData.winningTeam) {
+                  setWinningTeam(gameStateData.winningTeam);
+                }
               }
             }
           } catch (gameStateError) {
