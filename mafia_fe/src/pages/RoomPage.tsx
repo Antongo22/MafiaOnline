@@ -252,6 +252,7 @@ export function RoomPage() {
       setIsPaused(false);
       
       // Устанавливаем начальное состояние
+      const isFirstStart = !gameCycleStarted;
       setGameCycleStarted(true);
       setGamePhase(GamePhase.IndividualSpeech);
       setCurrentSpeakerName(data.speakerName);
@@ -259,7 +260,10 @@ export function RoomPage() {
       setDayNumber(1);
       setTimeLeft(data.timeSeconds || 30);
       
-      showAlert("🎮 Игра начинается! Индивидуальные выступления.", "success");
+      // Показываем алерт только при первом старте игры
+      if (isFirstStart) {
+        showAlert("🎮 Игра начинается! Индивидуальные выступления.", "success");
+      }
     };
 
     const handleSpeakerChanged = (data: { speakerName: string; speakerId: string }) => {
