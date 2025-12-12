@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 
-interface NightResultsModalProps {
+interface VotingResultsModalProps {
   isOpen: boolean;
-  killed: Array<{ userName: string; role: string }>;
+  eliminated: Array<{ userName: string; role: string }>;
+  tie: boolean;
   onClose: () => void;
 }
 
-export function NightResultsModal({ isOpen, killed, onClose }: NightResultsModalProps) {
+export function VotingResultsModal({ isOpen, eliminated, tie, onClose }: VotingResultsModalProps) {
   // Автоматическое закрытие через 4 секунды
   useEffect(() => {
     if (isOpen) {
@@ -20,7 +21,7 @@ export function NightResultsModal({ isOpen, killed, onClose }: NightResultsModal
 
   if (!isOpen) return null;
 
-  const hasDeaths = killed && killed.length > 0;
+  const hasEliminated = eliminated && eliminated.length > 0;
 
   return (
     <div
@@ -47,7 +48,7 @@ export function NightResultsModal({ isOpen, killed, onClose }: NightResultsModal
           maxWidth: "600px",
           width: "90%",
           boxShadow: "0 20px 60px rgba(0, 0, 0, 0.5)",
-          border: hasDeaths ? "3px solid var(--danger)" : "3px solid var(--success)",
+          border: tie ? "3px solid var(--warning)" : hasEliminated ? "3px solid var(--danger)" : "3px solid var(--info)",
           animation: "slideIn 0.4s ease-out",
           position: "relative"
         }}
@@ -62,7 +63,7 @@ export function NightResultsModal({ isOpen, killed, onClose }: NightResultsModal
             animation: "scaleIn 0.5s ease-out"
           }}
         >
-          {hasDeaths ? "☠️" : "🌅"}
+          {tie ? "🤝" : hasEliminated ? "⚖️" : "🗳️"}
         </div>
 
         {/* Заголовок */}
@@ -72,11 +73,11 @@ export function NightResultsModal({ isOpen, killed, onClose }: NightResultsModal
             fontWeight: "700",
             textAlign: "center",
             marginBottom: "2rem",
-            color: hasDeaths ? "var(--danger)" : "var(--success)",
+            color: tie ? "var(--warning)" : hasEliminated ? "var(--danger)" : "var(--info)",
             textShadow: "0 2px 10px rgba(0, 0, 0, 0.3)"
           }}
         >
-          {hasDeaths ? "Результаты ночи" : "Спокойная ночь"}
+          {tie ? "Ничья!" : hasEliminated ? "Результаты голосования" : "Голосование завершено"}
         </h2>
 
         {/* Контент */}
@@ -86,7 +87,17 @@ export function NightResultsModal({ isOpen, killed, onClose }: NightResultsModal
             marginBottom: "2rem"
           }}
         >
-          {hasDeaths ? (
+          {tie ? (
+            <p
+              style={{
+                fontSize: "1.5rem",
+                color: "var(--warning)",
+                fontWeight: "500"
+              }}
+            >
+              Голоса разделились поровну. Никто не был исключён! 🤷
+            </p>
+          ) : hasEliminated ? (
             <div>
               <p
                 style={{
@@ -95,7 +106,7 @@ export function NightResultsModal({ isOpen, killed, onClose }: NightResultsModal
                   marginBottom: "1.5rem"
                 }}
               >
-                Этой ночью погибли:
+                Город принял решение:
               </p>
               <div
                 style={{
@@ -104,7 +115,7 @@ export function NightResultsModal({ isOpen, killed, onClose }: NightResultsModal
                   gap: "1rem"
                 }}
               >
-                {killed.map((victim, index) => (
+                {eliminated.map((victim, index) => (
                   <div
                     key={index}
                     style={{
@@ -142,11 +153,11 @@ export function NightResultsModal({ isOpen, killed, onClose }: NightResultsModal
             <p
               style={{
                 fontSize: "1.5rem",
-                color: "var(--success)",
+                color: "var(--info)",
                 fontWeight: "500"
               }}
             >
-              Эта ночь прошла спокойно. Никто не погиб! 🎉
+              Голосование завершено без исключений 📊
             </p>
           )}
         </div>
@@ -160,7 +171,7 @@ export function NightResultsModal({ isOpen, killed, onClose }: NightResultsModal
             padding: "1rem",
             fontSize: "1.25rem",
             fontWeight: "600",
-            background: hasDeaths ? "var(--danger)" : "var(--success)",
+            background: tie ? "var(--warning)" : hasEliminated ? "var(--danger)" : "var(--info)",
             border: "none"
           }}
         >

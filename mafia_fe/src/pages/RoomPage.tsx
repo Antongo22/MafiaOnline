@@ -8,6 +8,7 @@ import { VotingPanel } from "../components/VotingPanel";
 import { NightActionPanel } from "../components/NightActionPanel";
 import { VotingResultsDisplay } from "../components/VotingResultsDisplay";
 import { NightResultsModal } from "../components/NightResultsModal";
+import { VotingResultsModal } from "../components/VotingResultsModal";
 import { type User, chatService } from "../services/chatService";
 import { gameService } from "../services/gameService";
 import { GamePhase, type VoterInfo, type NightResults } from "../types/game";
@@ -62,6 +63,13 @@ export function RoomPage() {
     isOpen: boolean;
     killed: Array<{ userName: string; role: string }>;
   }>({ isOpen: false, killed: [] });
+  
+  // Voting results modal
+  const [votingResultsModal, setVotingResultsModal] = useState<{
+    isOpen: boolean;
+    eliminated: Array<{ userName: string; role: string }>;
+    tie: boolean;
+  }>({ isOpen: false, eliminated: [], tie: false });
   
   // Alerts
   const [alert, setAlert] = useState<{ message: string; type: "info" | "success" | "warning" | "danger" } | null>(null);
@@ -335,6 +343,13 @@ export function RoomPage() {
         tie: data.tie || false
       });
 
+      // Показываем модальное окно с результатами голосования
+      setVotingResultsModal({
+        isOpen: true,
+        eliminated: data.eliminated || [],
+        tie: data.tie || false
+      });
+
       // Раскрываем роли всех исключённых игроков для всех
       if (data.eliminated && data.eliminated.length > 0) {
         const newRevealedRoles: { [key: string]: string } = {};
@@ -342,15 +357,6 @@ export function RoomPage() {
           newRevealedRoles[e.userId] = e.role;
         });
         setRevealedRoles(prev => ({ ...prev, ...newRevealedRoles }));
-      }
-
-      if (data.tie) {
-        showAlert("🤝 Ничья! Все игроки получили равное количество голосов. Никто не исключён.", "info");
-      } else if (data.eliminated.length > 0) {
-        const names = data.eliminated.map(e => `${e.userName} (${e.role})`).join(", ");
-        showAlert(`☠️ Выбыли: ${names}`, "danger");
-      } else {
-        showAlert("Никто не был исключён", "info");
       }
     };
 
@@ -794,6 +800,14 @@ export function RoomPage() {
           isOpen={nightResultsModal.isOpen}
           killed={nightResultsModal.killed}
           onClose={() => setNightResultsModal({ isOpen: false, killed: [] })}
+        />
+        
+        {/* Модальное окно результатов голосования */}
+        <VotingResultsModal
+          isOpen={votingResultsModal.isOpen}
+          eliminated={votingResultsModal.eliminated}
+          tie={votingResultsModal.tie}
+          onClose={() => setVotingResultsModal({ isOpen: false, eliminated: [], tie: false })}
         />
         
         <div className="fade-in" style={{ 
