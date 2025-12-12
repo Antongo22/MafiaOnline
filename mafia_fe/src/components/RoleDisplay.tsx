@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { rolesService, type RoleInfo } from "../services/rolesService";
+import type { User } from "../services/chatService";
 
 interface RoleDisplayProps {
   myRole: string | null;
   revealedRoles: { [key: string]: string };
   gameStatus: string;
+  users: User[];
 }
 
 const ROLE_EMOJI: { [key: string]: string } = {
@@ -40,7 +42,7 @@ const getTeamName = (team: string) => {
   }
 };
 
-export function RoleDisplay({ myRole, revealedRoles, gameStatus }: RoleDisplayProps) {
+export function RoleDisplay({ myRole, revealedRoles, gameStatus, users }: RoleDisplayProps) {
   const [roles, setRoles] = useState<RoleInfo[]>([]);
 
   useEffect(() => {
@@ -139,15 +141,20 @@ export function RoleDisplay({ myRole, revealedRoles, gameStatus }: RoleDisplayPr
           gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
           gap: "0.75rem"
         }}>
-          {Object.entries(revealedRoles).map(([playerName, role]) => {
+          {Object.entries(revealedRoles).map(([userId, role]) => {
             const roleInfo = getRoleInfo(role);
             if (!roleInfo) return null;
+            
+            // Находим имя игрока по его ID
+            const player = users.find(u => u.id === userId);
+            // Если пользователь не найден, показываем сокращённый ID
+            const playerName = player?.name || `Игрок ${userId.substring(0, 8)}...`;
             
             const colors = getTeamColor(roleInfo.team);
             
             return (
               <div
-                key={playerName}
+                key={userId}
                 style={{
                   padding: "0.75rem",
                   background: colors.bg,

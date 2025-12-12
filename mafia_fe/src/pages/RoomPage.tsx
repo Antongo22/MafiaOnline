@@ -7,9 +7,10 @@ import { GamePhaseDisplay } from "../components/GamePhaseDisplay";
 import { VotingPanel } from "../components/VotingPanel";
 import { NightActionPanel } from "../components/NightActionPanel";
 import { VotingResultsDisplay } from "../components/VotingResultsDisplay";
+import { NightResultsModal } from "../components/NightResultsModal";
 import { type User, chatService } from "../services/chatService";
 import { gameService } from "../services/gameService";
-import { GamePhase, type VoterInfo } from "../types/game";
+import { GamePhase, type VoterInfo, type NightResults } from "../types/game";
 import { saveRoomState, loadRoomState, clearRoomState } from "../utils/storage";
 
 interface Room {
@@ -55,6 +56,12 @@ export function RoomPage() {
     eliminated: Array<{ userName: string; role: string }>;
     tie: boolean;
   } | null>(null);
+  
+  // Night results modal
+  const [nightResultsModal, setNightResultsModal] = useState<{
+    isOpen: boolean;
+    killed: Array<{ userName: string; role: string }>;
+  }>({ isOpen: false, killed: [] });
   
   // Alerts
   const [alert, setAlert] = useState<{ message: string; type: "info" | "success" | "warning" | "danger" } | null>(null);
@@ -363,19 +370,22 @@ export function RoomPage() {
       showAlert(`🌙 ${nightPhaseNames[data.nightPhase] || data.nightPhase}`, "info");
     };
 
-    const handleNightResults = (data: { killed: Array<{ userId: string; userName: string; role: string }>; saved: string[] }) => {
-      if (data.killed.length > 0) {
-        const names = data.killed.map(k => `${k.userName} (${k.role})`).join(", ");
-        showAlert(`☠️ Этой ночью погибли: ${names}`, "danger");
-        
-        // Раскрываем роли всех убитых игроков для всех
+    const handleNightResults = (data: NightResults) => {
+      console.log("NightResults received:", data);
+      
+      // Показываем модальное окно с результатами ночи
+      setNightResultsModal({
+        isOpen: true,
+        killed: data.killed || []
+      });
+      
+      // Раскрываем роли всех убитых игроков для всех
+      if (data.killed && data.killed.length > 0) {
         const newRevealedRoles: { [key: string]: string } = {};
         data.killed.forEach(k => {
           newRevealedRoles[k.userId] = k.role;
         });
         setRevealedRoles(prev => ({ ...prev, ...newRevealedRoles }));
-      } else {
-        showAlert("🌅 Эта ночь прошла спокойно", "success");
       }
     };
 
@@ -778,16 +788,24 @@ export function RoomPage() {
 
   if (room && userId) {
     return (
-      <div className="fade-in" style={{ 
-        display: "flex", 
-        flexDirection: "row",
-        height: "100vh", 
-        padding: "1.5rem",
-        gap: "1.5rem",
-        maxWidth: "1600px",
-        margin: "0 auto",
-        overflow: "hidden"
-      }}>
+      <>
+        {/* Модальное окно результатов ночи - рендерим вне основного контейнера */}
+        <NightResultsModal
+          isOpen={nightResultsModal.isOpen}
+          killed={nightResultsModal.killed}
+          onClose={() => setNightResultsModal({ isOpen: false, killed: [] })}
+        />
+        
+        <div className="fade-in" style={{ 
+          display: "flex", 
+          flexDirection: "row",
+          height: "100vh", 
+          padding: "1.5rem",
+          gap: "1.5rem",
+          maxWidth: "1600px",
+          margin: "0 auto",
+          overflow: "hidden"
+        }}>
         {/* Левая панель */}
         <div style={{ 
           width: "320px", 
@@ -876,6 +894,7 @@ export function RoomPage() {
             myRole={myRole}
             revealedRoles={revealedRoles}
             gameStatus={gameStatus}
+            users={users}
           />
 
           {/* Список пользователей */}
@@ -1158,10 +1177,11 @@ export function RoomPage() {
           </div>
         )}
       </div>
+      </>
     );
   }
 
-  // Login screen (unchanged)
+  // Login screen
   return (
     <div className="fade-in" style={{ 
       display: "flex", 
@@ -1338,4 +1358,3 @@ export function RoomPage() {
     </div>
   );
 }
-
