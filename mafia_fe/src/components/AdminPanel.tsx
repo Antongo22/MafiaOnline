@@ -27,6 +27,7 @@ interface RoleInfo {
 // Минимальная конфигурация для разного количества игроков
 const getDefaultRoles = (playerCount: number): RoleCount => {
   if (playerCount < 4) {
+    // Минимум 4 игрока, но на всякий случай оставляем обработку
     return {
       Citizen: Math.max(1, playerCount - 1),
       Mafia: 1,
@@ -285,14 +286,14 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
           </p>
           <button
             onClick={handleStartGame}
-            disabled={loading || playerCount < 2}
+            disabled={loading || playerCount < 4}
             className="btn-primary w-full"
           >
             {loading ? "..." : "🎮 Начать игру"}
           </button>
-          {playerCount < 2 && (
+          {playerCount < 4 && (
             <p style={{ margin: 0, color: "var(--warning)", fontSize: "0.75rem", textAlign: "center" }}>
-              Нужно минимум 2 игрока
+              Нужно минимум 4 игрока
             </p>
           )}
         </>

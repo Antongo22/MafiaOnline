@@ -39,6 +39,11 @@ public class GameController : ControllerBase
         if (room.Status != GameStatus.Created)
             return BadRequest("Game can only be started from Created status");
         
+        // Проверяем минимальное количество игроков
+        var activePlayersCount = room.Users.Count(u => u.Status != UserStatus.Leave);
+        if (activePlayersCount < 4)
+            return BadRequest($"Minimum 4 players required to start the game. Current players: {activePlayersCount}");
+        
         // Переводим в статус выбора ролей
         room.Status = GameStatus.Waiting;
         
