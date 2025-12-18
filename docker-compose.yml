@@ -4,8 +4,9 @@ services:
       context: ./Mafia
       dockerfile: Dockerfile
     container_name: mafia-backend
-    ports:
-      - "5141:8080"
+    # Порт не пробрасывается наружу - доступ только через nginx (frontend)
+    # ports:
+    #   - "5141:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
@@ -25,7 +26,7 @@ services:
       dockerfile: Dockerfile
     container_name: mafia-frontend
     ports:
-      - "80:80"
+      - "3123:80"
     environment:
       - VITE_API_URL=http://localhost:5141
     depends_on:
