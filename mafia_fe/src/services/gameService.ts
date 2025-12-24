@@ -110,6 +110,61 @@ export class GameService {
       throw new Error(error || "Failed to perform night action");
     }
   }
+
+  /**
+   * Проголосовать в разрешении ничьей (убить всех или помиловать всех)
+   */
+  async tieBreakerVote(roomId: string, voterId: string, killAll: boolean): Promise<void> {
+    const response = await fetch(
+      `${API_URL}/api/GameCycle/tie-breaker-vote?roomId=${roomId}&voterId=${voterId}&killAll=${killAll}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || "Failed to vote in tie breaker");
+    }
+  }
+
+  /**
+   * Сохранить настройки игры (только админ)
+   */
+  async saveGameSettings(
+    roomId: string,
+    adminId: string,
+    settings: {
+      individualSpeechTime: number;
+      freeDiscussionTime: number;
+      votingTime: number;
+      nightActionTime: number;
+    }
+  ): Promise<void> {
+    const response = await fetch(
+      `${API_URL}/api/Game/settings?roomId=${roomId}&adminId=${adminId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          individualSpeechTime: settings.individualSpeechTime,
+          freeDiscussionTime: settings.freeDiscussionTime,
+          votingTime: settings.votingTime,
+          nightActionTime: settings.nightActionTime,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || "Failed to save game settings");
+    }
+  }
 }
 
 export const gameService = new GameService();

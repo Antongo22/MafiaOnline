@@ -6,7 +6,9 @@ import type {
   VotingResults, 
   NightResults, 
   CardRevealed, 
-  GameOverData 
+  GameOverData,
+  TieBreakerStarted,
+  TieBreakerResults
 } from "../types/game";
 
 export interface ChatMessage {
@@ -62,6 +64,8 @@ class ChatService {
   private gameResumedHandlers: ((data: { resumedBy: string; remainingTime: number }) => void)[] = [];
   private playerDiedHandlers: ((data: { userId: string; userName: string; role: string; reason: string }) => void)[] = [];
   private playerEliminatedHandlers: ((data: { userId: string; userName: string; role: string; reason: string }) => void)[] = [];
+  private tieBreakerStartedHandlers: ((data: TieBreakerStarted) => void)[] = [];
+  private tieBreakerResultsHandlers: ((data: TieBreakerResults) => void)[] = [];
 
   async connect(apiUrl: string = "http://localhost:5141"): Promise<void> {
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
@@ -200,6 +204,16 @@ class ChatService {
       this.gameOverHandlers.forEach((handler) => handler(data));
     });
 
+    // Обработчик запуска разрешения ничьей
+    this.connection.on("TieBreakerStarted", (data: TieBreakerStarted) => {
+      this.tieBreakerStartedHandlers.forEach((handler) => handler(data));
+    });
+
+    // Обработчик результатов разрешения ничьей
+    this.connection.on("TieBreakerResults", (data: TieBreakerResults) => {
+      this.tieBreakerResultsHandlers.forEach((handler) => handler(data));
+    });
+
     this.connection.on("GamePaused", (data: { pausedBy: string; remainingTime: number }) => {
       this.gamePausedHandlers.forEach((handler) => handler(data));
     });
@@ -261,11 +275,16 @@ class ChatService {
     await this.connection.invoke("SendMafiaMessage", roomId, userId, userName, message);
   }
 
-  async kickPlayer(roomId: string, adminId: string, targetUserId: string): Promise<void> {
+  async kickPlayers(roomId: string, adminId: string, targetUserIds: string[]): Promise<void> {
     if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
       throw new Error("Connection is not established");
     }
-    await this.connection.invoke("KickPlayer", roomId, adminId, targetUserId);
+    await this.connection.invoke("KickPlayers", roomId, adminId, targetUserIds);
+  }
+  
+  // Обратная совместимость для одиночного исключения
+  async kickPlayer(roomId: string, adminId: string, targetUserId: string): Promise<void> {
+    await this.kickPlayers(roomId, adminId, [targetUserId]);
   }
 
   async disbandRoom(roomId: string): Promise<void> {
@@ -536,6 +555,22 @@ class ChatService {
 
   removePlayerEliminatedHandler(handler: (data: { userId: string; userName: string; role: string; reason: string }) => void): void {
     this.playerEliminatedHandlers = this.playerEliminatedHandlers.filter((h) => h !== handler);
+  }
+
+  onTieBreakerStarted(handler: (data: TieBreakerStarted) => void): void {
+    this.tieBreakerStartedHandlers.push(handler);
+  }
+
+  removeTieBreakerStartedHandler(handler: (data: TieBreakerStarted) => void): void {
+    this.tieBreakerStartedHandlers = this.tieBreakerStartedHandlers.filter((h) => h !== handler);
+  }
+
+  onTieBreakerResults(handler: (data: TieBreakerResults) => void): void {
+    this.tieBreakerResultsHandlers.push(handler);
+  }
+
+  removeTieBreakerResultsHandler(handler: (data: TieBreakerResults) => void): void {
+    this.tieBreakerResultsHandlers = this.tieBreakerResultsHandlers.filter((h) => h !== handler);
   }
 
   isConnected(): boolean {

@@ -88,6 +88,44 @@ public class GameController : ControllerBase
     }
 
     /// <summary>
+    /// Сохранить настройки таймеров игры (только админ, только до старта игры)
+    /// </summary>
+    [HttpPost("settings")]
+    public ActionResult SaveGameSettings(string roomId, string adminId, [FromBody] GameSettings settings)
+    {
+        ValidationHelper.ValidateNotEmpty(roomId, nameof(roomId));
+        ValidationHelper.ValidateNotEmpty(adminId, nameof(adminId));
+        ValidationHelper.ValidateNotNull(settings, nameof(settings));
+        
+        var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
+        if (room == null)
+            return NotFound("Room not found");
+        
+        var admin = room.Users.FirstOrDefault(u => u.Id == adminId);
+        if (admin == null || admin.Status != UserStatus.Admin)
+            return Unauthorized("Only admin can save game settings");
+        
+        // Можно изменять настройки только до начала игры
+        if (room.Status != GameStatus.Created && room.Status != GameStatus.Waiting)
+            return BadRequest("Game settings can only be changed before game start");
+        
+        // Валидация значений (минимум 5 секунд, максимум 300 секунд)
+        if (settings.IndividualSpeechTime < 5 || settings.IndividualSpeechTime > 300)
+            return BadRequest("IndividualSpeechTime must be between 5 and 300 seconds");
+        if (settings.FreeDiscussionTime < 5 || settings.FreeDiscussionTime > 300)
+            return BadRequest("FreeDiscussionTime must be between 5 and 300 seconds");
+        if (settings.VotingTime < 5 || settings.VotingTime > 300)
+            return BadRequest("VotingTime must be between 5 and 300 seconds");
+        if (settings.NightActionTime < 5 || settings.NightActionTime > 300)
+            return BadRequest("NightActionTime must be between 5 and 300 seconds");
+        
+        // Сохраняем настройки
+        room.GameSettings = settings;
+        
+        return Ok(new { message = "Game settings saved", settings = room.GameSettings });
+    }
+
+    /// <summary>
     /// Раздает роли игрокам и начинает игру
     /// </summary>
     [HttpPost("distribute-roles")]

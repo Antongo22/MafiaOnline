@@ -279,7 +279,7 @@ public class ChatHub : Hub
         await Clients.Group(mafiaGroupName).SendAsync("ReceiveMafiaMessage", chatMessage);
     }
 
-    public async Task KickPlayer(string roomId, string adminId, string targetUserId)
+    public async Task KickPlayers(string roomId, string adminId, string[] targetUserIds)
     {
         // Проверяем существование комнаты
         var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
@@ -297,19 +297,19 @@ public class ChatHub : Hub
             return;
         }
 
-        var targetUser = room.Users.FirstOrDefault(u => u.Id == targetUserId);
-        if (targetUser == null)
+        // Отправляем событие о кике для каждого игрока
+        foreach (var targetUserId in targetUserIds)
         {
-            await Clients.Caller.SendAsync("Error", "Target user not found");
-            return;
+            var targetUser = room.Users.FirstOrDefault(u => u.Id == targetUserId);
+            if (targetUser != null && targetUser.Status != Enums.UserStatus.Admin)
+            {
+                await Clients.Group(roomId).SendAsync("PlayerKicked", new { 
+                    kickedUserId = targetUser.Id, 
+                    kickedUserName = targetUser.Name,
+                    kickedBy = admin.Name
+                });
+            }
         }
-
-        // Отправляем событие о кике всем
-        await Clients.Group(roomId).SendAsync("PlayerKicked", new { 
-            kickedUserId = targetUser.Id, 
-            kickedUserName = targetUser.Name,
-            kickedBy = admin.Name
-        });
 
         // Отправляем обновленный список пользователей
         var activeUsers = room.Users.Where(u => u.Status != Enums.UserStatus.Leave).ToList();

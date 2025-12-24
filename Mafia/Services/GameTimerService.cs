@@ -22,6 +22,14 @@ public class GameTimerService : BackgroundService
         _logger = logger;
     }
 
+    /// <summary>
+    /// Получить настройки таймеров для комнаты (с дефолтными значениями если не заданы)
+    /// </summary>
+    private static GameSettings GetGameSettings(RoomDTO room)
+    {
+        return room.GameSettings ?? new GameSettings();
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("GameTimerService started");
@@ -115,6 +123,11 @@ public class GameTimerService : BackgroundService
                 await AdvanceVoting(room);
                 break;
             
+            case GamePhase.TieBreaker:
+                _logger.LogInformation($"[Room {room.Id}] Advancing TieBreaker");
+                await ProcessTieBreakerResults(room);
+                break;
+            
             case GamePhase.Night:
                 _logger.LogInformation($"[Room {room.Id}] Advancing Night phase: {gameState.CurrentNightPhase}");
                 await AdvanceNight(room);
@@ -130,23 +143,25 @@ public class GameTimerService : BackgroundService
         if (gameState.CurrentSpeakerIndex >= gameState.SpeakerOrder.Count)
         {
             // Все выступили, переходим к свободному обсуждению
+            var settings = GetGameSettings(room);
             gameState.Phase = GamePhase.FreeDiscussion;
             gameState.PhaseStartTime = DateTime.UtcNow;
-            gameState.PhaseTimeSeconds = 5; // Для тестов: 5 секунд (обычно 90)
+            gameState.PhaseTimeSeconds = settings.FreeDiscussionTime;
             gameState.CurrentSpeakerId = null;
 
             await _hubContext.Clients.Group(room.Id).SendAsync("PhaseChanged", new
             {
                 phase = "FreeDiscussion",
-                timeSeconds = 5
+                timeSeconds = settings.FreeDiscussionTime
             });
         }
         else
         {
             // Следующий спикер
+            var settings = GetGameSettings(room);
             gameState.CurrentSpeakerId = gameState.SpeakerOrder[gameState.CurrentSpeakerIndex];
             gameState.PhaseStartTime = DateTime.UtcNow;
-            gameState.PhaseTimeSeconds = 30;
+            gameState.PhaseTimeSeconds = settings.IndividualSpeechTime;
 
             var speaker = room.Users.FirstOrDefault(u => u.Id == gameState.CurrentSpeakerId);
             
@@ -154,7 +169,7 @@ public class GameTimerService : BackgroundService
             {
                 speakerId = gameState.CurrentSpeakerId,
                 speakerName = speaker?.Name,
-                timeSeconds = 30
+                timeSeconds = settings.IndividualSpeechTime
             });
         }
     }
@@ -162,12 +177,13 @@ public class GameTimerService : BackgroundService
     private async Task StartVoting(RoomDTO room)
     {
         var gameState = room.CurrentGameState!;
+        var settings = GetGameSettings(room);
         
         gameState.Phase = GamePhase.Voting;
         gameState.Votes.Clear();
         gameState.CurrentVoterIndex = 0;
         gameState.PhaseStartTime = DateTime.UtcNow;
-        gameState.PhaseTimeSeconds = 15;
+        gameState.PhaseTimeSeconds = settings.VotingTime;
 
         // Создаем порядок голосования (только живые игроки)
         var alivePlayers = room.Users
@@ -190,7 +206,7 @@ public class GameTimerService : BackgroundService
             voterId = gameState.CurrentVoterId,
             voterName = room.Users.FirstOrDefault(u => u.Id == gameState.CurrentVoterId)?.Name,
             candidates = candidates, // Список живых игроков для голосования
-            timeSeconds = 15
+            timeSeconds = settings.VotingTime
         });
     }
 
@@ -215,9 +231,10 @@ public class GameTimerService : BackgroundService
         else
         {
             // Следующий голосующий
+            var settings = GetGameSettings(room);
             gameState.CurrentVoterId = gameState.VoterOrder[gameState.CurrentVoterIndex];
             gameState.PhaseStartTime = DateTime.UtcNow;
-            gameState.PhaseTimeSeconds = 15;
+            gameState.PhaseTimeSeconds = settings.VotingTime;
 
             // Формируем список кандидатов (живые игроки)
             var alivePlayers = room.Users
@@ -230,13 +247,12 @@ public class GameTimerService : BackgroundService
                 userId = id,
                 userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name
             }).ToList();
-
             await _hubContext.Clients.Group(room.Id).SendAsync("VoterChanged", new
             {
                 voterId = gameState.CurrentVoterId,
                 voterName = room.Users.FirstOrDefault(u => u.Id == gameState.CurrentVoterId)?.Name,
                 candidates = candidates, // Список живых игроков для голосования
-                timeSeconds = 15
+                timeSeconds = settings.VotingTime
             });
         }
     }
@@ -290,9 +306,34 @@ public class GameTimerService : BackgroundService
             }
             else
             {
-                // Ничья - никто не исключается
-                _logger.LogInformation($"[Room {room.Id}] Voting tie - no one eliminated. Players with max votes: {eliminated.Count}");
-                eliminated.Clear();
+                // Ничья - запускаем фазу разрешения ничьей
+                _logger.LogInformation($"[Room {room.Id}] Voting tie detected - starting TieBreaker phase. Players with max votes: {eliminated.Count}");
+                
+                // Сохраняем кандидатов для разрешения ничьей
+                gameState.TieBreakerCandidates = eliminated;
+                gameState.TieBreakerVotes.Clear();
+                
+                // Переходим в фазу TieBreaker
+                gameState.Phase = GamePhase.TieBreaker;
+                gameState.PhaseStartTime = DateTime.UtcNow;
+                var settings = GetGameSettings(room);
+                gameState.PhaseTimeSeconds = settings.VotingTime * gameState.VoterOrder.Count; // Время на голосование всех игроков
+                
+                // Формируем список кандидатов с именами для отображения
+                var candidateNames = eliminated.Select(id => new
+                {
+                    userId = id,
+                    userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name,
+                    role = room.PlayerRoles!.ContainsKey(id) ? room.PlayerRoles[id].ToString() : null
+                }).ToList();
+                
+                await _hubContext.Clients.Group(room.Id).SendAsync("TieBreakerStarted", new
+                {
+                    candidates = candidateNames,
+                    timeSeconds = gameState.PhaseTimeSeconds
+                });
+                
+                return; // Выходим, обработка TieBreaker будет в AdvancePhase
             }
 
             // Преобразуем голоса в формат с именами для отображения
@@ -339,8 +380,119 @@ public class GameTimerService : BackgroundService
             gameState.IsFirstCycle = false;
         }
 
-        // После голосования всегда ночь
+        // После голосования всегда ночь (если не было ничьей, которая обрабатывается отдельно)
         _logger.LogInformation($"[Room {room.Id}] Voting completed -> Starting Night (Day {gameState.DayNumber + 1})");
+        await StartNight(room);
+    }
+
+    private async Task ProcessTieBreakerResults(RoomDTO room)
+    {
+        var gameState = room.CurrentGameState!;
+        
+        if (gameState.TieBreakerCandidates == null || !gameState.TieBreakerCandidates.Any())
+        {
+            _logger.LogWarning($"[Room {room.Id}] ProcessTieBreakerResults called but no candidates");
+            await StartNight(room);
+            return;
+        }
+
+        // Подсчитываем голоса: true = убить всех, false = помиловать всех
+        var alivePlayers = room.Users
+            .Where(u => u.Status != UserStatus.Leave && u.IsAlive && room.PlayerRoles!.ContainsKey(u.Id))
+            .Select(u => u.Id)
+            .ToList();
+        
+        var killVotes = gameState.TieBreakerVotes.Count(v => v.Value == true);
+        var pardonVotes = gameState.TieBreakerVotes.Count(v => v.Value == false);
+        
+        // Игроки, которые не проголосовали, считаются за помилование (по умолчанию)
+        var playersWhoVoted = gameState.TieBreakerVotes.Keys.ToHashSet();
+        var playersWhoDidntVote = alivePlayers.Except(playersWhoVoted).ToList();
+        pardonVotes += playersWhoDidntVote.Count;
+        
+        _logger.LogInformation($"[Room {room.Id}] TieBreaker results: Kill={killVotes}, Pardon={pardonVotes}, Candidates={gameState.TieBreakerCandidates.Count}");
+        
+        // Проверяем, сколько игроков останется после убийства
+        var wouldRemainAlive = alivePlayers.Except(gameState.TieBreakerCandidates).Count();
+        
+        bool shouldKill = killVotes > pardonVotes && wouldRemainAlive >= 1;
+        
+        if (shouldKill)
+        {
+            // Убиваем всех кандидатов
+            foreach (var playerId in gameState.TieBreakerCandidates)
+            {
+                var player = room.Users.FirstOrDefault(u => u.Id == playerId);
+                if (player != null && player.IsAlive)
+                {
+                    player.IsAlive = false;
+                    
+                    var playerRole = room.PlayerRoles!.ContainsKey(playerId) 
+                        ? room.PlayerRoles[playerId].ToString() 
+                        : "Unknown";
+                    
+                    _logger.LogInformation($"[Room {room.Id}] TieBreaker: Player {player.Name} ({playerId}) eliminated. Role: {playerRole}");
+                    
+                    await _hubContext.Clients.Group(room.Id).SendAsync("PlayerEliminated", new
+                    {
+                        userId = playerId,
+                        userName = player.Name,
+                        role = playerRole,
+                        reason = "tiebreaker"
+                    });
+                }
+            }
+            
+            await _hubContext.Clients.Group(room.Id).SendAsync("TieBreakerResults", new
+            {
+                decision = "kill",
+                killed = gameState.TieBreakerCandidates.Select(id => new
+                {
+                    userId = id,
+                    userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name,
+                    role = room.PlayerRoles!.ContainsKey(id) ? room.PlayerRoles[id].ToString() : null
+                })
+            });
+        }
+        else
+        {
+            // Помилование (либо помилование победило, либо убийство привело бы к 0 игроков)
+            _logger.LogInformation($"[Room {room.Id}] TieBreaker: All candidates spared (kill votes={killVotes}, pardon votes={pardonVotes}, would remain={wouldRemainAlive})");
+            
+            await _hubContext.Clients.Group(room.Id).SendAsync("TieBreakerResults", new
+            {
+                decision = "pardon",
+                spared = gameState.TieBreakerCandidates.Select(id => new
+                {
+                    userId = id,
+                    userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name,
+                    role = room.PlayerRoles!.ContainsKey(id) ? room.PlayerRoles[id].ToString() : null
+                })
+            });
+        }
+        
+        // Очищаем данные TieBreaker
+        gameState.TieBreakerCandidates = null;
+        gameState.TieBreakerVotes.Clear();
+        
+        // Проверяем условия победы
+        var winner = WinConditionService.CheckWinCondition(room);
+        if (winner != null)
+        {
+            _logger.LogInformation($"[Room {room.Id}] Game over after TieBreaker! Winner: {winner}");
+            await EndGame(room, winner.Value);
+            return;
+        }
+        
+        // Если это был первый цикл, сбрасываем флаг после голосования
+        if (gameState.IsFirstCycle)
+        {
+            _logger.LogInformation($"[Room {room.Id}] First cycle completed, resetting IsFirstCycle flag");
+            gameState.IsFirstCycle = false;
+        }
+        
+        // Переходим к ночи
+        _logger.LogInformation($"[Room {room.Id}] TieBreaker completed -> Starting Night (Day {gameState.DayNumber + 1})");
         await StartNight(room);
     }
 
@@ -382,9 +534,10 @@ public class GameTimerService : BackgroundService
         }
         else
         {
+            var settings = GetGameSettings(room);
             gameState.CurrentNightPhase = nextPhase;
             gameState.PhaseStartTime = DateTime.UtcNow;
-            gameState.PhaseTimeSeconds = 30;
+            gameState.PhaseTimeSeconds = settings.NightActionTime;
 
             // Формируем список живых игроков для выбора цели
             var alivePlayers = room.Users

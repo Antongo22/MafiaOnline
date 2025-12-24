@@ -113,13 +113,16 @@ public class Room : ControllerBase
     }
 
     /// <summary>
-    /// Выгнать игрока из комнаты (только админ)
+    /// Выгнать игрока(ов) из комнаты (только админ)
     /// </summary>
     [HttpPost("kick")]
-    public ActionResult KickPlayer(string adminId, string targetUserId)
+    public ActionResult KickPlayers(string adminId, [FromBody] string[] targetUserIds)
     {
         ValidationHelper.ValidateNotEmpty(adminId, nameof(adminId));
-        ValidationHelper.ValidateNotEmpty(targetUserId, nameof(targetUserId));
+        ValidationHelper.ValidateNotNull(targetUserIds, nameof(targetUserIds));
+        
+        if (targetUserIds.Length == 0)
+            return BadRequest("At least one target user ID is required");
         
         var room = Game.Rooms.FirstOrDefault(r => r.Users.Any(u => u.Id == adminId));
         if (room == null)
@@ -129,16 +132,24 @@ public class Room : ControllerBase
         if (admin == null || admin.Status != UserStatus.Admin)
             return Unauthorized("Only admin can kick players");
         
-        var targetUser = room.Users.FirstOrDefault(u => u.Id == targetUserId);
-        if (targetUser == null)
-            return NotFound("Target user not found");
+        var kickedUsers = new List<string>();
+        foreach (var targetUserId in targetUserIds)
+        {
+            var targetUser = room.Users.FirstOrDefault(u => u.Id == targetUserId);
+            if (targetUser == null)
+                continue;
+            
+            if (targetUser.Status == UserStatus.Admin)
+                continue; // Пропускаем админа
+            
+            // Помечаем пользователя как покинувшего
+            targetUser.Status = UserStatus.Leave;
+            kickedUsers.Add(targetUser.Name);
+        }
         
-        if (targetUser.Status == UserStatus.Admin)
-            return BadRequest("Cannot kick admin");
+        if (kickedUsers.Count == 0)
+            return BadRequest("No valid players to kick");
         
-        // Помечаем пользователя как покинувшего
-        targetUser.Status = UserStatus.Leave;
-        
-        return Ok(new { message = "Player kicked successfully", kickedUserName = targetUser.Name });
+        return Ok(new { message = "Players kicked successfully", kickedUserNames = kickedUsers });
     }
 }

@@ -5,6 +5,7 @@ export const GamePhase = {
   IndividualSpeech: "IndividualSpeech",
   FreeDiscussion: "FreeDiscussion",
   Voting: "Voting",
+  TieBreaker: "TieBreaker",
   Night: "Night",
   GameOver: "GameOver"
 } as const;
@@ -94,5 +95,28 @@ export interface CardRevealed {
 export interface GameOverData {
   winner: string;
   roles: Record<string, string>;
+}
+
+export interface TieBreakerStarted {
+  candidates: Array<{
+    userId: string;
+    userName: string;
+    role: string | null;
+  }>;
+  timeSeconds: number;
+}
+
+export interface TieBreakerResults {
+  decision: "kill" | "pardon";
+  killed?: Array<{
+    userId: string;
+    userName: string;
+    role: string | null;
+  }>;
+  spared?: Array<{
+    userId: string;
+    userName: string;
+    role: string | null;
+  }>;
 }
 

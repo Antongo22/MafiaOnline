@@ -16,6 +16,7 @@ const PHASE_NAMES: Record<GamePhase, string> = {
   [GamePhase.IndividualSpeech]: "Индивидуальные выступления",
   [GamePhase.FreeDiscussion]: "Свободное обсуждение",
   [GamePhase.Voting]: "Голосование",
+  [GamePhase.TieBreaker]: "Разрешение ничьей",
   [GamePhase.Night]: "Ночь",
   [GamePhase.GameOver]: "Игра окончена"
 };
@@ -32,7 +33,8 @@ const NIGHT_PHASE_NAMES: Record<string, string> = {
 const TEAM_NAMES: Record<string, string> = {
   Good: "Мирные жители",
   Evil: "Мафия",
-  Neutral: "Маньяк"
+  Neutral: "Маньяк",
+  Draw: "Ничья - никого не осталось"
 };
 
 export function GamePhaseDisplay({
@@ -62,6 +64,7 @@ export function GamePhaseDisplay({
       case GamePhase.FreeDiscussion:
         return "var(--info)";
       case GamePhase.Voting:
+      case GamePhase.TieBreaker:
         return "var(--warning)";
       case GamePhase.Night:
         return "var(--danger)";

@@ -71,6 +71,23 @@ export function RoomPage() {
     tie: boolean;
   }>({ isOpen: false, eliminated: [], tie: false });
   
+  // TieBreaker modal
+  const [tieBreakerModal, setTieBreakerModal] = useState<{
+    isOpen: boolean;
+    candidates: Array<{ userId: string; userName: string; role: string | null }>;
+  }>({ isOpen: false, candidates: [] });
+  
+  // Game settings
+  const [gameSettings, setGameSettings] = useState({
+    individualSpeechTime: 30,
+    freeDiscussionTime: 90,
+    votingTime: 15,
+    nightActionTime: 30,
+  });
+  
+  // Multi-kick selection
+  const [selectedPlayersForKick, setSelectedPlayersForKick] = useState<Set<string>>(new Set());
+  
   // Alerts
   const [alert, setAlert] = useState<{ message: string; type: "info" | "success" | "warning" | "danger" } | null>(null);
 
@@ -426,10 +443,43 @@ export function RoomPage() {
       const winnerNames: Record<string, string> = {
         Good: "Мирные жители",
         Evil: "Мафия",
-        Neutral: "Маньяк"
+        Neutral: "Маньяк",
+        Draw: "Ничья - никого не осталось"
       };
       
-      showAlert(`🎉 Победили: ${winnerNames[data.winner] || data.winner}!`, "success");
+      showAlert(`🎉 ${winnerNames[data.winner] || data.winner}!`, "success");
+    };
+
+    const handleTieBreakerStarted = (data: { 
+      candidates: Array<{ userId: string; userName: string; role: string | null }>; 
+      timeSeconds: number 
+    }) => {
+      setGamePhase(GamePhase.TieBreaker);
+      setTieBreakerModal({
+        isOpen: true,
+        candidates: data.candidates
+      });
+      showAlert("⚖️ Ничья! Голосуйте: убить всех или помиловать всех", "warning");
+    };
+
+    const handleTieBreakerResults = (data: { 
+      decision: "kill" | "pardon"; 
+      killed?: Array<{ userId: string; userName: string; role: string | null }>;
+      spared?: Array<{ userId: string; userName: string; role: string | null }>;
+    }) => {
+      setTieBreakerModal({ isOpen: false, candidates: [] });
+      
+      if (data.decision === "kill" && data.killed) {
+        // Раскрываем роли убитых
+        const newRevealedRoles: { [key: string]: string } = {};
+        data.killed.forEach(k => {
+          if (k.role) newRevealedRoles[k.userId] = k.role;
+        });
+        setRevealedRoles(prev => ({ ...prev, ...newRevealedRoles }));
+        showAlert(`⚔️ Игроки исключены: ${data.killed.map(k => k.userName).join(", ")}`, "warning");
+      } else {
+        showAlert(`✅ Игроки помилованы: ${data.spared?.map(s => s.userName).join(", ")}`, "info");
+      }
     };
 
     const handleGamePaused = (data: { pausedBy: string }) => {
@@ -482,6 +532,8 @@ export function RoomPage() {
     chatService.onGameResumed(handleGameResumed);
     chatService.onPlayerDied(handlePlayerDied);
     chatService.onPlayerEliminated(handlePlayerEliminated);
+    chatService.onTieBreakerStarted(handleTieBreakerStarted);
+    chatService.onTieBreakerResults(handleTieBreakerResults);
 
     // Unsubscribe
     return () => {
@@ -506,6 +558,8 @@ export function RoomPage() {
       chatService.removeGameResumedHandler(handleGameResumed);
       chatService.removePlayerDiedHandler(handlePlayerDied);
       chatService.removePlayerEliminatedHandler(handlePlayerEliminated);
+      chatService.removeTieBreakerStartedHandler(handleTieBreakerStarted);
+      chatService.removeTieBreakerResultsHandler(handleTieBreakerResults);
     };
   }, [room, userId, users]);
 
@@ -709,8 +763,12 @@ export function RoomPage() {
     if (!confirmKick) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/Room/kick?adminId=${userId}&targetUserId=${targetUserId}`, {
+      const response = await fetch(`${API_URL}/api/Room/kick?adminId=${userId}`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify([targetUserId]),
       });
 
       if (!response.ok) {
@@ -718,9 +776,64 @@ export function RoomPage() {
         throw new Error(errorText || "Failed to kick player");
       }
 
-      await chatService.kickPlayer(room.id, userId, targetUserId);
+      await chatService.kickPlayers(room.id, userId, [targetUserId]);
+      setSelectedPlayersForKick(new Set());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to kick player");
+    }
+  };
+
+  const handleKickSelectedPlayers = async () => {
+    if (!userId || !room || !isAdmin || selectedPlayersForKick.size === 0) return;
+
+    const selectedArray = Array.from(selectedPlayersForKick);
+    const selectedNames = selectedArray.map(id => users.find(u => u.id === id)?.name).filter(Boolean).join(", ");
+    
+    const confirmKick = window.confirm(`Исключить выбранных игроков: ${selectedNames}?`);
+    if (!confirmKick) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/Room/kick?adminId=${userId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(selectedArray),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to kick players");
+      }
+
+      await chatService.kickPlayers(room.id, userId, selectedArray);
+      setSelectedPlayersForKick(new Set());
+      showAlert(`Исключены: ${selectedNames}`, "info");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to kick players");
+    }
+  };
+
+  const handleTieBreakerVote = async (killAll: boolean) => {
+    if (!room || !userId) return;
+    
+    try {
+      await gameService.tieBreakerVote(room.id, userId, killAll);
+      setTieBreakerModal({ isOpen: false, candidates: [] });
+      showAlert(`Ваш голос: ${killAll ? "Убить всех" : "Помиловать всех"}`, "info");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to vote in tie breaker");
+    }
+  };
+
+  const handleSaveGameSettings = async () => {
+    if (!room || !userId || !isAdmin) return;
+    
+    try {
+      await gameService.saveGameSettings(room.id, userId, gameSettings);
+      showAlert("Настройки сохранены", "success");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save game settings");
     }
   };
 
@@ -820,6 +933,64 @@ export function RoomPage() {
           tie={votingResultsModal.tie}
           onClose={() => setVotingResultsModal({ isOpen: false, eliminated: [], tie: false })}
         />
+        
+        {/* Модальное окно разрешения ничьей */}
+        {tieBreakerModal.isOpen && (
+          <div style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10000,
+            padding: "1rem"
+          }}>
+            <div style={{
+              background: "var(--bg-primary)",
+              borderRadius: "var(--radius-lg)",
+              padding: "2rem",
+              maxWidth: "500px",
+              width: "100%",
+              boxShadow: "0 10px 40px rgba(0, 0, 0, 0.5)"
+            }}>
+              <h2 style={{ marginTop: 0, marginBottom: "1rem" }}>⚖️ Разрешение ничьей</h2>
+              <p style={{ marginBottom: "1rem", color: "var(--text-secondary)" }}>
+                Несколько игроков получили одинаковое количество голосов:
+              </p>
+              <ul style={{ marginBottom: "1.5rem", paddingLeft: "1.5rem" }}>
+                {tieBreakerModal.candidates.map(c => (
+                  <li key={c.userId} style={{ marginBottom: "0.5rem" }}>
+                    <strong>{c.userName}</strong> {c.role && `(${c.role})`}
+                  </li>
+                ))}
+              </ul>
+              <p style={{ marginBottom: "1.5rem", fontWeight: "bold" }}>
+                Что делаем?
+              </p>
+              <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
+                <button
+                  onClick={() => handleTieBreakerVote(true)}
+                  className="btn-danger"
+                  style={{ flex: 1, padding: "1rem", fontSize: "1rem" }}
+                >
+                  ⚔️ Убить всех
+                </button>
+                <button
+                  onClick={() => handleTieBreakerVote(false)}
+                  className="btn-success"
+                  style={{ flex: 1, padding: "1rem", fontSize: "1rem" }}
+                >
+                  ✅ Помиловать всех
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
         
         <div className="fade-in" style={{ 
           display: "flex", 
@@ -929,22 +1100,37 @@ export function RoomPage() {
             flexDirection: "column",
             overflow: "hidden"
           }}>
-            <h3 style={{ 
-              margin: 0, 
-              marginBottom: "1rem", 
-              fontSize: "1.125rem",
+            <div style={{ 
               display: "flex",
               alignItems: "center",
-              gap: "0.5rem"
+              justifyContent: "space-between",
+              marginBottom: "1rem"
             }}>
-              <span>👥 Участники</span>
-              <span className="badge" style={{ 
-                background: "var(--accent-light)",
-                color: "var(--accent-primary)"
+              <h3 style={{ 
+                margin: 0, 
+                fontSize: "1.125rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem"
               }}>
-                {users.length}
-              </span>
-            </h3>
+                <span>👥 Участники</span>
+                <span className="badge" style={{ 
+                  background: "var(--accent-light)",
+                  color: "var(--accent-primary)"
+                }}>
+                  {users.length}
+                </span>
+              </h3>
+              {isAdmin && gamePhase === GamePhase.Lobby && selectedPlayersForKick.size > 0 && (
+                <button
+                  onClick={handleKickSelectedPlayers}
+                  className="btn-danger btn-sm"
+                  style={{ padding: "0.5rem" }}
+                >
+                  Исключить выбранных ({selectedPlayersForKick.size})
+                </button>
+              )}
+            </div>
             <div style={{ 
               display: "flex", 
               flexDirection: "column", 
@@ -992,6 +1178,22 @@ export function RoomPage() {
                   >
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, minWidth: 0 }}>
+                        {isAdmin && !isCurrentUser && !isDead && gamePhase === GamePhase.Lobby && (
+                          <input
+                            type="checkbox"
+                            checked={selectedPlayersForKick.has(user.id)}
+                            onChange={(e) => {
+                              const newSet = new Set(selectedPlayersForKick);
+                              if (e.target.checked) {
+                                newSet.add(user.id);
+                              } else {
+                                newSet.delete(user.id);
+                              }
+                              setSelectedPlayersForKick(newSet);
+                            }}
+                            style={{ cursor: "pointer" }}
+                          />
+                        )}
                         <div style={{
                           width: "8px",
                           height: "8px",
@@ -1051,6 +1253,127 @@ export function RoomPage() {
               })}
             </div>
           </div>
+
+          {/* Блок настроек игры */}
+          {isAdmin && gamePhase === GamePhase.Lobby && (
+            <div className="card" style={{
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden"
+            }}>
+              <h3 style={{ 
+                margin: 0, 
+                marginBottom: "1rem", 
+                fontSize: "1.125rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem"
+              }}>
+                <span>⚙️ Настройки игры</span>
+              </h3>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div>
+                  <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", fontSize: "0.875rem" }}>
+                    Время на индивидуальное выступление (секунды)
+                  </label>
+                  <input
+                    type="number"
+                    min="5"
+                    max="300"
+                    value={gameSettings.individualSpeechTime}
+                    onChange={(e) => setGameSettings({ ...gameSettings, individualSpeechTime: parseInt(e.target.value) || 30 })}
+                    style={{
+                      width: "100%",
+                      padding: "0.5rem",
+                      borderRadius: "var(--radius)",
+                      border: "1px solid var(--border)",
+                      background: "var(--bg-secondary)",
+                      color: "var(--text-primary)",
+                      fontSize: "0.875rem"
+                    }}
+                  />
+                </div>
+                
+                <div>
+                  <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", fontSize: "0.875rem" }}>
+                    Время на свободное обсуждение (секунды)
+                  </label>
+                  <input
+                    type="number"
+                    min="5"
+                    max="300"
+                    value={gameSettings.freeDiscussionTime}
+                    onChange={(e) => setGameSettings({ ...gameSettings, freeDiscussionTime: parseInt(e.target.value) || 90 })}
+                    style={{
+                      width: "100%",
+                      padding: "0.5rem",
+                      borderRadius: "var(--radius)",
+                      border: "1px solid var(--border)",
+                      background: "var(--bg-secondary)",
+                      color: "var(--text-primary)",
+                      fontSize: "0.875rem"
+                    }}
+                  />
+                </div>
+                
+                <div>
+                  <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", fontSize: "0.875rem" }}>
+                    Время на голосование (секунды)
+                  </label>
+                  <input
+                    type="number"
+                    min="5"
+                    max="300"
+                    value={gameSettings.votingTime}
+                    onChange={(e) => setGameSettings({ ...gameSettings, votingTime: parseInt(e.target.value) || 15 })}
+                    style={{
+                      width: "100%",
+                      padding: "0.5rem",
+                      borderRadius: "var(--radius)",
+                      border: "1px solid var(--border)",
+                      background: "var(--bg-secondary)",
+                      color: "var(--text-primary)",
+                      fontSize: "0.875rem"
+                    }}
+                  />
+                </div>
+                
+                <div>
+                  <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", fontSize: "0.875rem" }}>
+                    Время на ночное действие (секунды)
+                  </label>
+                  <input
+                    type="number"
+                    min="5"
+                    max="300"
+                    value={gameSettings.nightActionTime}
+                    onChange={(e) => setGameSettings({ ...gameSettings, nightActionTime: parseInt(e.target.value) || 30 })}
+                    style={{
+                      width: "100%",
+                      padding: "0.5rem",
+                      borderRadius: "var(--radius)",
+                      border: "1px solid var(--border)",
+                      background: "var(--bg-secondary)",
+                      color: "var(--text-primary)",
+                      fontSize: "0.875rem"
+                    }}
+                  />
+                </div>
+              </div>
+              
+              <button
+                onClick={handleSaveGameSettings}
+                className="btn-primary"
+                style={{ 
+                  marginTop: "1rem",
+                  width: "100%"
+                }}
+              >
+                Сохранить настройки
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Центральная панель - игровой контент */}

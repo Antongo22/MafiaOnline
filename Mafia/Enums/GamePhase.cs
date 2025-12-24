@@ -26,6 +26,11 @@ public enum GamePhase
     Voting,
     
     /// <summary>
+    /// Разрешение ничьей при голосовании (убить всех или помиловать всех)
+    /// </summary>
+    TieBreaker,
+    
+    /// <summary>
     /// Ночная фаза, роли выполняют свои действия
     /// </summary>
     Night,

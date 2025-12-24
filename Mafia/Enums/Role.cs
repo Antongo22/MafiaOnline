@@ -44,7 +44,10 @@ public enum Team
     Evil,
     
     /// <summary>Нейтральная команда</summary>
-    Neutral
+    Neutral,
+    
+    /// <summary>Ничья (никого не осталось)</summary>
+    Draw
 }
 
 /// <summary>

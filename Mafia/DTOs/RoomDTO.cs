@@ -21,6 +21,9 @@ public class RoomDTO
     // Настройка ролей для игры (Role -> количество)
     public Dictionary<Role, int>? RoleSettings { get; set; }
     
+    // Настройки таймеров игры
+    public GameSettings? GameSettings { get; set; }
+    
     // Состояние игрового цикла
     public GameState? CurrentGameState { get; set; }
 }

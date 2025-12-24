@@ -59,5 +59,9 @@ public class GameState
     public bool IsPaused { get; set; } = false;
     public DateTime? PauseStartTime { get; set; }
     public int RemainingTimeBeforePause { get; set; } = 0;
+    
+    // Разрешение ничьих при голосовании
+    public List<string>? TieBreakerCandidates { get; set; }
+    public Dictionary<string, bool> TieBreakerVotes { get; set; } = new(); // userId -> true=kill, false=pardon
 }
 

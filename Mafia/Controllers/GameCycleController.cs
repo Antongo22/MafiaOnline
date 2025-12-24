@@ -176,13 +176,14 @@ public class GameCycleController : ControllerBase
             .OrderBy(_ => Guid.NewGuid())
             .ToList();
 
+        var settings = room.GameSettings ?? new GameSettings();
         room.CurrentGameState = new GameState
         {
             Phase = GamePhase.IndividualSpeech,
             IsFirstCycle = true,
             DayNumber = 1,
             PhaseStartTime = DateTime.UtcNow,
-            PhaseTimeSeconds = 30,
+            PhaseTimeSeconds = settings.IndividualSpeechTime,
             SpeakerOrder = alivePlayers,
             CurrentSpeakerIndex = 0,
             CurrentSpeakerId = alivePlayers.FirstOrDefault(),
@@ -194,7 +195,7 @@ public class GameCycleController : ControllerBase
             phase = "IndividualSpeech",
             speakerId = room.CurrentGameState.CurrentSpeakerId,
             speakerName = room.Users.FirstOrDefault(u => u.Id == room.CurrentGameState.CurrentSpeakerId)?.Name,
-            timeSeconds = 30
+            timeSeconds = settings.IndividualSpeechTime
         });
 
         return Ok(new { message = "Game cycle started" });
@@ -264,12 +265,13 @@ public class GameCycleController : ControllerBase
                 userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name
             }).ToList();
 
+            var settings = room.GameSettings ?? new GameSettings();
             await _hubContext.Clients.Group(roomId).SendAsync("VoterChanged", new
             {
                 voterId = gameState.CurrentVoterId,
                 voterName = room.Users.FirstOrDefault(u => u.Id == gameState.CurrentVoterId)?.Name,
                 candidates = candidates, // Список живых игроков для голосования
-                timeSeconds = 15
+                timeSeconds = settings.VotingTime
             });
         }
         else
@@ -287,6 +289,40 @@ public class GameCycleController : ControllerBase
         }
 
         return Ok(new { message = "Vote recorded" });
+    }
+
+    /// <summary>
+    /// Проголосовать в разрешении ничьей (убить всех или помиловать всех)
+    /// </summary>
+    [HttpPost("tie-breaker-vote")]
+    public async Task<ActionResult> TieBreakerVote(string roomId, string voterId, bool killAll)
+    {
+        ValidationHelper.ValidateNotEmpty(roomId, nameof(roomId));
+        ValidationHelper.ValidateNotEmpty(voterId, nameof(voterId));
+        
+        var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
+        if (room == null)
+            return NotFound("Room not found");
+
+        var gameState = room.CurrentGameState;
+        if (gameState == null || gameState.Phase != GamePhase.TieBreaker)
+            return BadRequest("Not in tie breaker phase");
+
+        var voter = room.Users.FirstOrDefault(u => u.Id == voterId);
+        if (voter == null || !voter.IsAlive || voter.Status == UserStatus.Leave)
+            return BadRequest("You cannot vote");
+
+        // Сохраняем голос
+        gameState.TieBreakerVotes[voterId] = killAll;
+
+        await _hubContext.Clients.Group(roomId).SendAsync("TieBreakerVoteReceived", new
+        {
+            voterId,
+            voterName = voter.Name,
+            decision = killAll ? "kill" : "pardon"
+        });
+
+        return Ok(new { message = "Tie breaker vote recorded" });
     }
 
     /// <summary>
