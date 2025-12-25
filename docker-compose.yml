@@ -26,7 +26,7 @@ services:
       dockerfile: Dockerfile
     container_name: mafia-frontend
     ports:
-      - "3123:80"
+      - "5173:80"
     environment:
       - VITE_API_URL=http://localhost:5141
     depends_on:

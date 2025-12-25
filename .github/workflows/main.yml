@@ -32,8 +32,8 @@ jobs:
           echo "🧹 Остановка старых контейнеров..."
           docker-compose down || true
 
-          echo "🔍 Проверка и освобождение порта 3123..."
-          sudo fuser -k 3123/tcp || true
+          echo "🔍 Проверка и освобождение порта 5173..."
+          sudo fuser -k 5173/tcp || true
 
           echo "🛠️ Сборка и запуск контейнеров..."
           docker-compose up --build -d --force-recreate || true
@@ -56,8 +56,8 @@ jobs:
           Сервер: `${{ secrets.SSH_HOST }}`
           Запустил: `${{ github.actor }}`
 
-          🌍 [bunker.trexon.ru](http://bunker.trexon.ru)
-          🔑 [Админ-панель](http://bunker.trexon.ru/admin/panel)
+          🌍 [mafia.trexon.ru](http://mafia.trexon.ru)
+         
 
           **Действия на сервере:**
           1. `git pull`
