@@ -1,0 +1,81 @@
+name: Deploy to server with Telegram notifications
+
+on:
+  push:
+    branches: ["*"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: SSH and deploy
+      uses: appleboy/ssh-action@v1.0.0
+      id: deploy
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        password: ${{ secrets.SSH_PASSWORD }}
+        port: 8542
+        script: |
+          set -e
+          echo "🚀 Начало деплоя на сервере..."
+          cd ~/Documents/MafiaOnline
+
+          echo "📦 Обновление кода из Git..."
+          git pull
+
+          echo "🧹 Остановка старых контейнеров..."
+          docker-compose down || true
+
+          echo "🔍 Проверка и освобождение порта 3123..."
+          sudo fuser -k 3123/tcp || true
+
+          echo "🛠️ Сборка и запуск контейнеров..."
+          docker-compose up --build -d --force-recreate || true
+
+          echo "✅ Контейнеры запущены. Проверка статуса:"
+          docker ps
+
+          echo "📜 Для просмотра логов: docker-compose logs -f"
+
+    - name: Send Telegram notification (Success)
+      if: success()
+      uses: appleboy/telegram-action@v1.0.0
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        message: |
+          ✅ **Деплой успешен!**
+          Репозиторий: `${{ github.repository }}`
+          Ветка: `${{ github.ref_name }}`
+          Сервер: `${{ secrets.SSH_HOST }}`
+          Запустил: `${{ github.actor }}`
+
+          🌍 [bunker.trexon.ru](http://bunker.trexon.ru)
+          🔑 [Админ-панель](http://bunker.trexon.ru/admin/panel)
+
+          **Действия на сервере:**
+          1. `git pull`
+          2. `docker-compose down`
+          3. `sudo fuser -k 8123/tcp`
+          4. `docker-compose up --build -d`
+          
+          **Для логов:** `docker-compose logs -f`
+
+    - name: Send Telegram notification (Failure)
+      if: failure()
+      uses: appleboy/telegram-action@v1.0.0
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        message: |
+          ❌ **Деплой упал!**
+          Репозиторий: `${{ github.repository }}`
+          Ветка: `${{ github.ref_name }}`
+          Шаг: `${{ steps.deploy.outcome }}`
+          Подробнее: [Просмотреть логи](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
