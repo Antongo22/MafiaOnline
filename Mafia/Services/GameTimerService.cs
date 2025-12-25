@@ -124,8 +124,19 @@ public class GameTimerService : BackgroundService
                 break;
             
             case GamePhase.TieBreaker:
-                _logger.LogInformation($"[Room {room.Id}] Advancing TieBreaker");
-                await ProcessTieBreakerResults(room);
+                // Если результаты уже показаны, это задержка - переходим к ночи
+                if (gameState.TieBreakerResultsShown)
+                {
+                    _logger.LogInformation($"[Room {room.Id}] TieBreaker results delay ended -> Starting Night");
+                    gameState.TieBreakerResultsShown = false; // Сбрасываем флаг
+                    await StartNight(room);
+                }
+                else
+                {
+                    // Обрабатываем голосование TieBreaker
+                    _logger.LogInformation($"[Room {room.Id}] Advancing TieBreaker");
+                    await ProcessTieBreakerResults(room);
+                }
                 break;
             
             case GamePhase.Night:
@@ -317,14 +328,13 @@ public class GameTimerService : BackgroundService
                 gameState.Phase = GamePhase.TieBreaker;
                 gameState.PhaseStartTime = DateTime.UtcNow;
                 var settings = GetGameSettings(room);
-                gameState.PhaseTimeSeconds = settings.VotingTime * gameState.VoterOrder.Count; // Время на голосование всех игроков
+                gameState.PhaseTimeSeconds = 30; // Фиксированное время 30 секунд для TieBreaker
                 
-                // Формируем список кандидатов с именами для отображения
+                // Формируем список кандидатов с именами для отображения (БЕЗ ролей!)
                 var candidateNames = eliminated.Select(id => new
                 {
                     userId = id,
-                    userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name,
-                    role = room.PlayerRoles!.ContainsKey(id) ? room.PlayerRoles[id].ToString() : null
+                    userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name
                 }).ToList();
                 
                 await _hubContext.Clients.Group(room.Id).SendAsync("TieBreakerStarted", new
@@ -385,10 +395,16 @@ public class GameTimerService : BackgroundService
         await StartNight(room);
     }
 
+    /// <summary>
+    /// Обрабатывает результаты голосования TieBreaker (разрешение ничьей)
+    /// Когда при обычном голосовании несколько игроков получили одинаковое максимальное количество голосов,
+    /// все живые игроки голосуют: убить всех кандидатов или помиловать всех
+    /// </summary>
     private async Task ProcessTieBreakerResults(RoomDTO room)
     {
         var gameState = room.CurrentGameState!;
         
+        // Проверяем что есть кандидаты для разрешения ничьей
         if (gameState.TieBreakerCandidates == null || !gameState.TieBreakerCandidates.Any())
         {
             _logger.LogWarning($"[Room {room.Id}] ProcessTieBreakerResults called but no candidates");
@@ -415,6 +431,9 @@ public class GameTimerService : BackgroundService
         // Проверяем, сколько игроков останется после убийства
         var wouldRemainAlive = alivePlayers.Except(gameState.TieBreakerCandidates).Count();
         
+        // ВАЖНОЕ ПРАВИЛО: Убиваем только если:
+        // 1. Голосов "убить" больше чем "помиловать"
+        // 2. После убийства останется хотя бы 1 игрок
         bool shouldKill = killVotes > pardonVotes && wouldRemainAlive >= 1;
         
         if (shouldKill)
@@ -449,8 +468,7 @@ public class GameTimerService : BackgroundService
                 killed = gameState.TieBreakerCandidates.Select(id => new
                 {
                     userId = id,
-                    userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name,
-                    role = room.PlayerRoles!.ContainsKey(id) ? room.PlayerRoles[id].ToString() : null
+                    userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name
                 })
             });
         }
@@ -465,8 +483,7 @@ public class GameTimerService : BackgroundService
                 spared = gameState.TieBreakerCandidates.Select(id => new
                 {
                     userId = id,
-                    userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name,
-                    role = room.PlayerRoles!.ContainsKey(id) ? room.PlayerRoles[id].ToString() : null
+                    userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name
                 })
             });
         }
@@ -491,9 +508,15 @@ public class GameTimerService : BackgroundService
             gameState.IsFirstCycle = false;
         }
         
-        // Переходим к ночи
-        _logger.LogInformation($"[Room {room.Id}] TieBreaker completed -> Starting Night (Day {gameState.DayNumber + 1})");
-        await StartNight(room);
+        // Ждем 10 секунд перед переходом к ночи, чтобы игроки успели увидеть результаты
+        gameState.Phase = GamePhase.TieBreaker;
+        gameState.PhaseStartTime = DateTime.UtcNow;
+        gameState.PhaseTimeSeconds = 10; // 10 секунд задержки
+        gameState.TieBreakerResultsShown = true; // Флаг что результаты показаны
+        
+        _logger.LogInformation($"[Room {room.Id}] TieBreaker completed, waiting 10 seconds before starting Night (Day {gameState.DayNumber + 1})");
+        
+        // Примечание: ProcessGameTimers автоматически перейдет к StartNight через 10 секунд
     }
 
     private async Task StartNight(RoomDTO room)
@@ -518,11 +541,17 @@ public class GameTimerService : BackgroundService
     {
         var gameState = room.CurrentGameState!;
 
-        // Обрабатываем текущую ночную фазу
-        if (gameState.CurrentNightPhase != null)
+        // Если CurrentNightPhase == null, значит это задержка после ProcessNightResults
+        // Переходим к индивидуальным выступлениям
+        if (gameState.CurrentNightPhase == null)
         {
-            // Здесь можно добавить обработку автоматических действий (если игрок не успел)
+            _logger.LogInformation($"[Room {room.Id}] Night delay ended -> Starting IndividualSpeech (Day {gameState.DayNumber})");
+            await StartIndividualSpeech(room);
+            return;
         }
+
+        // Обрабатываем текущую ночную фазу
+        // Здесь можно добавить обработку автоматических действий (если игрок не успел)
 
         // Переходим к следующей ночной фазе
         var nextPhase = GetNextNightPhase(room, gameState.CurrentNightPhase);
@@ -588,25 +617,22 @@ public class GameTimerService : BackgroundService
             switch (phase)
             {
                 case NightPhase.Don:
-                    // Дон просыпается отдельно ТОЛЬКО если:
+                    // Дон просыпается отдельно ТОЛЬКО для поиска Шерифа, если:
                     // 1. Дон жив
-                    // 2. Дон один (нет других злых)
-                    // 3. Еще не нашел Шерифа
-                    // 4. Шериф есть в игре
-                    var evilRolesForDon = aliveRoles.Where(r => RoleInfo.GetTeam(r) == Team.Evil).ToList();
-                    var donIsAloneForDon = evilRolesForDon.Count == 1 && evilRolesForDon[0] == Role.Don;
+                    // 2. Еще не нашел Шерифа
+                    // 3. Шериф есть в игре
                     var sheriffInGame = availableRoles.Contains(Role.Sheriff);
                     var donNeedsToSearch = aliveRoles.Contains(Role.Don) && !room.CurrentGameState!.DonHasFoundSheriff && sheriffInGame;
                     
-                    if (donIsAloneForDon && donNeedsToSearch)
+                    if (donNeedsToSearch)
                     {
-                        // Дон один и должен найти Шерифа - отдельная фаза Don
-                        _logger.LogInformation($"[Room {room.Id}] Selected night phase: Don (alone, searching for Sheriff)");
+                        // Дон должен найти Шерифа - отдельная фаза Don
+                        _logger.LogInformation($"[Room {room.Id}] Selected night phase: Don (searching for Sheriff)");
                         return phase;
                     }
-                    // Если Дон не один, или уже нашел Шерифа, или Шерифа нет - пропускаем фазу Don
-                    // Дон просыпается в фазе Mafia вместе с другими
-                    _logger.LogInformation($"[Room {room.Id}] Skipping Don phase - Don is not alone or already found Sheriff or Sheriff not in game");
+                    // Если Дон уже нашел Шерифа или Шерифа нет - пропускаем фазу Don
+                    // Дон проснется в фазе Mafia вместе с другими
+                    _logger.LogInformation($"[Room {room.Id}] Skipping Don phase - already found Sheriff or Sheriff not in game");
                     break;
                 
                 case NightPhase.Mafia:
@@ -620,7 +646,8 @@ public class GameTimerService : BackgroundService
                     }
                     
                     // Фаза Мафии активна всегда, когда есть злые (включая Дона)
-                    _logger.LogInformation($"[Room {room.Id}] Selected night phase: Mafia (evil count: {evilRoles.Count}, Don found Sheriff: {room.CurrentGameState!.DonHasFoundSheriff})");
+                    // Дон ВСЕГДА просыпается вместе с мафией для голосования за жертву
+                    _logger.LogInformation($"[Room {room.Id}] Selected night phase: Mafia (evil count: {evilRoles.Count}, Don included)");
                     return phase;
                 
                 case NightPhase.Maniac:
@@ -853,9 +880,15 @@ public class GameTimerService : BackgroundService
             gameState.FirstNightCompleted = true;
         }
 
-        // Начинаем новый день
-        _logger.LogInformation($"[Room {room.Id}] Night completed -> Starting IndividualSpeech (Day {gameState.DayNumber})");
-        await StartIndividualSpeech(room);
+        // Ждем 5 секунд перед началом дня, чтобы игроки успели увидеть результаты ночи
+        gameState.Phase = GamePhase.Night; // Остаемся в ночной фазе
+        gameState.PhaseStartTime = DateTime.UtcNow;
+        gameState.PhaseTimeSeconds = 5; // 5 секунд задержки
+        gameState.CurrentNightPhase = null; // Обнуляем ночную фазу
+
+        _logger.LogInformation($"[Room {room.Id}] Night completed, waiting 5 seconds before starting IndividualSpeech (Day {gameState.DayNumber})");
+        
+        // Примечание: ProcessGameTimers автоматически перейдет к StartIndividualSpeech через 5 секунд
     }
 
     private async Task StartIndividualSpeech(RoomDTO room)

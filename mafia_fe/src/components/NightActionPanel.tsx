@@ -55,7 +55,7 @@ export function NightActionPanel({
 
   const aliveUsers = users.filter(u => 
     u.status !== "Leave" && 
-    u.status !== "Dead" &&
+    u.isAlive !== false &&
     u.id !== currentUserId // Для большинства ролей нельзя выбрать себя
   );
 

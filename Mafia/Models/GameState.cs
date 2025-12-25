@@ -63,5 +63,6 @@ public class GameState
     // Разрешение ничьих при голосовании
     public List<string>? TieBreakerCandidates { get; set; }
     public Dictionary<string, bool> TieBreakerVotes { get; set; } = new(); // userId -> true=kill, false=pardon
+    public bool TieBreakerResultsShown { get; set; } = false; // Флаг что результаты TieBreaker показаны
 }
 

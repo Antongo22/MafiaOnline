@@ -1,11 +1,48 @@
+/**
+ * RoomPage.tsx - Главный компонент игры Мафия
+ * 
+ * ЧТО ДЕЛАЕТ ЭТОТ КОМПОНЕНТ:
+ * - Управляет всем игровым процессом (от лобби до конца игры)
+ * - Подписывается на события от backend через SignalR (WebSocket)
+ * - Отображает UI в зависимости от текущей фазы игры
+ * - Обрабатывает действия игроков (голосование, ночные действия, чат)
+ * 
+ * ОСНОВНЫЕ ЧАСТИ:
+ * 1. State (состояние) - хранит всю информацию об игре
+ * 2. useEffect - подписки на SignalR события от backend
+ * 3. Обработчики (handlers) - функции для действий игроков
+ * 4. Рендеринг - функции, возвращающие JSX для отображения UI
+ * 
+ * ФАЗЫ ИГРЫ (GamePhase):
+ * - Lobby: Лобби (выбор ролей, ожидание игроков)
+ * - IndividualSpeech: Индивидуальные выступления (каждый игрок говорит по очереди)
+ * - FreeDiscussion: Свободное обсуждение (все могут писать)
+ * - Voting: Голосование (каждый голосует за игрока на исключение)
+ * - TieBreaker: Разрешение ничьей (если несколько игроков получили макс. голосов)
+ * - Night: Ночь (ночные действия ролей: Don, Mafia, Sheriff, Doctor, и т.д.)
+ * - GameOver: Игра окончена (показываем победителя)
+ * 
+ * КАК РАБОТАЕТ ВЗАИМОДЕЙСТВИЕ С BACKEND:
+ * 1. Игрок нажимает кнопку → вызывается handler (например, handleVote)
+ * 2. Handler отправляет HTTP запрос на backend (через gameService)
+ * 3. Backend обрабатывает и отправляет событие через SignalR всем игрокам
+ * 4. useEffect получает событие и обновляет state
+ * 5. React перерисовывает компонент с новым state
+ * 
+ * ВАЖНО:
+ * - State нельзя изменять напрямую (state.value = 5), только через setState
+ * - useEffect запускается при монтировании компонента и при изменении зависимостей
+ * - SignalR используется для real-time обновлений (WebSocket)
+ * - localStorage сохраняет состояние между перезагрузками страницы
+ */
+
 import { useState, useEffect } from "react";
 import { Chat } from "../components/Chat";
 import { MafiaChat } from "../components/MafiaChat";
 import { AdminPanel } from "../components/AdminPanel";
 import { RoleDisplay } from "../components/RoleDisplay";
 import { GamePhaseDisplay } from "../components/GamePhaseDisplay";
-import { VotingPanel } from "../components/VotingPanel";
-import { NightActionPanel } from "../components/NightActionPanel";
+import { ActionModal } from "../components/ActionModal";
 import { VotingResultsDisplay } from "../components/VotingResultsDisplay";
 import { NightResultsModal } from "../components/NightResultsModal";
 import { VotingResultsModal } from "../components/VotingResultsModal";
@@ -13,6 +50,7 @@ import { type User, chatService } from "../services/chatService";
 import { gameService } from "../services/gameService";
 import { GamePhase, type VoterInfo, type NightResults } from "../types/game";
 import { saveRoomState, loadRoomState, clearRoomState } from "../utils/storage";
+import { rolesService, type RoleInfo } from "../services/rolesService";
 
 interface Room {
   id: string;
@@ -85,22 +123,37 @@ export function RoomPage() {
     nightActionTime: 30,
   });
   
-  // Multi-kick selection
-  const [selectedPlayersForKick, setSelectedPlayersForKick] = useState<Set<string>>(new Set());
-  
   // Alerts
   const [alert, setAlert] = useState<{ message: string; type: "info" | "success" | "warning" | "danger" } | null>(null);
+  
+  // Roles data
+  const [rolesData, setRolesData] = useState<RoleInfo[]>([]);
 
   const isAdmin = room && userId && room.users.find(u => u.id === userId)?.status === "Admin";
   
   const MAFIA_ROLES = ["Don", "Mafia", "Ninja"];
   const isMafia = myRole && MAFIA_ROLES.includes(myRole);
   
+  // Helper function to get Russian role name
+  const getRussianRoleName = (roleValue: string): string => {
+    const roleInfo = rolesData.find(r => r.roleValue === roleValue);
+    return roleInfo?.name || roleValue;
+  };
+  
   // Show alert function
   const showAlert = (message: string, type: "info" | "success" | "warning" | "danger" = "info") => {
     setAlert({ message, type });
     setTimeout(() => setAlert(null), 5000);
   };
+
+  // Load roles data
+  useEffect(() => {
+    const loadRoles = async () => {
+      const roles = await rolesService.getRoles();
+      setRolesData(roles);
+    };
+    loadRoles();
+  }, []);
 
   // Сохраняем состояние игры при изменениях
   useEffect(() => {
@@ -777,40 +830,8 @@ export function RoomPage() {
       }
 
       await chatService.kickPlayers(room.id, userId, [targetUserId]);
-      setSelectedPlayersForKick(new Set());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to kick player");
-    }
-  };
-
-  const handleKickSelectedPlayers = async () => {
-    if (!userId || !room || !isAdmin || selectedPlayersForKick.size === 0) return;
-
-    const selectedArray = Array.from(selectedPlayersForKick);
-    const selectedNames = selectedArray.map(id => users.find(u => u.id === id)?.name).filter(Boolean).join(", ");
-    
-    const confirmKick = window.confirm(`Исключить выбранных игроков: ${selectedNames}?`);
-    if (!confirmKick) return;
-
-    try {
-      const response = await fetch(`${API_URL}/api/Room/kick?adminId=${userId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(selectedArray),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to kick players");
-      }
-
-      await chatService.kickPlayers(room.id, userId, selectedArray);
-      setSelectedPlayersForKick(new Set());
-      showAlert(`Исключены: ${selectedNames}`, "info");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to kick players");
     }
   };
 
@@ -874,41 +895,94 @@ export function RoomPage() {
 
   // Determine which component to show based on game phase
   const renderGameContent = () => {
-    if (gamePhase === GamePhase.Voting) {
+    // Голосование
+    if (gamePhase === GamePhase.Voting && currentVoterId) {
+      const isMyTurn = currentVoterId === userId;
+      const players = votingCandidates.map(c => ({
+        userId: c.userId,
+        userName: c.userName,
+        isCurrentUser: c.userId === userId
+      }));
+
       return (
-        <VotingPanel
-          candidates={votingCandidates}
-          currentUserId={userId!}
-          isMyTurn={currentVoterId === userId}
-          onVote={handleVote}
+        <ActionModal
+          isOpen={true}
+          title="Голосование"
+          description={isMyTurn 
+            ? "Выберите игрока, за которого хотите проголосовать" 
+            : "Другой игрок сейчас голосует..."}
+          players={players}
+          onAction={(targetId) => {
+            if (targetId) handleVote(targetId);
+          }}
+          actionButtonText="Проголосовать"
+          isMyTurn={isMyTurn}
         />
       );
     }
 
-    if (gamePhase === GamePhase.Night && nightPhase) {
-      // Check if it's my turn based on my role and current night phase
-      let canAct = false;
-      if (myRole) {
-        const roleNightPhaseMap: Record<string, string> = {
-          Don: "Don",
-          Mafia: "Mafia",
-          Ninja: "Mafia", // Ninja acts with Mafia
-          Maniac: "Maniac",
-          Sheriff: "Sheriff",
-          Doctor: "Doctor",
-          Prostitute: "Prostitute"
-        };
-        
-        canAct = roleNightPhaseMap[myRole] === nightPhase;
+    // Ночные действия
+    if (gamePhase === GamePhase.Night && nightPhase && myRole) {
+      const roleNightPhaseMap: Record<string, string> = {
+        Don: "Don",
+        Mafia: "Mafia",
+        Ninja: "Mafia",
+        Maniac: "Maniac",
+        Sheriff: "Sheriff",
+        Doctor: "Doctor",
+        Prostitute: "Prostitute"
+      };
+      
+      const canAct = roleNightPhaseMap[myRole] === nightPhase;
+      
+      // Описания действий
+      const actionDescriptions: Record<string, { title: string; description: string }> = {
+        Don: { title: "Поиск шерифа", description: "Выберите игрока для проверки. Если это шериф, его карта откроется для вас." },
+        Mafia: { title: "Выбор жертвы", description: "Проголосуйте за игрока, которого мафия убьёт этой ночью." },
+        Maniac: { title: "Действие маньяка", description: "Убейте игрока или вылечите себя (1 раз за игру)." },
+        Sheriff: { title: "Проверка игрока", description: "Выберите игрока для проверки. Если он мафия, его карта откроется для вас." },
+        Doctor: { title: "Лечение", description: "Выберите игрока для лечения. Можете вылечить себя." },
+        Prostitute: { title: "Забрать игрока", description: "Заберите игрока к себе. Если его пытаются убить, он выживет." }
+      };
+
+      const actionInfo = actionDescriptions[nightPhase];
+      if (!actionInfo) return null;
+
+      // Живые игроки (кроме себя для большинства ролей)
+      const alivePlayers = users
+        .filter(u => u.status !== "Leave" && u.isAlive !== false && u.id !== userId)
+        .map(u => ({
+          userId: u.id,
+          userName: u.name,
+          isCurrentUser: false
+        }));
+
+      // Дополнительные действия
+      let extraActions: Array<{ id: string; label: string; type: "success" | "danger" }> | undefined;
+      
+      if (nightPhase === "Maniac") {
+        extraActions = [
+          { id: "kill", label: "Убить игрока", type: "danger" },
+          { id: "heal_self", label: "Вылечить себя", type: "success" }
+        ];
+      } else if (nightPhase === "Doctor") {
+        extraActions = [
+          { id: "heal_self", label: "Вылечить себя", type: "success" }
+        ];
       }
 
       return (
-        <NightActionPanel
-          users={users}
-          currentUserId={userId!}
-          nightPhase={nightPhase}
-          onAction={handleNightAction}
-          canAct={canAct}
+        <ActionModal
+          isOpen={true}
+          title={actionInfo.title}
+          description={canAct ? actionInfo.description : "Не ваш ход..."}
+          players={alivePlayers}
+          extraActions={extraActions}
+          onAction={(targetId, actionType) => {
+            handleNightAction(targetId, actionType);
+          }}
+          actionButtonText="Выполнить действие"
+          isMyTurn={canAct}
         />
       );
     }
@@ -1009,10 +1083,7 @@ export function RoomPage() {
           flexDirection: "column",
           gap: "1rem",
           flexShrink: 0,
-          overflowY: "auto",
-          overflowX: "hidden",
-          maxHeight: "100vh",
-          paddingRight: "0.5rem"
+          height: "100vh"
         }}>
           {/* Информация о комнате */}
           <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -1121,22 +1192,11 @@ export function RoomPage() {
                   {users.length}
                 </span>
               </h3>
-              {isAdmin && gamePhase === GamePhase.Lobby && selectedPlayersForKick.size > 0 && (
-                <button
-                  onClick={handleKickSelectedPlayers}
-                  className="btn-danger btn-sm"
-                  style={{ padding: "0.5rem" }}
-                >
-                  Исключить выбранных ({selectedPlayersForKick.size})
-                </button>
-              )}
             </div>
             <div style={{ 
               display: "flex", 
               flexDirection: "column", 
-              gap: "0.5rem",
-              overflowY: "auto",
-              paddingRight: "0.5rem"
+              gap: "0.5rem"
             }}>
               {users.map((user) => {
                 const isCurrentUser = user.id === userId;
@@ -1178,22 +1238,6 @@ export function RoomPage() {
                   >
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, minWidth: 0 }}>
-                        {isAdmin && !isCurrentUser && !isDead && gamePhase === GamePhase.Lobby && (
-                          <input
-                            type="checkbox"
-                            checked={selectedPlayersForKick.has(user.id)}
-                            onChange={(e) => {
-                              const newSet = new Set(selectedPlayersForKick);
-                              if (e.target.checked) {
-                                newSet.add(user.id);
-                              } else {
-                                newSet.delete(user.id);
-                              }
-                              setSelectedPlayersForKick(newSet);
-                            }}
-                            style={{ cursor: "pointer" }}
-                          />
-                        )}
                         <div style={{
                           width: "8px",
                           height: "8px",
@@ -1244,7 +1288,7 @@ export function RoomPage() {
                         gap: "0.5rem"
                       }}>
                         <span>🎭</span>
-                        <span style={{ fontWeight: "500" }}>{revealedRole}</span>
+                        <span style={{ fontWeight: "500" }}>{getRussianRoleName(revealedRole)}</span>
                         {!isDead && <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>(раскрыто)</span>}
                       </div>
                     )}
@@ -1382,10 +1426,7 @@ export function RoomPage() {
           display: "flex", 
           flexDirection: "column", 
           gap: "1rem", 
-          overflowY: "auto",
-          overflowX: "hidden",
-          maxHeight: "100vh",
-          paddingRight: "0.5rem"
+          height: "100vh"
         }}>
           {/* Фаза игры и таймер */}
           {gameCycleStarted && (
