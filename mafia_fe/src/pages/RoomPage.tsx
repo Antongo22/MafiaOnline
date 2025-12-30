@@ -36,8 +36,9 @@
  * - localStorage сохраняет состояние между перезагрузками страницы
  */
 
-import { useState, useEffect } from "react";
-import { Chat } from "../components/Chat";
+import { useState, useEffect, useRef } from "react";
+import { VideoCall } from "../components/VideoCall";
+import { LiveKitChat } from "../components/LiveKitChat";
 import { MafiaChat } from "../components/MafiaChat";
 import { AdminPanel } from "../components/AdminPanel";
 import { RoleDisplay } from "../components/RoleDisplay";
@@ -51,6 +52,7 @@ import { gameService } from "../services/gameService";
 import { GamePhase, type VoterInfo, type NightResults } from "../types/game";
 import { saveRoomState, loadRoomState, clearRoomState } from "../utils/storage";
 import { rolesService, type RoleInfo } from "../services/rolesService";
+import { videoCallService } from "../services/videoCallService";
 
 interface Room {
   id: string;
@@ -128,6 +130,10 @@ export function RoomPage() {
   
   // Roles data
   const [rolesData, setRolesData] = useState<RoleInfo[]>([]);
+  
+  // Video call management
+  const mediaControlTimeoutRef = useRef<number | null>(null);
+  const lastMediaControlPhaseRef = useRef<string | null>(null);
 
   const isAdmin = room && userId && room.users.find(u => u.id === userId)?.status === "Admin";
   
@@ -170,9 +176,22 @@ export function RoomPage() {
     }
   }, [myRole, gameStatus, winningTeam, room, userId]);
 
-  // Проверяем localStorage при загрузке
+  // Проверяем localStorage и URL параметры при загрузке
   useEffect(() => {
     const checkExistingRoom = async () => {
+      // Проверяем URL параметры для приглашения
+      const urlParams = new URLSearchParams(window.location.search);
+      const inviteCodeFromUrl = urlParams.get('invite');
+      
+      if (inviteCodeFromUrl) {
+        // Если есть код приглашения в URL, переключаемся на режим присоединения
+        setMode('join');
+        setInviteCode(inviteCodeFromUrl);
+        // Очищаем URL параметры
+        window.history.replaceState({}, '', window.location.pathname);
+        return;
+      }
+
       const savedState = loadRoomState();
       if (!savedState) return;
 
@@ -616,6 +635,128 @@ export function RoomPage() {
     };
   }, [room, userId, users]);
 
+  // Управление медиа в зависимости от фазы игры
+  useEffect(() => {
+    if (!room || !userId || !isAdmin) return; // Только админ управляет медиа
+    if (isPaused) return; // Если игра на паузе, не меняем медиа
+
+    // Предотвращаем множественные вызовы для одной и той же фазы
+    const phaseKey = `${gamePhase}-${currentSpeakerId || ""}`;
+    if (lastMediaControlPhaseRef.current === phaseKey) return;
+    lastMediaControlPhaseRef.current = phaseKey;
+
+    // Очищаем предыдущий таймаут
+    if (mediaControlTimeoutRef.current !== null) {
+      clearTimeout(mediaControlTimeoutRef.current);
+    }
+
+    // Задержка перед применением правил (чтобы дать время iframe загрузиться)
+    mediaControlTimeoutRef.current = window.setTimeout(async () => {
+      try {
+        // Получаем список участников из видеозвонка
+        const participants = await videoCallService.getParticipants(room.id);
+        const participantNames = participants.map((p: any) => p.identity || p.name);
+
+        if (participantNames.length === 0) {
+          console.log("[RoomPage] No participants found in video call");
+          return;
+        }
+
+        // Получаем имена пользователей из комнаты
+        const userNames = users
+          .filter((u) => u.status !== "Leave" && u.isAlive !== false)
+          .map((u) => u.name);
+
+        // Фильтруем только тех, кто есть и в комнате, и в видеозвонке
+        const namesToControl = participantNames.filter((name: string) =>
+          userNames.includes(name)
+        );
+
+        console.log(
+          `[RoomPage] Controlling media for phase: ${gamePhase}`,
+          namesToControl
+        );
+
+        if (gamePhase === GamePhase.Lobby) {
+          // Лобби: у всех включены видео и микрофон (до начала игры)
+          console.log("[RoomPage] Lobby phase: all can speak and see each other");
+          await videoCallService.controlAllParticipantsMedia(
+            room.id,
+            namesToControl,
+            [],
+            false, // unmute audio
+            false // unmute video
+          );
+        } else if (gamePhase === GamePhase.Night) {
+          // Ночь: всем отключить видео и микрофон
+          console.log("[RoomPage] Night phase: muting all audio and video");
+          await videoCallService.controlAllParticipantsMedia(
+            room.id,
+            namesToControl,
+            [],
+            true, // mute audio
+            true // mute video
+          );
+        } else if (gamePhase === GamePhase.IndividualSpeech) {
+          // IndividualSpeech: только выступающий может говорить, у всех видео включено
+          const speakerName = users.find((u) => u.id === currentSpeakerId)?.name;
+          if (speakerName) {
+            console.log(
+              `[RoomPage] IndividualSpeech: only ${speakerName} can speak, all have video`
+            );
+            // Отключаем микрофон у всех, кроме выступающего, видео оставляем включенным
+            await videoCallService.controlAllParticipantsMedia(
+              room.id,
+              namesToControl,
+              [speakerName],
+              true, // mute audio for non-speakers
+              false // keep video enabled
+            );
+          } else {
+            // Если выступающий не найден, отключаем микрофон у всех
+            await videoCallService.controlAllParticipantsMedia(
+              room.id,
+              namesToControl,
+              [],
+              true, // mute audio
+              false // keep video
+            );
+          }
+        } else {
+          // Остальные фазы (FreeDiscussion, Voting, TieBreaker): все могут говорить и видеть друг друга
+          console.log(
+            `[RoomPage] Phase ${gamePhase}: all can speak and see each other`
+          );
+          // Включаем видео для всех, микрофоны участники могут включать сами
+          await videoCallService.controlAllParticipantsMedia(
+            room.id,
+            namesToControl,
+            [],
+            false, // unmute audio (allow speaking)
+            false // unmute video (allow video)
+          );
+        }
+      } catch (error) {
+        console.error("[RoomPage] Error controlling media:", error);
+      }
+    }, 2000); // Задержка 2 секунды для загрузки iframe
+
+    return () => {
+      if (mediaControlTimeoutRef.current !== null) {
+        clearTimeout(mediaControlTimeoutRef.current);
+        mediaControlTimeoutRef.current = null;
+      }
+    };
+  }, [
+    room,
+    userId,
+    isAdmin,
+    gamePhase,
+    currentSpeakerId,
+    users,
+    isPaused,
+  ]);
+
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!roomName.trim() || !userName.trim()) {
@@ -862,6 +1003,14 @@ export function RoomPage() {
     if (room) {
       navigator.clipboard.writeText(room.inviteCode);
       showAlert("Код скопирован!", "success");
+    }
+  };
+
+  const copyInviteLink = () => {
+    if (room) {
+      const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=${room.inviteCode}`;
+      navigator.clipboard.writeText(inviteUrl);
+      showAlert("Ссылка скопирована!", "success");
     }
   };
 
@@ -1132,6 +1281,22 @@ export function RoomPage() {
                   📋
                 </button>
               </div>
+              
+              <button
+                onClick={copyInviteLink}
+                className="btn-primary"
+                style={{ 
+                  marginTop: "0.75rem",
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.5rem"
+                }}
+              >
+                <span>🔗</span>
+                <span>Копировать ссылку-приглашение</span>
+              </button>
             </div>
 
             <button
@@ -1458,7 +1623,7 @@ export function RoomPage() {
           {/* Игровой контент (голосование/ночные действия) */}
           {renderGameContent()}
 
-          {/* Чаты */}
+          {/* Видеозвонок и чаты */}
           <div style={{ 
             display: "flex", 
             flexDirection: "column", 
@@ -1466,16 +1631,26 @@ export function RoomPage() {
             minHeight: "400px",
             flexShrink: 0
           }}>
-            <div style={{ minHeight: "400px" }}>
-              <Chat 
+            {/* Видеозвонок */}
+            <div style={{ minHeight: "400px", flex: 1 }}>
+              <VideoCall 
                 roomId={room.id} 
-                userId={userId} 
-                userName={userName} 
-                apiUrl={API_URL}
-                onUserListUpdate={setUsers}
+                userName={userName}
+                userId={userId}
+                isAdmin={isAdmin || false}
+                currentSpeakerName={currentSpeakerName || undefined}
               />
             </div>
 
+            {/* Общий чат через LiveKit API */}
+            <div style={{ minHeight: "300px" }}>
+              <LiveKitChat 
+                roomId={room.id} 
+                userName={userName}
+              />
+            </div>
+
+            {/* Чат мафии (только для мафии ночью) */}
             {isMafia && gameStatus === "InProgress" && gamePhase === GamePhase.Night && (
               <div style={{ minHeight: "300px" }}>
                 <MafiaChat 

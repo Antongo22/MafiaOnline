@@ -16,4 +16,9 @@
         <PackageReference Include="BCrypt.Net-Next" Version="4.0.3"/>
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Remove="Services\LiveKitService.cs" />
+      <Compile Remove="Controllers\LiveKitController.cs" />
+    </ItemGroup>
+
 </Project>
