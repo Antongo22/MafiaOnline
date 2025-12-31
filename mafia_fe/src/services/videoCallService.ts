@@ -6,13 +6,8 @@
 
 const VIDEO_CALL_API_URL = import.meta.env.VITE_VIDEO_CALL_API_URL || "https://calls.trexon.ru/api";
 const API_KEY = import.meta.env.VITE_VIDEO_CALL_API_KEY || "dev_key_12345";
-
-interface MuteRequest {
-  participant_identity: string;
-  mute_audio?: boolean;
-  mute_video?: boolean;
-  muted?: boolean;
-}
+const BACKEND_API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const USE_PROXY = false; // CORS настроен на сервере, используем прямые запросы
 
 interface ChatMessage {
   room_name: string;
@@ -31,20 +26,22 @@ class VideoCallService {
     muted: boolean = true
   ): Promise<boolean> {
     try {
-      const response = await fetch(
-        `${VIDEO_CALL_API_URL}/participants/${roomId}/mute-audio`,
-        {
-          method: "POST",
-          headers: {
-            "X-API-Key": API_KEY,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            participant_identity: participantName,
-            muted: muted,
-          }),
-        }
-      );
+      const apiUrl = USE_PROXY 
+        ? `${BACKEND_API_URL}/api/LiveKitProxy/participants/${roomId}/mute-audio`
+        : `${VIDEO_CALL_API_URL}/participants/${roomId}/mute-audio`;
+      
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(USE_PROXY ? {} : { "X-API-Key": API_KEY }),
+        },
+        body: JSON.stringify(
+          USE_PROXY
+            ? { names: [participantName], mute: muted }
+            : { participant_identity: participantName, muted: muted }
+        ),
+      });
 
       if (!response.ok) {
         console.error(
@@ -77,20 +74,22 @@ class VideoCallService {
     muted: boolean = true
   ): Promise<boolean> {
     try {
-      const response = await fetch(
-        `${VIDEO_CALL_API_URL}/participants/${roomId}/mute-video`,
-        {
-          method: "POST",
-          headers: {
-            "X-API-Key": API_KEY,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            participant_identity: participantName,
-            muted: muted,
-          }),
-        }
-      );
+      const apiUrl = USE_PROXY 
+        ? `${BACKEND_API_URL}/api/LiveKitProxy/participants/${roomId}/mute-video`
+        : `${VIDEO_CALL_API_URL}/participants/${roomId}/mute-video`;
+      
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(USE_PROXY ? {} : { "X-API-Key": API_KEY }),
+        },
+        body: JSON.stringify(
+          USE_PROXY
+            ? { names: [participantName], mute: muted }
+            : { participant_identity: participantName, muted: muted }
+        ),
+      });
 
       if (!response.ok) {
         console.error(
@@ -158,16 +157,17 @@ class VideoCallService {
    */
   async getParticipants(roomId: string): Promise<any[]> {
     try {
-      const response = await fetch(
-        `${VIDEO_CALL_API_URL}/participants/${roomId}`,
-        {
-          method: "GET",
-          headers: {
-            "X-API-Key": API_KEY,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const apiUrl = USE_PROXY 
+        ? `${BACKEND_API_URL}/api/LiveKitProxy/participants/${roomId}`
+        : `${VIDEO_CALL_API_URL}/participants/${roomId}`;
+      
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...(USE_PROXY ? {} : { "X-API-Key": API_KEY }),
+        },
+      });
 
       if (!response.ok) {
         console.error(

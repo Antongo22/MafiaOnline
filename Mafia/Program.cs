@@ -29,6 +29,9 @@ builder.Services.AddSignalR();
 // Background services
 builder.Services.AddHostedService<GameTimerService>();
 
+// HttpClient для LiveKit proxy
+builder.Services.AddHttpClient();
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {

@@ -20,15 +20,19 @@ export function VideoCall({
   userName,
   isAdmin,
   currentSpeakerName,
-  videoCallUrl = "https://calls.trexon.ru",
+  videoCallUrl,
 }: VideoCallProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  // Используем переменную окружения или дефолтное значение
+  const defaultVideoCallUrl = import.meta.env.VITE_VIDEO_CALL_FRONTEND_URL || "http://localhost:3000";
+  const finalVideoCallUrl = videoCallUrl || defaultVideoCallUrl;
+
   useEffect(() => {
     if (!roomId || !userName) return;
 
-    const url = new URL(videoCallUrl);
+    const url = new URL(finalVideoCallUrl);
     url.searchParams.set("room", roomId);
     url.searchParams.set("name", userName);
     if (isAdmin) {
@@ -44,7 +48,7 @@ export function VideoCall({
       setIsLoaded(true);
       console.log("[VideoCall] Loading iframe with URL:", url.toString());
     }
-  }, [roomId, userName, isAdmin, currentSpeakerName, videoCallUrl]);
+  }, [roomId, userName, isAdmin, currentSpeakerName, finalVideoCallUrl]);
 
   return (
     <div

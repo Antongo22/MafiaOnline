@@ -38,7 +38,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { VideoCall } from "../components/VideoCall";
-import { LiveKitChat } from "../components/LiveKitChat";
+// import { LiveKitChat } from "../components/LiveKitChat"; // Временно отключен из-за CORS
 import { MafiaChat } from "../components/MafiaChat";
 import { AdminPanel } from "../components/AdminPanel";
 import { RoleDisplay } from "../components/RoleDisplay";
@@ -193,12 +193,82 @@ export function RoomPage() {
       }
 
       const savedState = loadRoomState();
-      if (!savedState) return;
+      
+      // Проверяем флаг "не создавать автоматически" (устанавливается при расформировании)
+      const skipAutoCreate = localStorage.getItem('skipAutoCreate');
+      if (skipAutoCreate) {
+        localStorage.removeItem('skipAutoCreate');
+        return;
+      }
+      
+      if (!savedState) {
+        // Если нет сохранённой комнаты, автоматически создаём новую
+        const autoRoomName = `Комната ${Math.floor(Math.random() * 1000)}`;
+        const autoUserName = `Игрок ${Math.floor(Math.random() * 1000)}`;
+        
+        setRoomName(autoRoomName);
+        setUserName(autoUserName);
+        
+        // Автоматически создаём комнату
+        try {
+          const response = await fetch(`${API_URL}/api/Room/create?roomName=${encodeURIComponent(autoRoomName)}&playerName=${encodeURIComponent(autoUserName)}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (response.ok) {
+            const data: Room = await response.json();
+            setRoom(data);
+            setUserId(data.users[0].id);
+            setUserName(autoUserName);
+            setGameStatus(data.status || "Created");
+            
+            saveRoomState({
+              roomId: data.id,
+              userId: data.users[0].id,
+              userName: autoUserName,
+              roomName: data.name,
+              inviteCode: data.inviteCode,
+              myRole: null,
+              gameStatus: data.status || "Created"
+            });
+
+            setUsers(data.users.filter(u => u.status !== "Leave"));
+
+            // Подключаемся к SignalR
+            try {
+              await chatService.connect(API_URL);
+              await chatService.joinRoom(data.id, data.users[0].id);
+            } catch (signalRError) {
+              console.error("Failed to connect to SignalR:", signalRError);
+            }
+
+            // LiveKit комната создаётся автоматически при первом подключении через iframe
+            console.log("[RoomPage] ✅ LiveKit will auto-create room on first iframe connection");
+            console.log("[RoomPage] Room ID:", data.id);
+            console.log("[RoomPage] User Name:", autoUserName);
+          }
+        } catch (err) {
+          console.error("Failed to auto-create room:", err);
+        }
+        return;
+      }
 
       try {
         const response = await fetch(`${API_URL}/api/Room/my?userId=${savedState.userId}`);
         if (response.ok) {
           const data: Room = await response.json();
+          
+          // Проверяем, что комната существует и пользователь в ней
+          const userInRoom = data.users.find(u => u.id === savedState.userId);
+          if (!userInRoom || userInRoom.status === "Leave") {
+            console.log("[RoomPage] User left or not in room, clearing state");
+            clearRoomState();
+            return;
+          }
+          
           setRoom(data);
           setUserId(savedState.userId);
           setUserName(savedState.userName);
@@ -582,7 +652,17 @@ export function RoomPage() {
       );
     };
 
+    const handleRoomDisbanded = () => {
+      console.log("[RoomPage] Room disbanded, clearing state");
+      localStorage.setItem('skipAutoCreate', 'true'); // Флаг чтобы не создавать автоматически
+      clearRoomState();
+      setRoom(null);
+      setUsers([]);
+      showAlert("⚠️ Комната была расформирована", "danger");
+    };
+
     // Subscribe
+    chatService.onRoomDisbanded(handleRoomDisbanded);
     chatService.onGameStatusChanged(handleGameStatusChanged);
     chatService.onRoleAssigned(handleRoleAssigned);
     chatService.onAllRolesRevealed(handleAllRolesRevealed);
@@ -609,6 +689,7 @@ export function RoomPage() {
 
     // Unsubscribe
     return () => {
+      chatService.removeRoomDisbandedHandler(handleRoomDisbanded);
       chatService.removeGameStatusChangedHandler(handleGameStatusChanged);
       chatService.removeRoleAssignedHandler(handleRoleAssigned);
       chatService.removeAllRolesRevealedHandler(handleAllRolesRevealed);
@@ -653,24 +734,15 @@ export function RoomPage() {
     // Задержка перед применением правил (чтобы дать время iframe загрузиться)
     mediaControlTimeoutRef.current = window.setTimeout(async () => {
       try {
-        // Получаем список участников из видеозвонка
-        const participants = await videoCallService.getParticipants(room.id);
-        const participantNames = participants.map((p: any) => p.identity || p.name);
-
-        if (participantNames.length === 0) {
-          console.log("[RoomPage] No participants found in video call");
-          return;
-        }
-
-        // Получаем имена пользователей из комнаты
-        const userNames = users
+        // Получаем имена пользователей из комнаты (живых и не покинувших)
+        const namesToControl = users
           .filter((u) => u.status !== "Leave" && u.isAlive !== false)
           .map((u) => u.name);
 
-        // Фильтруем только тех, кто есть и в комнате, и в видеозвонке
-        const namesToControl = participantNames.filter((name: string) =>
-          userNames.includes(name)
-        );
+        if (namesToControl.length === 0) {
+          console.log("[RoomPage] No active users to control");
+          return;
+        }
 
         console.log(
           `[RoomPage] Controlling media for phase: ${gamePhase}`,
@@ -805,6 +877,11 @@ export function RoomPage() {
       } catch (signalRError) {
         console.error("Failed to connect to SignalR:", signalRError);
       }
+
+      // LiveKit комната создаётся автоматически при первом подключении через iframe
+      console.log("[RoomPage] ✅ LiveKit will auto-create room on first iframe connection");
+      console.log("[RoomPage] Room ID:", data.id);
+      console.log("[RoomPage] User Name:", userName);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create room");
     } finally {
@@ -935,6 +1012,7 @@ export function RoomPage() {
 
       if (result.disbanded && room) {
         await chatService.disbandRoom(room.id);
+        localStorage.setItem('skipAutoCreate', 'true'); // Флаг чтобы не создавать автоматически
       }
 
       clearRoomState();
@@ -1629,10 +1707,11 @@ export function RoomPage() {
             flexDirection: "column", 
             gap: "1rem",
             minHeight: "400px",
-            flexShrink: 0
+            flexShrink: 0,
+            marginTop: "1rem"
           }}>
             {/* Видеозвонок */}
-            <div style={{ minHeight: "400px", flex: 1 }}>
+            <div style={{ minHeight: "600px", height: "600px", flex: 1 }}>
               <VideoCall 
                 roomId={room.id} 
                 userName={userName}
@@ -1642,13 +1721,14 @@ export function RoomPage() {
               />
             </div>
 
-            {/* Общий чат через LiveKit API */}
-            <div style={{ minHeight: "300px" }}>
+            {/* Общий чат через LiveKit API - временно отключен из-за CORS */}
+            {/* TODO: Включить после настройки CORS на сервере calls.trexon.ru */}
+            {/* <div style={{ minHeight: "300px" }}>
               <LiveKitChat 
                 roomId={room.id} 
                 userName={userName}
               />
-            </div>
+            </div> */}
 
             {/* Чат мафии (только для мафии ночью) */}
             {isMafia && gameStatus === "InProgress" && gamePhase === GamePhase.Night && (
