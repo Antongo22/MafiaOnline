@@ -342,10 +342,22 @@ export function RoomPage() {
             console.error("Failed to load game state:", gameStateError);
           }
         } else {
+          // 404 - комната не найдена, проверяем флаг skipAutoCreate
+          const skipAutoCreate = localStorage.getItem('skipAutoCreate');
+          if (skipAutoCreate) {
+            console.log("[RoomPage] Room not found, but skipAutoCreate is set");
+            localStorage.removeItem('skipAutoCreate');
+          }
           clearRoomState();
         }
       } catch (err) {
         console.error("Failed to check existing room:", err);
+        // При ошибке также проверяем флаг skipAutoCreate
+        const skipAutoCreate = localStorage.getItem('skipAutoCreate');
+        if (skipAutoCreate) {
+          console.log("[RoomPage] Error checking room, but skipAutoCreate is set");
+          localStorage.removeItem('skipAutoCreate');
+        }
         clearRoomState();
       }
     };
