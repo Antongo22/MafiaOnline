@@ -24,13 +24,34 @@ export function VideoCall({
 }: VideoCallProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [permissionsGranted, setPermissionsGranted] = useState(false);
 
   // Используем переменную окружения или дефолтное значение
   const defaultVideoCallUrl = import.meta.env.VITE_VIDEO_CALL_FRONTEND_URL || "http://localhost:3000";
   const finalVideoCallUrl = videoCallUrl || defaultVideoCallUrl;
 
+  // Запрашиваем разрешения на камеру/микрофон перед загрузкой iframe
   useEffect(() => {
     if (!roomId || !userName) return;
+
+    const requestPermissions = async () => {
+      try {
+        console.log("[VideoCall] Requesting camera/microphone permissions...");
+        await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        console.log("[VideoCall] Permissions granted");
+        setPermissionsGranted(true);
+      } catch (error) {
+        console.error("[VideoCall] Permission denied:", error);
+        // Даже если разрешения отклонены, загружаем iframe - пользователь сможет попробовать снова
+        setPermissionsGranted(true);
+      }
+    };
+
+    requestPermissions();
+  }, [roomId, userName]);
+
+  useEffect(() => {
+    if (!roomId || !userName || !permissionsGranted) return;
 
     const url = new URL(finalVideoCallUrl);
     url.searchParams.set("room", roomId);
@@ -39,6 +60,8 @@ export function VideoCall({
       url.searchParams.set("creator", "true");
     }
     url.searchParams.set("hideControls", "true");
+    // Временно отключаем autoJoin из-за бага в UI сервиса видеозвонков
+    // url.searchParams.set("autoJoin", "true");
     if (currentSpeakerName) {
       url.searchParams.set("highlightSpeaker", currentSpeakerName);
     }
@@ -48,7 +71,7 @@ export function VideoCall({
       setIsLoaded(true);
       console.log("[VideoCall] Loading iframe with URL:", url.toString());
     }
-  }, [roomId, userName, isAdmin, currentSpeakerName, finalVideoCallUrl]);
+  }, [roomId, userName, isAdmin, currentSpeakerName, finalVideoCallUrl, permissionsGranted]);
 
   return (
     <div
