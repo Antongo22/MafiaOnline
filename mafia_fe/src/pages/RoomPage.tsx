@@ -194,65 +194,14 @@ export function RoomPage() {
 
       const savedState = loadRoomState();
       
-      // Проверяем флаг "не создавать автоматически" (устанавливается при расформировании)
-      const skipAutoCreate = localStorage.getItem('skipAutoCreate');
-      if (skipAutoCreate) {
-        localStorage.removeItem('skipAutoCreate');
-        return;
-      }
-      
       if (!savedState) {
-        // Если нет сохранённой комнаты, автоматически создаём новую
+        // Если нет сохранённой комнаты, показываем форму создания/присоединения
+        // Генерируем случайные имена для удобства
         const autoRoomName = `Комната ${Math.floor(Math.random() * 1000)}`;
         const autoUserName = `Игрок ${Math.floor(Math.random() * 1000)}`;
         
         setRoomName(autoRoomName);
         setUserName(autoUserName);
-        
-        // Автоматически создаём комнату
-        try {
-          const response = await fetch(`${API_URL}/api/Room/create?roomName=${encodeURIComponent(autoRoomName)}&playerName=${encodeURIComponent(autoUserName)}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          });
-
-          if (response.ok) {
-            const data: Room = await response.json();
-            setRoom(data);
-            setUserId(data.users[0].id);
-            setUserName(autoUserName);
-            setGameStatus(data.status || "Created");
-            
-            saveRoomState({
-              roomId: data.id,
-              userId: data.users[0].id,
-              userName: autoUserName,
-              roomName: data.name,
-              inviteCode: data.inviteCode,
-              myRole: null,
-              gameStatus: data.status || "Created"
-            });
-
-            setUsers(data.users.filter(u => u.status !== "Leave"));
-
-            // Подключаемся к SignalR
-            try {
-              await chatService.connect(API_URL);
-              await chatService.joinRoom(data.id, data.users[0].id);
-            } catch (signalRError) {
-              console.error("Failed to connect to SignalR:", signalRError);
-            }
-
-            // LiveKit комната создаётся автоматически при первом подключении через iframe
-            console.log("[RoomPage] ✅ LiveKit will auto-create room on first iframe connection");
-            console.log("[RoomPage] Room ID:", data.id);
-            console.log("[RoomPage] User Name:", autoUserName);
-          }
-        } catch (err) {
-          console.error("Failed to auto-create room:", err);
-        }
         return;
       }
 
@@ -342,22 +291,12 @@ export function RoomPage() {
             console.error("Failed to load game state:", gameStateError);
           }
         } else {
-          // 404 - комната не найдена, проверяем флаг skipAutoCreate
-          const skipAutoCreate = localStorage.getItem('skipAutoCreate');
-          if (skipAutoCreate) {
-            console.log("[RoomPage] Room not found, but skipAutoCreate is set");
-            localStorage.removeItem('skipAutoCreate');
-          }
+          // 404 - комната не найдена, очищаем состояние
+          console.log("[RoomPage] Room not found, clearing state");
           clearRoomState();
         }
       } catch (err) {
         console.error("Failed to check existing room:", err);
-        // При ошибке также проверяем флаг skipAutoCreate
-        const skipAutoCreate = localStorage.getItem('skipAutoCreate');
-        if (skipAutoCreate) {
-          console.log("[RoomPage] Error checking room, but skipAutoCreate is set");
-          localStorage.removeItem('skipAutoCreate');
-        }
         clearRoomState();
       }
     };
@@ -1023,10 +962,11 @@ export function RoomPage() {
       const result = await response.json();
 
       if (result.disbanded && room) {
+        // Комната расформирована
         await chatService.disbandRoom(room.id);
-        localStorage.setItem('skipAutoCreate', 'true'); // Флаг чтобы не создавать автоматически
       }
 
+      // Очищаем состояние для всех
       clearRoomState();
       setRoom(null);
       setUserId(null);

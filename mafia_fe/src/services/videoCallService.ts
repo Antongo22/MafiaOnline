@@ -6,7 +6,7 @@
 
 const VIDEO_CALL_API_URL = import.meta.env.VITE_VIDEO_CALL_API_URL || "https://calls.trexon.ru/api";
 const API_KEY = import.meta.env.VITE_VIDEO_CALL_API_KEY || "dev_key_12345";
-const BACKEND_API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const BACKEND_API_URL = import.meta.env.VITE_API_URL || "https://mafia.trexon.ru";
 const USE_PROXY = true; // Используем backend proxy для обхода CORS
 
 interface ChatMessage {

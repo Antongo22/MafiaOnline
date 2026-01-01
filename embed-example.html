@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Встраивание видеозвонков в блоки</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .page-header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .page-header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .page-header p {
+            color: #666;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .video-block {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .video-block h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .video-container {
+            /* Размеры задаются через JavaScript */
+        }
+
+        .sidebar {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .sidebar h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button.secondary {
+            background: #6c757d;
+        }
+
+        button.danger {
+            background: #dc3545;
+        }
+
+        .info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #0066cc;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <h1>🎥 Встраивание видеозвонков в блоки</h1>
+        <p>Пример встраивания видео в любые блоки на вашем сайте</p>
+    </div>
+
+    <div class="two-column">
+        <!-- Sidebar with controls -->
+        <div>
+            <div class="sidebar">
+                <h3>⚙️ Настройки</h3>
+                <div class="form-group">
+                    <label>Название комнаты</label>
+                    <input type="text" id="roomName" value="demo-room-123">
+                </div>
+                <div class="form-group">
+                    <label>Ваше имя</label>
+                    <input type="text" id="participantName" value="User-1">
+                </div>
+                <button onclick="connectAll()">Подключить все блоки</button>
+                <button class="danger" onclick="disconnectAll()">Отключить все</button>
+
+                <div class="info">
+                    💡 Вы можете встраивать видео в любые блоки на странице. Каждый блок может иметь свои размеры и настройки.
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <h3>📝 Код для встраивания</h3>
+                <pre style="background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 6px; font-size: 12px; overflow-x: auto;">
+&lt;!-- Подключите библиотеки --&gt;
+&lt;script src="https://unpkg.com/livekit-client/dist/livekit-client.umd.min.js"&gt;&lt;/script&gt;
+&lt;script src="video-embed.js"&gt;&lt;/script&gt;
+
+&lt;!-- Создайте контейнер --&gt;
+&lt;div id="my-video"&gt;&lt;/div&gt;
+
+&lt;!-- Инициализируйте --&gt;
+&lt;script&gt;
+const embed = new VideoCallsEmbed({
+  containerId: 'my-video',
+  apiUrl: 'https://calls.trexon.ru/api',
+  roomName: 'my-room',
+  participantName: 'John',
+  width: '100%',
+  height: '400px'
+});
+&lt;/script&gt;</pre>
+            </div>
+        </div>
+
+        <!-- Main content with video blocks -->
+        <div>
+            <div class="content-grid">
+                <!-- Video Block 1 -->
+                <div class="video-block">
+                    <h3>📹 Основное видео</h3>
+                    <div id="video-1" class="video-container"></div>
+                </div>
+
+                <!-- Video Block 2 -->
+                <div class="video-block">
+                    <h3>📹 Дополнительное видео</h3>
+                    <div id="video-2" class="video-container"></div>
+                </div>
+            </div>
+
+            <!-- Full width video block -->
+            <div class="video-block">
+                <h3>📹 Полноширинное видео</h3>
+                <div id="video-3" class="video-container"></div>
+            </div>
+
+            <!-- Small video blocks -->
+            <div class="content-grid">
+                <div class="video-block">
+                    <h3>📹 Компактное видео 1</h3>
+                    <div id="video-4" class="video-container"></div>
+                </div>
+
+                <div class="video-block">
+                    <h3>📹 Компактное видео 2</h3>
+                    <div id="video-5" class="video-container"></div>
+                </div>
+
+                <div class="video-block">
+                    <h3>📹 Компактное видео 3</h3>
+                    <div id="video-6" class="video-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load LiveKit Client -->
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.5.8/dist/livekit-client.umd.min.js"></script>
+    
+    <!-- Load Video Embed Module -->
+    <script src="video-embed.js"></script>
+
+    <script>
+        // Store embed instances
+        const embeds = {};
+
+        function connectAll() {
+            const roomName = document.getElementById('roomName').value;
+            const participantName = document.getElementById('participantName').value;
+
+            if (!roomName || !participantName) {
+                alert('Введите название комнаты и ваше имя');
+                return;
+            }
+
+            // Connect all video blocks to the same room
+            const configs = [
+                { id: 'video-1', height: '400px' },
+                { id: 'video-2', height: '400px' },
+                { id: 'video-3', height: '500px' },
+                { id: 'video-4', height: '300px' },
+                { id: 'video-5', height: '300px' },
+                { id: 'video-6', height: '300px' }
+            ];
+
+            configs.forEach((config, index) => {
+                // Disconnect if already connected
+                if (embeds[config.id]) {
+                    embeds[config.id].disconnect();
+                }
+
+                // Create new embed
+                embeds[config.id] = new VideoCallsEmbed({
+                    containerId: config.id,
+                    apiUrl: 'https://calls.trexon.ru/api',
+                    roomName: roomName,
+                    participantName: `${participantName}-view${index + 1}`,
+                    width: '100%',
+                    height: config.height,
+                    showControls: index === 0, // Show controls only on first video
+                    onConnected: (room) => {
+                        console.log(`Video ${index + 1} connected`);
+                    },
+                    onError: (error) => {
+                        console.error(`Video ${index + 1} error:`, error);
+                    }
+                });
+            });
+        }
+
+        function disconnectAll() {
+            Object.values(embeds).forEach(embed => {
+                embed.disconnect();
+            });
+        }
+
+        // Example: Connect to different rooms
+        function connectToDifferentRooms() {
+            const participantName = document.getElementById('participantName').value;
+
+            // Video 1 - Room A
+            embeds['video-1'] = new VideoCallsEmbed({
+                containerId: 'video-1',
+                apiUrl: 'https://calls.trexon.ru/api',
+                roomName: 'room-a',
+                participantName: participantName,
+                width: '100%',
+                height: '400px'
+            });
+
+            // Video 2 - Room B
+            embeds['video-2'] = new VideoCallsEmbed({
+                containerId: 'video-2',
+                apiUrl: 'https://calls.trexon.ru/api',
+                roomName: 'room-b',
+                participantName: participantName,
+                width: '100%',
+                height: '400px'
+            });
+        }
+
+        // Example: Programmatic control
+        function muteAllVideos() {
+            Object.values(embeds).forEach(embed => {
+                if (embed.isConnected()) {
+                    embed.toggleMicrophone();
+                }
+            });
+        }
+
+        // Auto-connect on load (optional)
+        // window.addEventListener('load', () => {
+        //     setTimeout(connectAll, 1000);
+        // });
+    </script>
+</body>
+</html>

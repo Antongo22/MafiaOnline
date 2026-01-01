@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using Mafia.Services;
 using Mafia.DTOs;
 using Mafia.Helpers;
+using Microsoft.AspNetCore.SignalR;
+using Mafia.Hubs;
 
 namespace Mafia.Controllers;
 
@@ -12,6 +14,12 @@ namespace Mafia.Controllers;
 [Route("api/[controller]")]
 public class Room : ControllerBase
 {
+    private readonly IHubContext<ChatHub> _hubContext;
+
+    public Room(IHubContext<ChatHub> hubContext)
+    {
+        _hubContext = hubContext;
+    }
     /// <summary>
     /// Присоединиться к комнате по инвайт-коду
     /// </summary>
@@ -81,7 +89,7 @@ public class Room : ControllerBase
     /// Покинуть комнату (если админ - комната расформируется)
     /// </summary>
     [HttpPost("leave")]
-    public ActionResult LeaveRoom(string userId)
+    public async Task<ActionResult> LeaveRoom(string userId)
     {
         ValidationHelper.ValidateNotEmpty(userId, nameof(userId));
         
@@ -96,13 +104,26 @@ public class Room : ControllerBase
         // Если уходит админ - расформируем комнату
         if (user.Status == UserStatus.Admin)
         {
+            var roomId = room.Id;
+            
+            // Отправляем уведомление всем участникам о расформировании
+            await _hubContext.Clients.Group(roomId).SendAsync("RoomDisbanded", new { roomId = roomId });
+            
             // Удаляем комнату полностью
             Game.Rooms.Remove(room);
+            
             // Удаляем историю чата комнаты
-            if (Game.ChatMessages.ContainsKey(room.Id))
+            if (Game.ChatMessages.ContainsKey(roomId))
             {
-                Game.ChatMessages.Remove(room.Id);
+                Game.ChatMessages.Remove(roomId);
             }
+            
+            // Удаляем историю чата мафии
+            if (Game.MafiaChatMessages.ContainsKey(roomId))
+            {
+                Game.MafiaChatMessages.Remove(roomId);
+            }
+            
             return Ok(new { message = "Room disbanded", disbanded = true });
         }
         

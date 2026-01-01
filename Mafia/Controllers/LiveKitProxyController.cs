@@ -34,23 +34,28 @@ public class LiveKitProxyController : ControllerBase
         {
             var client = _httpClientFactory.CreateClient();
             var apiUrl = GetLiveKitApiUrl();
-            var url = $"{apiUrl}/participants/{roomId}/mute-audio";
-
-            var content = new StringContent(
-                JsonSerializer.Serialize(request),
-                Encoding.UTF8,
-                "application/json");
-
-            var response = await client.PostAsync(url, content);
-            var responseBody = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
+            
+            // Для каждого имени отправляем отдельный запрос
+            foreach (var name in request.Names)
             {
-                _logger.LogError($"LiveKit API error: {response.StatusCode} - {responseBody}");
-                return StatusCode((int)response.StatusCode, responseBody);
+                var url = $"{apiUrl}/participants/{roomId}/mute-audio";
+                var payload = new { participant_identity = name, muted = request.Mute };
+                
+                var content = new StringContent(
+                    JsonSerializer.Serialize(payload),
+                    Encoding.UTF8,
+                    "application/json");
+
+                var response = await client.PostAsync(url, content);
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError($"LiveKit API error for {name}: {response.StatusCode} - {responseBody}");
+                }
             }
 
-            return Ok(responseBody);
+            return Ok(new { success = true });
         }
         catch (Exception ex)
         {
@@ -66,23 +71,28 @@ public class LiveKitProxyController : ControllerBase
         {
             var client = _httpClientFactory.CreateClient();
             var apiUrl = GetLiveKitApiUrl();
-            var url = $"{apiUrl}/participants/{roomId}/mute-video";
-
-            var content = new StringContent(
-                JsonSerializer.Serialize(request),
-                Encoding.UTF8,
-                "application/json");
-
-            var response = await client.PostAsync(url, content);
-            var responseBody = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
+            
+            // Для каждого имени отправляем отдельный запрос
+            foreach (var name in request.Names)
             {
-                _logger.LogError($"LiveKit API error: {response.StatusCode} - {responseBody}");
-                return StatusCode((int)response.StatusCode, responseBody);
+                var url = $"{apiUrl}/participants/{roomId}/mute-video";
+                var payload = new { participant_identity = name, muted = request.Mute };
+                
+                var content = new StringContent(
+                    JsonSerializer.Serialize(payload),
+                    Encoding.UTF8,
+                    "application/json");
+
+                var response = await client.PostAsync(url, content);
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError($"LiveKit API error for {name}: {response.StatusCode} - {responseBody}");
+                }
             }
 
-            return Ok(responseBody);
+            return Ok(new { success = true });
         }
         catch (Exception ex)
         {
