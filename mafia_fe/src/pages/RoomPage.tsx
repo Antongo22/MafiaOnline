@@ -983,8 +983,17 @@ export function RoomPage() {
       clearRoomState();
       setRoom(null);
       setUserId(null);
-      setUserName("");
       setUsers([]);
+      
+      // Загружаем последние использованные имена для формы
+      const lastNames = loadLastUsedNames();
+      if (lastNames) {
+        setRoomName(lastNames.roomName);
+        setUserName(lastNames.userName);
+      } else {
+        setUserName("");
+        setRoomName("");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to leave room");
     }
