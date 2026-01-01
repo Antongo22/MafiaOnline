@@ -619,7 +619,13 @@ export function RoomPage() {
       showAlert("⚠️ Комната была расформирована", "danger");
     };
 
+    const handleUserListUpdate = (updatedUsers: User[]) => {
+      console.log("[RoomPage] User list updated via SignalR:", updatedUsers);
+      setUsers(updatedUsers.filter(u => u.status !== "Leave"));
+    };
+
     // Subscribe
+    chatService.onUserListUpdate(handleUserListUpdate);
     chatService.onRoomDisbanded(handleRoomDisbanded);
     chatService.onGameStatusChanged(handleGameStatusChanged);
     chatService.onRoleAssigned(handleRoleAssigned);
@@ -647,6 +653,7 @@ export function RoomPage() {
 
     // Unsubscribe
     return () => {
+      chatService.removeUserListHandler(handleUserListUpdate);
       chatService.removeRoomDisbandedHandler(handleRoomDisbanded);
       chatService.removeGameStatusChangedHandler(handleGameStatusChanged);
       chatService.removeRoleAssignedHandler(handleRoleAssigned);

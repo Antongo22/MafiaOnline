@@ -24,7 +24,7 @@ public class Room : ControllerBase
     /// Присоединиться к комнате по инвайт-коду
     /// </summary>
     [HttpPost("invite")]
-    public ActionResult<RoomDTO> Rooms(string inviteCode, string playerName)
+    public async Task<ActionResult<RoomDTO>> Rooms(string inviteCode, string playerName)
     {
         ValidationHelper.ValidateNotEmpty(inviteCode, nameof(inviteCode));
         ValidationHelper.ValidateNotEmpty(playerName, nameof(playerName));
@@ -41,6 +41,10 @@ public class Room : ControllerBase
         
         var userId = Guid.NewGuid().ToString();
         room.Users.Add(new UserDTO { Id = userId, Name = playerName, Status = UserStatus.Player, IsAlive = true });
+        
+        // Отправляем обновленный список пользователей всем участникам комнаты
+        var activeUsers = room.Users.Where(u => u.Status != UserStatus.Leave).ToList();
+        await _hubContext.Clients.Group(room.Id).SendAsync("UpdateUserList", activeUsers);
         
         return Ok(room);
     }
