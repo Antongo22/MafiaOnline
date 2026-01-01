@@ -994,6 +994,12 @@ export function RoomPage() {
     if (!confirmLeave) return;
 
     try {
+      // Сначала отправляем SignalR событие о выходе (обновит список у остальных)
+      if (room && userId) {
+        await chatService.leaveRoom(room.id, userId);
+      }
+
+      // Затем вызываем API для обновления состояния на сервере
       const response = await fetch(`${API_URL}/api/Room/leave?userId=${userId}`, {
         method: "POST",
       });
@@ -1001,10 +1007,6 @@ export function RoomPage() {
       if (!response.ok) {
         throw new Error("Failed to leave room");
       }
-
-      // Backend уже отправил SignalR уведомление о расформировании
-      // через _hubContext.Clients.Group(roomId).SendAsync("RoomDisbanded")
-      // Поэтому здесь не нужно вызывать chatService.disbandRoom()
 
       // Очищаем состояние для всех
       clearRoomState();

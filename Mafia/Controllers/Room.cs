@@ -131,8 +131,12 @@ public class Room : ControllerBase
             return Ok(new { message = "Room disbanded", disbanded = true });
         }
         
-        // Обычный игрок просто покидает
-        user.Status = UserStatus.Leave;
+        // Обычный игрок покидает комнату - удаляем его из списка
+        room.Users.Remove(user);
+        
+        // Отправляем обновленный список пользователей всем участникам комнаты
+        var activeUsers = room.Users.Where(u => u.Status != UserStatus.Leave).ToList();
+        await _hubContext.Clients.Group(room.Id).SendAsync("UpdateUserList", activeUsers);
         
         return Ok(new { message = "Left room successfully", disbanded = false });
     }
