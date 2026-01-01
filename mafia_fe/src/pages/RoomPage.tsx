@@ -50,7 +50,7 @@ import { VotingResultsModal } from "../components/VotingResultsModal";
 import { type User, chatService } from "../services/chatService";
 import { gameService } from "../services/gameService";
 import { GamePhase, type VoterInfo, type NightResults } from "../types/game";
-import { saveRoomState, loadRoomState, clearRoomState } from "../utils/storage";
+import { saveRoomState, loadRoomState, clearRoomState, saveLastUsedNames, loadLastUsedNames } from "../utils/storage";
 import { rolesService, type RoleInfo } from "../services/rolesService";
 import { videoCallService } from "../services/videoCallService";
 
@@ -196,12 +196,19 @@ export function RoomPage() {
       
       if (!savedState) {
         // Если нет сохранённой комнаты, показываем форму создания/присоединения
-        // Генерируем случайные имена для удобства
-        const autoRoomName = `Комната ${Math.floor(Math.random() * 1000)}`;
-        const autoUserName = `Игрок ${Math.floor(Math.random() * 1000)}`;
+        // Загружаем последние использованные имена или генерируем случайные
+        const lastNames = loadLastUsedNames();
         
-        setRoomName(autoRoomName);
-        setUserName(autoUserName);
+        if (lastNames) {
+          setRoomName(lastNames.roomName);
+          setUserName(lastNames.userName);
+        } else {
+          const autoRoomName = `Комната ${Math.floor(Math.random() * 1000)}`;
+          const autoUserName = `Игрок ${Math.floor(Math.random() * 1000)}`;
+          
+          setRoomName(autoRoomName);
+          setUserName(autoUserName);
+        }
         return;
       }
 
@@ -809,6 +816,9 @@ export function RoomPage() {
       setUserName(userName);
       setGameStatus(data.status || "Created");
       
+      // Сохраняем последние использованные имена
+      saveLastUsedNames(userName, roomName);
+      
       saveRoomState({
         roomId: data.id,
         userId: data.users[0].id,
@@ -870,6 +880,9 @@ export function RoomPage() {
       if (user) {
         setUserId(user.id);
         setUserName(userName);
+        
+        // Сохраняем последние использованные имена
+        saveLastUsedNames(userName, data.name);
         
         saveRoomState({
           roomId: data.id,
