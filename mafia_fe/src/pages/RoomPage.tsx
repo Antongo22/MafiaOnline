@@ -624,8 +624,30 @@ export function RoomPage() {
       setUsers(updatedUsers.filter(u => u.status !== "Leave"));
     };
 
+    const handlePlayerKicked = (data: { kickedUserId: string; kickedUserName: string; kickedBy: string }) => {
+      console.log("[RoomPage] Player kicked:", data);
+      
+      // Если исключили текущего пользователя, очищаем состояние и перенаправляем
+      if (data.kickedUserId === userId) {
+        clearRoomState();
+        setRoom(null);
+        setUserId(null);
+        setUserName("");
+        setUsers([]);
+        showAlert(`⚠️ Вы были исключены из комнаты админом ${data.kickedBy}`, "danger");
+        
+        // Загружаем последние использованные имена для формы
+        const lastNames = loadLastUsedNames();
+        if (lastNames) {
+          setRoomName(lastNames.roomName);
+          setUserName(lastNames.userName);
+        }
+      }
+    };
+
     // Subscribe
     chatService.onUserListUpdate(handleUserListUpdate);
+    chatService.onPlayerKicked(handlePlayerKicked);
     chatService.onRoomDisbanded(handleRoomDisbanded);
     chatService.onGameStatusChanged(handleGameStatusChanged);
     chatService.onRoleAssigned(handleRoleAssigned);
@@ -654,6 +676,7 @@ export function RoomPage() {
     // Unsubscribe
     return () => {
       chatService.removeUserListHandler(handleUserListUpdate);
+      chatService.removePlayerKickedHandler(handlePlayerKicked);
       chatService.removeRoomDisbandedHandler(handleRoomDisbanded);
       chatService.removeGameStatusChangedHandler(handleGameStatusChanged);
       chatService.removeRoleAssignedHandler(handleRoleAssigned);
