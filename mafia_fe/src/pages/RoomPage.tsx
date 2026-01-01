@@ -972,12 +972,9 @@ export function RoomPage() {
         throw new Error("Failed to leave room");
       }
 
-      const result = await response.json();
-
-      if (result.disbanded && room) {
-        // Комната расформирована
-        await chatService.disbandRoom(room.id);
-      }
+      // Backend уже отправил SignalR уведомление о расформировании
+      // через _hubContext.Clients.Group(roomId).SendAsync("RoomDisbanded")
+      // Поэтому здесь не нужно вызывать chatService.disbandRoom()
 
       // Очищаем состояние для всех
       clearRoomState();
