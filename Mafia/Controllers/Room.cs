@@ -15,10 +15,12 @@ namespace Mafia.Controllers;
 public class Room : ControllerBase
 {
     private readonly IHubContext<ChatHub> _hubContext;
+    private readonly VideoCallService _videoCallService;
 
-    public Room(IHubContext<ChatHub> hubContext)
+    public Room(IHubContext<ChatHub> hubContext, VideoCallService videoCallService)
     {
         _hubContext = hubContext;
+        _videoCallService = videoCallService;
     }
     /// <summary>
     /// Присоединиться к комнате по инвайт-коду
@@ -54,7 +56,7 @@ public class Room : ControllerBase
     /// Создать новую игровую комнату
     /// </summary>
     [HttpPost("create")]
-    public ActionResult<RoomDTO> CreateRoom(string roomName, string playerName)
+    public async Task<ActionResult<RoomDTO>> CreateRoom(string roomName, string playerName)
     {
         ValidationHelper.ValidateNotEmpty(roomName, nameof(roomName));
         ValidationHelper.ValidateNotEmpty(playerName, nameof(playerName));
@@ -70,6 +72,9 @@ public class Room : ControllerBase
         };
         
         Game.Rooms.Add(room);
+        
+        // Create video room
+        await _videoCallService.CreateRoomAsync(room.Id, playerName);
         
         return Ok(room);
     }

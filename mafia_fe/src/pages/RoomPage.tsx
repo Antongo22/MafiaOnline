@@ -36,7 +36,7 @@
  * - localStorage сохраняет состояние между перезагрузками страницы
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { VideoCall } from "../components/VideoCall";
 // import { LiveKitChat } from "../components/LiveKitChat"; // Временно отключен из-за CORS
 import { MafiaChat } from "../components/MafiaChat";
@@ -52,7 +52,7 @@ import { gameService } from "../services/gameService";
 import { GamePhase, type VoterInfo, type NightResults } from "../types/game";
 import { saveRoomState, loadRoomState, clearRoomState, saveLastUsedNames, loadLastUsedNames } from "../utils/storage";
 import { rolesService, type RoleInfo } from "../services/rolesService";
-import { videoCallService } from "../services/videoCallService";
+// import { videoCallService } from "../services/videoCallService";
 
 interface Room {
   id: string;
@@ -77,7 +77,7 @@ export function RoomPage() {
   const [gameStatus, setGameStatus] = useState<string>("Created");
   const [myRole, setMyRole] = useState<string | null>(null);
   const [revealedRoles, setRevealedRoles] = useState<{ [key: string]: string }>({});
-  
+
   // Game cycle state
   const [gamePhase, setGamePhase] = useState<string>(GamePhase.Lobby);
   const [timeLeft, setTimeLeft] = useState<number>(0);
@@ -97,26 +97,26 @@ export function RoomPage() {
     eliminated: Array<{ userName: string; role: string }>;
     tie: boolean;
   } | null>(null);
-  
+
   // Night results modal
   const [nightResultsModal, setNightResultsModal] = useState<{
     isOpen: boolean;
     killed: Array<{ userName: string; role: string }>;
   }>({ isOpen: false, killed: [] });
-  
+
   // Voting results modal
   const [votingResultsModal, setVotingResultsModal] = useState<{
     isOpen: boolean;
     eliminated: Array<{ userName: string; role: string }>;
     tie: boolean;
   }>({ isOpen: false, eliminated: [], tie: false });
-  
+
   // TieBreaker modal
   const [tieBreakerModal, setTieBreakerModal] = useState<{
     isOpen: boolean;
     candidates: Array<{ userId: string; userName: string; role: string | null }>;
   }>({ isOpen: false, candidates: [] });
-  
+
   // Game settings
   const [gameSettings, setGameSettings] = useState({
     individualSpeechTime: 30,
@@ -124,28 +124,28 @@ export function RoomPage() {
     votingTime: 15,
     nightActionTime: 30,
   });
-  
+
   // Alerts
   const [alert, setAlert] = useState<{ message: string; type: "info" | "success" | "warning" | "danger" } | null>(null);
-  
+
   // Roles data
   const [rolesData, setRolesData] = useState<RoleInfo[]>([]);
-  
+
   // Video call management
-  const mediaControlTimeoutRef = useRef<number | null>(null);
-  const lastMediaControlPhaseRef = useRef<string | null>(null);
+  // const mediaControlTimeoutRef = useRef<number | null>(null);
+  // const lastMediaControlPhaseRef = useRef<string | null>(null);
 
   const isAdmin = room && userId && room.users.find(u => u.id === userId)?.status === "Admin";
-  
+
   const MAFIA_ROLES = ["Don", "Mafia", "Ninja"];
   const isMafia = myRole && MAFIA_ROLES.includes(myRole);
-  
+
   // Helper function to get Russian role name
   const getRussianRoleName = (roleValue: string): string => {
     const roleInfo = rolesData.find(r => r.roleValue === roleValue);
     return roleInfo?.name || roleValue;
   };
-  
+
   // Show alert function
   const showAlert = (message: string, type: "info" | "success" | "warning" | "danger" = "info") => {
     setAlert({ message, type });
@@ -182,7 +182,7 @@ export function RoomPage() {
       // Проверяем URL параметры для приглашения
       const urlParams = new URLSearchParams(window.location.search);
       const inviteCodeFromUrl = urlParams.get('invite');
-      
+
       if (inviteCodeFromUrl) {
         // Если есть код приглашения в URL, переключаемся на режим присоединения
         setMode('join');
@@ -193,19 +193,19 @@ export function RoomPage() {
       }
 
       const savedState = loadRoomState();
-      
+
       if (!savedState) {
         // Если нет сохранённой комнаты, показываем форму создания/присоединения
         // Загружаем последние использованные имена или генерируем случайные
         const lastNames = loadLastUsedNames();
-        
+
         if (lastNames) {
           setRoomName(lastNames.roomName);
           setUserName(lastNames.userName);
         } else {
           const autoRoomName = `Комната ${Math.floor(Math.random() * 1000)}`;
           const autoUserName = `Игрок ${Math.floor(Math.random() * 1000)}`;
-          
+
           setRoomName(autoRoomName);
           setUserName(autoUserName);
         }
@@ -216,7 +216,7 @@ export function RoomPage() {
         const response = await fetch(`${API_URL}/api/Room/my?userId=${savedState.userId}`);
         if (response.ok) {
           const data: Room = await response.json();
-          
+
           // Проверяем, что комната существует и пользователь в ней
           const userInRoom = data.users.find(u => u.id === savedState.userId);
           if (!userInRoom || userInRoom.status === "Leave") {
@@ -224,18 +224,18 @@ export function RoomPage() {
             clearRoomState();
             return;
           }
-          
+
           setRoom(data);
           setUserId(savedState.userId);
           setUserName(savedState.userName);
           setUsers(data.users.filter(u => u.status !== "Leave"));
           setGameStatus(data.status);
-          
+
           // Восстанавливаем роль из localStorage
           if (savedState.myRole) {
             setMyRole(savedState.myRole);
           }
-          
+
           // Восстанавливаем информацию о победителе
           if (savedState.winningTeam) {
             setWinningTeam(savedState.winningTeam);
@@ -256,7 +256,7 @@ export function RoomPage() {
               if (roleResponse.ok) {
                 const roleData = await roleResponse.json();
                 setMyRole(roleData.role);
-                
+
                 // Если игра закончена, загружаем все роли
                 if (data.status === "Finished" && roleData.allRoles) {
                   setRevealedRoles(roleData.allRoles);
@@ -287,7 +287,7 @@ export function RoomPage() {
                 setCurrentVoterName(gameStateData.currentVoterName);
                 setCurrentVoterId(gameStateData.currentVoterId);
                 setIsPaused(gameStateData.isPaused);
-                
+
                 // Восстанавливаем информацию о победителе, если игра закончена
                 if (gameStateData.winningTeam) {
                   setWinningTeam(gameStateData.winningTeam);
@@ -321,7 +321,7 @@ export function RoomPage() {
       if (room) {
         setRoom({ ...room, status: data.status });
       }
-      
+
       if (data.status === "Created") {
         setMyRole(null);
         setRevealedRoles({});
@@ -345,35 +345,35 @@ export function RoomPage() {
       // Сбрасываем роли
       setMyRole(null);
       setRevealedRoles({});
-      
+
       // Сбрасываем статус игры
       setGameStatus("Created");
       setGameCycleStarted(false);
-      
+
       // Сбрасываем фазы
       setGamePhase(GamePhase.Lobby);
       setNightPhase(undefined);
       setDayNumber(1);
-      
+
       // Сбрасываем таймеры и текущие игроки
       setTimeLeft(0);
       setCurrentSpeakerName(undefined);
       setCurrentSpeakerId(undefined);
       setCurrentVoterName(undefined);
       setCurrentVoterId(undefined);
-      
+
       // Сбрасываем результаты и победителей
       setVotingResults(null);
       setWinningTeam(undefined);
-      
+
       // Сбрасываем паузу
       setIsPaused(false);
-      
+
       // Очищаем алерты
       setAlert(null);
-      
+
       // Восстанавливаем всех игроков как живых
-      setUsers(prevUsers => 
+      setUsers(prevUsers =>
         prevUsers.map(u => ({ ...u, isAlive: true }))
       );
     };
@@ -393,7 +393,7 @@ export function RoomPage() {
       setCurrentVoterName(undefined);
       setCurrentVoterId(undefined);
       setIsPaused(false);
-      
+
       // Устанавливаем начальное состояние
       const isFirstStart = !gameCycleStarted;
       setGameCycleStarted(true);
@@ -402,7 +402,7 @@ export function RoomPage() {
       setCurrentSpeakerId(data.speakerId);
       setDayNumber(1);
       setTimeLeft(data.timeSeconds || 30);
-      
+
       // Показываем алерт только при первом старте игры
       if (isFirstStart) {
         showAlert("🎮 Игра начинается! Индивидуальные выступления.", "success");
@@ -418,12 +418,12 @@ export function RoomPage() {
     const handlePhaseChanged = (data: { phase: string }) => {
       setGamePhase(data.phase);
       setCurrentSpeakerName(undefined);
-      
+
       // Очищаем результаты голосования при смене фазы
       if (data.phase !== GamePhase.Voting) {
         setVotingResults(null);
       }
-      
+
       if (data.phase === "FreeDiscussion") {
         showAlert("💬 Свободное обсуждение начато!", "info");
       }
@@ -456,12 +456,12 @@ export function RoomPage() {
       showAlert(data.message, "info");
     };
 
-    const handleVotingResults = (data: { 
-      votes: Record<string, string>; 
+    const handleVotingResults = (data: {
+      votes: Record<string, string>;
       votesWithNames: Array<{ voterName: string; targetName: string }>;
       voteCounts: Record<string, number>;
-      eliminated: Array<{ userId: string; userName: string; role: string }>; 
-      tie?: boolean 
+      eliminated: Array<{ userId: string; userName: string; role: string }>;
+      tie?: boolean
     }) => {
       // Сохраняем результаты голосования для отображения
       setVotingResults({
@@ -491,7 +491,7 @@ export function RoomPage() {
     const handleNightPhaseChanged = (data: { nightPhase: string }) => {
       setNightPhase(data.nightPhase);
       setGamePhase(GamePhase.Night);
-      
+
       const nightPhaseNames: Record<string, string> = {
         Don: "Дон ищет шерифа",
         Mafia: "Мафия выбирает жертву",
@@ -500,19 +500,19 @@ export function RoomPage() {
         Doctor: "Доктор лечит",
         Prostitute: "Путана забирает игрока"
       };
-      
+
       showAlert(`🌙 ${nightPhaseNames[data.nightPhase] || data.nightPhase}`, "info");
     };
 
     const handleNightResults = (data: NightResults) => {
       console.log("NightResults received:", data);
-      
+
       // Показываем модальное окно с результатами ночи
       setNightResultsModal({
         isOpen: true,
         killed: data.killed || []
       });
-      
+
       // Раскрываем роли всех убитых игроков для всех
       if (data.killed && data.killed.length > 0) {
         const newRevealedRoles: { [key: string]: string } = {};
@@ -528,7 +528,7 @@ export function RoomPage() {
       if (data.targetUserId && data.targetUserId !== userId) {
         return; // Это не для нас, игнорируем
       }
-      
+
       setRevealedRoles(prev => ({ ...prev, [data.targetId]: data.role }));
       const targetName = users.find(u => u.id === data.targetId)?.name;
       showAlert(`🔍 Карта раскрыта: ${targetName} - ${data.role}`, "info");
@@ -539,20 +539,20 @@ export function RoomPage() {
       setGameStatus("Finished");
       setRevealedRoles(data.roles);
       setWinningTeam(data.winner);
-      
+
       const winnerNames: Record<string, string> = {
         Good: "Мирные жители",
         Evil: "Мафия",
         Neutral: "Маньяк",
         Draw: "Ничья - никого не осталось"
       };
-      
+
       showAlert(`🎉 ${winnerNames[data.winner] || data.winner}!`, "success");
     };
 
-    const handleTieBreakerStarted = (data: { 
-      candidates: Array<{ userId: string; userName: string; role: string | null }>; 
-      timeSeconds: number 
+    const handleTieBreakerStarted = (data: {
+      candidates: Array<{ userId: string; userName: string; role: string | null }>;
+      timeSeconds: number
     }) => {
       setGamePhase(GamePhase.TieBreaker);
       setTieBreakerModal({
@@ -562,13 +562,13 @@ export function RoomPage() {
       showAlert("⚖️ Ничья! Голосуйте: убить всех или помиловать всех", "warning");
     };
 
-    const handleTieBreakerResults = (data: { 
-      decision: "kill" | "pardon"; 
+    const handleTieBreakerResults = (data: {
+      decision: "kill" | "pardon";
       killed?: Array<{ userId: string; userName: string; role: string | null }>;
       spared?: Array<{ userId: string; userName: string; role: string | null }>;
     }) => {
       setTieBreakerModal({ isOpen: false, candidates: [] });
-      
+
       if (data.decision === "kill" && data.killed) {
         // Раскрываем роли убитых
         const newRevealedRoles: { [key: string]: string } = {};
@@ -594,8 +594,8 @@ export function RoomPage() {
 
     const handlePlayerDied = (data: { userId: string; userName: string; role: string; reason: string }) => {
       // Обновляем список пользователей, помечая игрока как мёртвого
-      setUsers(prevUsers => 
-        prevUsers.map(u => 
+      setUsers(prevUsers =>
+        prevUsers.map(u =>
           u.id === data.userId ? { ...u, isAlive: false } : u
         )
       );
@@ -603,8 +603,8 @@ export function RoomPage() {
 
     const handlePlayerEliminated = (data: { userId: string; userName: string; role: string; reason: string }) => {
       // Обновляем список пользователей, помечая игрока как мёртвого
-      setUsers(prevUsers => 
-        prevUsers.map(u => 
+      setUsers(prevUsers =>
+        prevUsers.map(u =>
           u.id === data.userId ? { ...u, isAlive: false } : u
         )
       );
@@ -626,7 +626,7 @@ export function RoomPage() {
 
     const handlePlayerKicked = (data: { kickedUserId: string; kickedUserName: string; kickedBy: string }) => {
       console.log("[RoomPage] Player kicked:", data);
-      
+
       // Если исключили текущего пользователя, очищаем состояние и перенаправляем
       if (data.kickedUserId === userId) {
         clearRoomState();
@@ -635,7 +635,7 @@ export function RoomPage() {
         setUserName("");
         setUsers([]);
         showAlert(`⚠️ Вы были исключены из комнаты админом ${data.kickedBy}`, "danger");
-        
+
         // Загружаем последние использованные имена для формы
         const lastNames = loadLastUsedNames();
         if (lastNames) {
@@ -704,7 +704,8 @@ export function RoomPage() {
     };
   }, [room, userId, users]);
 
-  // Управление медиа в зависимости от фазы игры
+  /*
+  // Управление медиа в зависимости от фазы игры - ОТКЛЮЧЕНО (теперь управляется с бэкенда)
   useEffect(() => {
     if (!room || !userId || !isAdmin) return; // Только админ управляет медиа
     if (isPaused) return; // Если игра на паузе, не меняем медиа
@@ -816,6 +817,7 @@ export function RoomPage() {
     users,
     isPaused,
   ]);
+  */
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -845,10 +847,10 @@ export function RoomPage() {
       setUserId(data.users[0].id);
       setUserName(userName);
       setGameStatus(data.status || "Created");
-      
+
       // Сохраняем последние использованные имена
       saveLastUsedNames(userName, roomName);
-      
+
       saveRoomState({
         roomId: data.id,
         userId: data.users[0].id,
@@ -910,10 +912,10 @@ export function RoomPage() {
       if (user) {
         setUserId(user.id);
         setUserName(userName);
-        
+
         // Сохраняем последние использованные имена
         saveLastUsedNames(userName, data.name);
-        
+
         saveRoomState({
           roomId: data.id,
           userId: user.id,
@@ -941,7 +943,7 @@ export function RoomPage() {
             if (roleResponse.ok) {
               const roleData = await roleResponse.json();
               setMyRole(roleData.role);
-              
+
               // Если игра закончена, загружаем все роли
               if (data.status === "Finished" && roleData.allRoles) {
                 setRevealedRoles(roleData.allRoles);
@@ -986,10 +988,10 @@ export function RoomPage() {
   const handleLeaveRoom = async () => {
     if (!userId || !room) return;
 
-    const message = isAdmin 
-      ? "Вы админ! При выходе комната будет расформирована. Продолжить?" 
+    const message = isAdmin
+      ? "Вы админ! При выходе комната будет расформирована. Продолжить?"
       : "Вы уверены, что хотите покинуть комнату?";
-    
+
     const confirmLeave = window.confirm(message);
     if (!confirmLeave) return;
 
@@ -1013,7 +1015,7 @@ export function RoomPage() {
       setRoom(null);
       setUserId(null);
       setUsers([]);
-      
+
       // Загружаем последние использованные имена для формы
       const lastNames = loadLastUsedNames();
       if (lastNames) {
@@ -1059,7 +1061,7 @@ export function RoomPage() {
 
   const handleTieBreakerVote = async (killAll: boolean) => {
     if (!room || !userId) return;
-    
+
     try {
       await gameService.tieBreakerVote(room.id, userId, killAll);
       setTieBreakerModal({ isOpen: false, candidates: [] });
@@ -1071,7 +1073,7 @@ export function RoomPage() {
 
   const handleSaveGameSettings = async () => {
     if (!room || !userId || !isAdmin) return;
-    
+
     try {
       await gameService.saveGameSettings(room.id, userId, gameSettings);
       showAlert("Настройки сохранены", "success");
@@ -1105,7 +1107,7 @@ export function RoomPage() {
   // Game cycle actions
   const handleVote = async (targetId: string) => {
     if (!room || !userId) return;
-    
+
     try {
       await gameService.vote(room.id, userId, targetId);
     } catch (err) {
@@ -1115,7 +1117,7 @@ export function RoomPage() {
 
   const handleNightAction = async (targetId?: string, actionType?: string) => {
     if (!room || !userId) return;
-    
+
     try {
       await gameService.nightAction(room.id, userId, { targetId, actionType });
     } catch (err) {
@@ -1138,8 +1140,8 @@ export function RoomPage() {
         <ActionModal
           isOpen={true}
           title="Голосование"
-          description={isMyTurn 
-            ? "Выберите игрока, за которого хотите проголосовать" 
+          description={isMyTurn
+            ? "Выберите игрока, за которого хотите проголосовать"
             : "Другой игрок сейчас голосует..."}
           players={players}
           onAction={(targetId) => {
@@ -1162,9 +1164,9 @@ export function RoomPage() {
         Doctor: "Doctor",
         Prostitute: "Prostitute"
       };
-      
+
       const canAct = roleNightPhaseMap[myRole] === nightPhase;
-      
+
       // Описания действий
       const actionDescriptions: Record<string, { title: string; description: string }> = {
         Don: { title: "Поиск шерифа", description: "Выберите игрока для проверки. Если это шериф, его карта откроется для вас." },
@@ -1189,7 +1191,7 @@ export function RoomPage() {
 
       // Дополнительные действия
       let extraActions: Array<{ id: string; label: string; type: "success" | "danger" }> | undefined;
-      
+
       if (nightPhase === "Maniac") {
         extraActions = [
           { id: "kill", label: "Убить игрока", type: "danger" },
@@ -1229,7 +1231,7 @@ export function RoomPage() {
           killed={nightResultsModal.killed}
           onClose={() => setNightResultsModal({ isOpen: false, killed: [] })}
         />
-        
+
         {/* Модальное окно результатов голосования */}
         <VotingResultsModal
           isOpen={votingResultsModal.isOpen}
@@ -1237,7 +1239,7 @@ export function RoomPage() {
           tie={votingResultsModal.tie}
           onClose={() => setVotingResultsModal({ isOpen: false, eliminated: [], tie: false })}
         />
-        
+
         {/* Модальное окно разрешения ничьей */}
         {tieBreakerModal.isOpen && (
           <div style={{
@@ -1294,556 +1296,555 @@ export function RoomPage() {
             </div>
           </div>
         )}
-        
-        
-        <div className="fade-in" style={{ 
-          display: "flex", 
+
+
+        <div className="fade-in" style={{
+          display: "flex",
           flexDirection: "row",
-          height: "100vh", 
+          height: "100vh",
           padding: "1.5rem",
           gap: "1.5rem",
           maxWidth: "1600px",
           margin: "0 auto",
           overflow: "hidden"
         }}>
-        {/* Левая панель */}
-        <div style={{ 
-          width: "320px", 
-          display: "flex", 
-          flexDirection: "column",
-          gap: "1rem",
-          flexShrink: 0,
-          height: "100vh"
-        }}>
-          {/* Информация о комнате */}
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            <div>
-              <h2 style={{ margin: 0, marginBottom: "0.5rem", fontSize: "1.5rem" }}>
-                {room.name}
-              </h2>
-              {isAdmin && (
-                <span className="badge badge-success">Вы админ 👑</span>
-              )}
-            </div>
-            
-            <div>
-              <label style={{ 
-                display: "block", 
-                color: "var(--text-secondary)", 
-                fontSize: "0.875rem",
-                marginBottom: "0.5rem"
-              }}>
-                Код приглашения
-              </label>
-              <div style={{ 
-                display: "flex",
-                gap: "0.5rem"
-              }}>
-                <div style={{ 
-                  flex: 1,
-                  padding: "0.75rem",
-                  background: "var(--bg-tertiary)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius)",
-                  fontWeight: "bold",
-                  fontSize: "1.25rem",
-                  textAlign: "center",
-                  letterSpacing: "3px",
-                  color: "var(--accent-primary)"
+          {/* Левая панель */}
+          <div style={{
+            width: "320px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "1rem",
+            flexShrink: 0,
+            height: "100vh"
+          }}>
+            {/* Информация о комнате */}
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div>
+                <h2 style={{ margin: 0, marginBottom: "0.5rem", fontSize: "1.5rem" }}>
+                  {room.name}
+                </h2>
+                {isAdmin && (
+                  <span className="badge badge-success">Вы админ 👑</span>
+                )}
+              </div>
+
+              <div>
+                <label style={{
+                  display: "block",
+                  color: "var(--text-secondary)",
+                  fontSize: "0.875rem",
+                  marginBottom: "0.5rem"
                 }}>
-                  {room.inviteCode}
+                  Код приглашения
+                </label>
+                <div style={{
+                  display: "flex",
+                  gap: "0.5rem"
+                }}>
+                  <div style={{
+                    flex: 1,
+                    padding: "0.75rem",
+                    background: "var(--bg-tertiary)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--radius)",
+                    fontWeight: "bold",
+                    fontSize: "1.25rem",
+                    textAlign: "center",
+                    letterSpacing: "3px",
+                    color: "var(--accent-primary)"
+                  }}>
+                    {room.inviteCode}
+                  </div>
+                  <button
+                    onClick={copyInviteCode}
+                    className="btn-secondary btn-sm"
+                    title="Копировать код"
+                    style={{ padding: "0.75rem" }}
+                  >
+                    📋
+                  </button>
                 </div>
+
                 <button
-                  onClick={copyInviteCode}
-                  className="btn-secondary btn-sm"
-                  title="Копировать код"
-                  style={{ padding: "0.75rem" }}
+                  onClick={copyInviteLink}
+                  className="btn-primary"
+                  style={{
+                    marginTop: "0.75rem",
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.5rem"
+                  }}
                 >
-                  📋
+                  <span>🔗</span>
+                  <span>Копировать ссылку-приглашение</span>
                 </button>
               </div>
-              
+
               <button
-                onClick={copyInviteLink}
-                className="btn-primary"
-                style={{ 
-                  marginTop: "0.75rem",
-                  width: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "0.5rem"
-                }}
+                onClick={handleLeaveRoom}
+                className="btn-danger w-full"
               >
-                <span>🔗</span>
-                <span>Копировать ссылку-приглашение</span>
+                {isAdmin ? "🚪 Расформировать комнату" : "🚪 Покинуть комнату"}
               </button>
             </div>
 
-            <button
-              onClick={handleLeaveRoom}
-              className="btn-danger w-full"
-            >
-              {isAdmin ? "🚪 Расформировать комнату" : "🚪 Покинуть комнату"}
-            </button>
-          </div>
+            {/* Админ-панель */}
+            {isAdmin && (
+              <AdminPanel
+                roomId={room.id}
+                userId={userId}
+                gameStatus={gameStatus}
+                playerCount={users.length}
+                apiUrl={API_URL}
+                onStatusChange={handleGameStatusChange}
+                gameCycleStarted={gameCycleStarted}
+                isPaused={isPaused}
+              />
+            )}
 
-          {/* Админ-панель */}
-          {isAdmin && (
-            <AdminPanel
-              roomId={room.id}
-              userId={userId}
+            {/* Отображение ролей */}
+            <RoleDisplay
+              myRole={myRole}
+              revealedRoles={revealedRoles}
               gameStatus={gameStatus}
-              playerCount={users.length}
-              apiUrl={API_URL}
-              onStatusChange={handleGameStatusChange}
-              gameCycleStarted={gameCycleStarted}
-              isPaused={isPaused}
+              users={users}
             />
-          )}
 
-          {/* Отображение ролей */}
-          <RoleDisplay
-            myRole={myRole}
-            revealedRoles={revealedRoles}
-            gameStatus={gameStatus}
-            users={users}
-          />
-
-          {/* Список пользователей */}
-          <div className="card" style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden"
-          }}>
-            <div style={{ 
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: "1rem"
-            }}>
-              <h3 style={{ 
-                margin: 0, 
-                fontSize: "1.125rem",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem"
-              }}>
-                <span>👥 Участники</span>
-                <span className="badge" style={{ 
-                  background: "var(--accent-light)",
-                  color: "var(--accent-primary)"
-                }}>
-                  {users.length}
-                </span>
-              </h3>
-            </div>
-            <div style={{ 
-              display: "flex", 
-              flexDirection: "column", 
-              gap: "0.5rem"
-            }}>
-              {users.map((user) => {
-                const isCurrentUser = user.id === userId;
-                const isUserAdmin = user.status === "Admin";
-                const isDead = user.isAlive === false;
-                const isActivePlayer = 
-                  (gamePhase === GamePhase.IndividualSpeech && user.id === currentSpeakerId) ||
-                  (gamePhase === GamePhase.Voting && user.id === currentVoterId);
-                
-                // Показываем роль, если игрок мёртв или его карта раскрыта
-                const revealedRole = revealedRoles[user.id];
-                const shouldShowRole = isDead || revealedRole;
-                
-                return (
-                  <div
-                    key={user.id}
-                    style={{
-                      padding: "0.75rem",
-                      background: isActivePlayer 
-                        ? "var(--warning)" 
-                        : isCurrentUser 
-                          ? "var(--accent-light)" 
-                          : "var(--bg-tertiary)",
-                      border: `2px solid ${
-                        isActivePlayer 
-                          ? "var(--warning)" 
-                          : isCurrentUser 
-                            ? "var(--accent-primary)" 
-                            : "var(--border)"
-                      }`,
-                      borderRadius: "var(--radius)",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "0.5rem",
-                      transition: "var(--transition)",
-                      opacity: isDead ? 0.5 : 1,
-                      boxShadow: isActivePlayer ? "0 0 20px rgba(251, 191, 36, 0.4)" : "none"
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, minWidth: 0 }}>
-                        <div style={{
-                          width: "8px",
-                          height: "8px",
-                          borderRadius: "50%",
-                          background: isDead ? "var(--danger)" : "var(--success)",
-                          flexShrink: 0
-                        }}></div>
-                        <span style={{ 
-                          fontSize: "0.875rem",
-                          fontWeight: isCurrentUser || isActivePlayer ? "600" : "normal",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          color: isActivePlayer ? "var(--bg-primary)" : "inherit"
-                        }}>
-                          {isActivePlayer && "▶️ "}
-                          {user.name}
-                          {isCurrentUser && " (вы)"}
-                          {isUserAdmin && " 👑"}
-                          {isDead && " ☠️"}
-                        </span>
-                      </div>
-                      {isAdmin && !isCurrentUser && !isDead && gamePhase === GamePhase.Lobby && (
-                        <button
-                          onClick={() => handleKickPlayer(user.id)}
-                          className="btn-danger btn-sm"
-                          style={{ 
-                            padding: "0.25rem 0.5rem",
-                            fontSize: "0.75rem",
-                            flexShrink: 0
-                          }}
-                          title="Исключить игрока"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                    {shouldShowRole && revealedRole && (
-                      <div style={{
-                        padding: "0.5rem",
-                        background: "var(--bg-primary)",
-                        borderRadius: "var(--radius-sm)",
-                        fontSize: "0.75rem",
-                        color: "var(--text-secondary)",
-                        border: "1px solid var(--border)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem"
-                      }}>
-                        <span>🎭</span>
-                        <span style={{ fontWeight: "500" }}>{getRussianRoleName(revealedRole)}</span>
-                        {!isDead && <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>(раскрыто)</span>}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Блок настроек игры */}
-          {isAdmin && gamePhase === GamePhase.Lobby && (
+            {/* Список пользователей */}
             <div className="card" style={{
+              flex: 1,
               display: "flex",
               flexDirection: "column",
               overflow: "hidden"
             }}>
-              <h3 style={{ 
-                margin: 0, 
-                marginBottom: "1rem", 
-                fontSize: "1.125rem",
+              <div style={{
                 display: "flex",
                 alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "1rem"
+              }}>
+                <h3 style={{
+                  margin: 0,
+                  fontSize: "1.125rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem"
+                }}>
+                  <span>👥 Участники</span>
+                  <span className="badge" style={{
+                    background: "var(--accent-light)",
+                    color: "var(--accent-primary)"
+                  }}>
+                    {users.length}
+                  </span>
+                </h3>
+              </div>
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
                 gap: "0.5rem"
               }}>
-                <span>⚙️ Настройки игры</span>
-              </h3>
-              
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <div>
-                  <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", fontSize: "0.875rem" }}>
-                    Время на индивидуальное выступление (секунды)
-                  </label>
-                  <input
-                    type="number"
-                    min="5"
-                    max="300"
-                    value={gameSettings.individualSpeechTime}
-                    onChange={(e) => setGameSettings({ ...gameSettings, individualSpeechTime: parseInt(e.target.value) || 30 })}
-                    style={{
-                      width: "100%",
-                      padding: "0.5rem",
-                      borderRadius: "var(--radius)",
-                      border: "1px solid var(--border)",
-                      background: "var(--bg-secondary)",
-                      color: "var(--text-primary)",
-                      fontSize: "0.875rem"
-                    }}
-                  />
-                </div>
-                
-                <div>
-                  <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", fontSize: "0.875rem" }}>
-                    Время на свободное обсуждение (секунды)
-                  </label>
-                  <input
-                    type="number"
-                    min="5"
-                    max="300"
-                    value={gameSettings.freeDiscussionTime}
-                    onChange={(e) => setGameSettings({ ...gameSettings, freeDiscussionTime: parseInt(e.target.value) || 90 })}
-                    style={{
-                      width: "100%",
-                      padding: "0.5rem",
-                      borderRadius: "var(--radius)",
-                      border: "1px solid var(--border)",
-                      background: "var(--bg-secondary)",
-                      color: "var(--text-primary)",
-                      fontSize: "0.875rem"
-                    }}
-                  />
-                </div>
-                
-                <div>
-                  <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", fontSize: "0.875rem" }}>
-                    Время на голосование (секунды)
-                  </label>
-                  <input
-                    type="number"
-                    min="5"
-                    max="300"
-                    value={gameSettings.votingTime}
-                    onChange={(e) => setGameSettings({ ...gameSettings, votingTime: parseInt(e.target.value) || 15 })}
-                    style={{
-                      width: "100%",
-                      padding: "0.5rem",
-                      borderRadius: "var(--radius)",
-                      border: "1px solid var(--border)",
-                      background: "var(--bg-secondary)",
-                      color: "var(--text-primary)",
-                      fontSize: "0.875rem"
-                    }}
-                  />
-                </div>
-                
-                <div>
-                  <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", fontSize: "0.875rem" }}>
-                    Время на ночное действие (секунды)
-                  </label>
-                  <input
-                    type="number"
-                    min="5"
-                    max="300"
-                    value={gameSettings.nightActionTime}
-                    onChange={(e) => setGameSettings({ ...gameSettings, nightActionTime: parseInt(e.target.value) || 30 })}
-                    style={{
-                      width: "100%",
-                      padding: "0.5rem",
-                      borderRadius: "var(--radius)",
-                      border: "1px solid var(--border)",
-                      background: "var(--bg-secondary)",
-                      color: "var(--text-primary)",
-                      fontSize: "0.875rem"
-                    }}
-                  />
-                </div>
+                {users.map((user) => {
+                  const isCurrentUser = user.id === userId;
+                  const isUserAdmin = user.status === "Admin";
+                  const isDead = user.isAlive === false;
+                  const isActivePlayer =
+                    (gamePhase === GamePhase.IndividualSpeech && user.id === currentSpeakerId) ||
+                    (gamePhase === GamePhase.Voting && user.id === currentVoterId);
+
+                  // Показываем роль, если игрок мёртв или его карта раскрыта
+                  const revealedRole = revealedRoles[user.id];
+                  const shouldShowRole = isDead || revealedRole;
+
+                  return (
+                    <div
+                      key={user.id}
+                      style={{
+                        padding: "0.75rem",
+                        background: isActivePlayer
+                          ? "var(--warning)"
+                          : isCurrentUser
+                            ? "var(--accent-light)"
+                            : "var(--bg-tertiary)",
+                        border: `2px solid ${isActivePlayer
+                          ? "var(--warning)"
+                          : isCurrentUser
+                            ? "var(--accent-primary)"
+                            : "var(--border)"
+                          }`,
+                        borderRadius: "var(--radius)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0.5rem",
+                        transition: "var(--transition)",
+                        opacity: isDead ? 0.5 : 1,
+                        boxShadow: isActivePlayer ? "0 0 20px rgba(251, 191, 36, 0.4)" : "none"
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            width: "8px",
+                            height: "8px",
+                            borderRadius: "50%",
+                            background: isDead ? "var(--danger)" : "var(--success)",
+                            flexShrink: 0
+                          }}></div>
+                          <span style={{
+                            fontSize: "0.875rem",
+                            fontWeight: isCurrentUser || isActivePlayer ? "600" : "normal",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            color: isActivePlayer ? "var(--bg-primary)" : "inherit"
+                          }}>
+                            {isActivePlayer && "▶️ "}
+                            {user.name}
+                            {isCurrentUser && " (вы)"}
+                            {isUserAdmin && " 👑"}
+                            {isDead && " ☠️"}
+                          </span>
+                        </div>
+                        {isAdmin && !isCurrentUser && !isDead && gamePhase === GamePhase.Lobby && (
+                          <button
+                            onClick={() => handleKickPlayer(user.id)}
+                            className="btn-danger btn-sm"
+                            style={{
+                              padding: "0.25rem 0.5rem",
+                              fontSize: "0.75rem",
+                              flexShrink: 0
+                            }}
+                            title="Исключить игрока"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                      {shouldShowRole && revealedRole && (
+                        <div style={{
+                          padding: "0.5rem",
+                          background: "var(--bg-primary)",
+                          borderRadius: "var(--radius-sm)",
+                          fontSize: "0.75rem",
+                          color: "var(--text-secondary)",
+                          border: "1px solid var(--border)",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem"
+                        }}>
+                          <span>🎭</span>
+                          <span style={{ fontWeight: "500" }}>{getRussianRoleName(revealedRole)}</span>
+                          {!isDead && <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>(раскрыто)</span>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              
-              <button
-                onClick={handleSaveGameSettings}
-                className="btn-primary"
-                style={{ 
-                  marginTop: "1rem",
-                  width: "100%"
-                }}
-              >
-                Сохранить настройки
-              </button>
             </div>
-          )}
-        </div>
 
-        {/* Центральная панель - игровой контент */}
-        <div style={{ 
-          flex: 1, 
-          display: "flex", 
-          flexDirection: "column", 
-          gap: "1rem", 
-          height: "100vh"
-        }}>
-          {/* Фаза игры и таймер */}
-          {gameCycleStarted && (
-            <GamePhaseDisplay
-              phase={gamePhase as any}
-              timeLeft={timeLeft}
-              currentSpeakerName={currentSpeakerName}
-              currentVoterName={currentVoterName}
-              nightPhase={nightPhase}
-              dayNumber={dayNumber}
-              isMyTurn={
-                (gamePhase === GamePhase.IndividualSpeech && currentSpeakerId === userId) ||
-                (gamePhase === GamePhase.Voting && currentVoterId === userId)
-              }
-              winningTeam={winningTeam}
-            />
-          )}
+            {/* Блок настроек игры */}
+            {isAdmin && gamePhase === GamePhase.Lobby && (
+              <div className="card" style={{
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden"
+              }}>
+                <h3 style={{
+                  margin: 0,
+                  marginBottom: "1rem",
+                  fontSize: "1.125rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem"
+                }}>
+                  <span>⚙️ Настройки игры</span>
+                </h3>
 
-          {/* Результаты голосования */}
-          {votingResults && (
-            <VotingResultsDisplay
-              votesWithNames={votingResults.votesWithNames}
-              voteCounts={votingResults.voteCounts}
-              eliminated={votingResults.eliminated}
-              tie={votingResults.tie}
-            />
-          )}
+                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                  <div>
+                    <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", fontSize: "0.875rem" }}>
+                      Время на индивидуальное выступление (секунды)
+                    </label>
+                    <input
+                      type="number"
+                      min="5"
+                      max="300"
+                      value={gameSettings.individualSpeechTime}
+                      onChange={(e) => setGameSettings({ ...gameSettings, individualSpeechTime: parseInt(e.target.value) || 30 })}
+                      style={{
+                        width: "100%",
+                        padding: "0.5rem",
+                        borderRadius: "var(--radius)",
+                        border: "1px solid var(--border)",
+                        background: "var(--bg-secondary)",
+                        color: "var(--text-primary)",
+                        fontSize: "0.875rem"
+                      }}
+                    />
+                  </div>
 
-          {/* Игровой контент (голосование/ночные действия) */}
-          {renderGameContent()}
+                  <div>
+                    <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", fontSize: "0.875rem" }}>
+                      Время на свободное обсуждение (секунды)
+                    </label>
+                    <input
+                      type="number"
+                      min="5"
+                      max="300"
+                      value={gameSettings.freeDiscussionTime}
+                      onChange={(e) => setGameSettings({ ...gameSettings, freeDiscussionTime: parseInt(e.target.value) || 90 })}
+                      style={{
+                        width: "100%",
+                        padding: "0.5rem",
+                        borderRadius: "var(--radius)",
+                        border: "1px solid var(--border)",
+                        background: "var(--bg-secondary)",
+                        color: "var(--text-primary)",
+                        fontSize: "0.875rem"
+                      }}
+                    />
+                  </div>
 
-          {/* Видеозвонок и чаты */}
-          <div style={{ 
-            display: "flex", 
-            flexDirection: "column", 
+                  <div>
+                    <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", fontSize: "0.875rem" }}>
+                      Время на голосование (секунды)
+                    </label>
+                    <input
+                      type="number"
+                      min="5"
+                      max="300"
+                      value={gameSettings.votingTime}
+                      onChange={(e) => setGameSettings({ ...gameSettings, votingTime: parseInt(e.target.value) || 15 })}
+                      style={{
+                        width: "100%",
+                        padding: "0.5rem",
+                        borderRadius: "var(--radius)",
+                        border: "1px solid var(--border)",
+                        background: "var(--bg-secondary)",
+                        color: "var(--text-primary)",
+                        fontSize: "0.875rem"
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", fontSize: "0.875rem" }}>
+                      Время на ночное действие (секунды)
+                    </label>
+                    <input
+                      type="number"
+                      min="5"
+                      max="300"
+                      value={gameSettings.nightActionTime}
+                      onChange={(e) => setGameSettings({ ...gameSettings, nightActionTime: parseInt(e.target.value) || 30 })}
+                      style={{
+                        width: "100%",
+                        padding: "0.5rem",
+                        borderRadius: "var(--radius)",
+                        border: "1px solid var(--border)",
+                        background: "var(--bg-secondary)",
+                        color: "var(--text-primary)",
+                        fontSize: "0.875rem"
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleSaveGameSettings}
+                  className="btn-primary"
+                  style={{
+                    marginTop: "1rem",
+                    width: "100%"
+                  }}
+                >
+                  Сохранить настройки
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Центральная панель - игровой контент */}
+          <div style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
             gap: "1rem",
-            minHeight: "400px",
-            flexShrink: 0,
-            marginTop: "1rem"
+            height: "100vh"
           }}>
-            {/* Видеозвонок */}
-            <div style={{ minHeight: "600px", height: "600px", flex: 1 }}>
-              <VideoCall 
-                roomId={room.id} 
-                userName={userName}
-                userId={userId}
-                isAdmin={isAdmin || false}
-                currentSpeakerName={currentSpeakerName || undefined}
+            {/* Фаза игры и таймер */}
+            {gameCycleStarted && (
+              <GamePhaseDisplay
+                phase={gamePhase as any}
+                timeLeft={timeLeft}
+                currentSpeakerName={currentSpeakerName}
+                currentVoterName={currentVoterName}
+                nightPhase={nightPhase}
+                dayNumber={dayNumber}
+                isMyTurn={
+                  (gamePhase === GamePhase.IndividualSpeech && currentSpeakerId === userId) ||
+                  (gamePhase === GamePhase.Voting && currentVoterId === userId)
+                }
+                winningTeam={winningTeam}
               />
-            </div>
+            )}
 
-            {/* Общий чат через LiveKit API - временно отключен из-за CORS */}
-            {/* TODO: Включить после настройки CORS на сервере calls.trexon.ru */}
-            {/* <div style={{ minHeight: "300px" }}>
+            {/* Результаты голосования */}
+            {votingResults && (
+              <VotingResultsDisplay
+                votesWithNames={votingResults.votesWithNames}
+                voteCounts={votingResults.voteCounts}
+                eliminated={votingResults.eliminated}
+                tie={votingResults.tie}
+              />
+            )}
+
+            {/* Игровой контент (голосование/ночные действия) */}
+            {renderGameContent()}
+
+            {/* Видеозвонок и чаты */}
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "1rem",
+              minHeight: "400px",
+              flexShrink: 0,
+              marginTop: "1rem"
+            }}>
+              {/* Видеозвонок */}
+              <div style={{ minHeight: "600px", height: "600px", flex: 1 }}>
+                <VideoCall
+                  roomId={room.id}
+                  userName={userName}
+                  userId={userId}
+                  isAdmin={isAdmin || false}
+                  currentSpeakerName={currentSpeakerName || undefined}
+                />
+              </div>
+
+              {/* Общий чат через LiveKit API - временно отключен из-за CORS */}
+              {/* TODO: Включить после настройки CORS на сервере calls.trexon.ru */}
+              {/* <div style={{ minHeight: "300px" }}>
               <LiveKitChat 
                 roomId={room.id} 
                 userName={userName}
               />
             </div> */}
 
-            {/* Чат мафии (только для мафии ночью) */}
-            {isMafia && gameStatus === "InProgress" && gamePhase === GamePhase.Night && (
-              <div style={{ minHeight: "300px" }}>
-                <MafiaChat 
-                  roomId={room.id} 
-                  userId={userId} 
-                  userName={userName} 
-                />
+              {/* Чат мафии (только для мафии ночью) */}
+              {isMafia && gameStatus === "InProgress" && gamePhase === GamePhase.Night && (
+                <div style={{ minHeight: "300px" }}>
+                  <MafiaChat
+                    roomId={room.id}
+                    userId={userId}
+                    userName={userName}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Alert notification */}
+          {alert && (
+            <div style={{
+              position: "fixed",
+              top: "20px",
+              right: "20px",
+              padding: "1rem 1.5rem",
+              background: alert.type === "danger" ? "var(--danger)" :
+                alert.type === "warning" ? "var(--warning)" :
+                  alert.type === "success" ? "var(--success)" : "var(--info)",
+              color: "white",
+              borderRadius: "var(--radius-lg)",
+              boxShadow: "var(--shadow-lg)",
+              maxWidth: "400px",
+              zIndex: 1000,
+              animation: "slideInRight 0.3s ease-out"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <span style={{ fontSize: "1.25rem" }}>
+                  {alert.type === "danger" ? "⚠️" :
+                    alert.type === "warning" ? "⚡" :
+                      alert.type === "success" ? "✅" : "ℹ️"}
+                </span>
+                <span>{alert.message}</span>
+                <button
+                  onClick={() => setAlert(null)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "white",
+                    cursor: "pointer",
+                    padding: "0",
+                    fontSize: "1.25rem",
+                    marginLeft: "auto"
+                  }}
+                >
+                  ×
+                </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Error notification */}
+          {error && (
+            <div style={{
+              position: "fixed",
+              bottom: "20px",
+              right: "20px",
+              padding: "1rem 1.5rem",
+              background: "var(--danger)",
+              color: "white",
+              borderRadius: "var(--radius-lg)",
+              boxShadow: "var(--shadow-lg)",
+              maxWidth: "400px",
+              zIndex: 1000,
+              animation: "fadeIn 0.3s ease-out"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <span>⚠️</span>
+                <span>{error}</span>
+                <button
+                  onClick={() => setError(null)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "white",
+                    cursor: "pointer",
+                    padding: "0",
+                    fontSize: "1.25rem",
+                    marginLeft: "auto"
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-
-        {/* Alert notification */}
-        {alert && (
-          <div style={{
-            position: "fixed",
-            top: "20px",
-            right: "20px",
-            padding: "1rem 1.5rem",
-            background: alert.type === "danger" ? "var(--danger)" :
-                       alert.type === "warning" ? "var(--warning)" :
-                       alert.type === "success" ? "var(--success)" : "var(--info)",
-            color: "white",
-            borderRadius: "var(--radius-lg)",
-            boxShadow: "var(--shadow-lg)",
-            maxWidth: "400px",
-            zIndex: 1000,
-            animation: "slideInRight 0.3s ease-out"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              <span style={{ fontSize: "1.25rem" }}>
-                {alert.type === "danger" ? "⚠️" :
-                 alert.type === "warning" ? "⚡" :
-                 alert.type === "success" ? "✅" : "ℹ️"}
-              </span>
-              <span>{alert.message}</span>
-              <button
-                onClick={() => setAlert(null)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "white",
-                  cursor: "pointer",
-                  padding: "0",
-                  fontSize: "1.25rem",
-                  marginLeft: "auto"
-                }}
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Error notification */}
-        {error && (
-          <div style={{
-            position: "fixed",
-            bottom: "20px",
-            right: "20px",
-            padding: "1rem 1.5rem",
-            background: "var(--danger)",
-            color: "white",
-            borderRadius: "var(--radius-lg)",
-            boxShadow: "var(--shadow-lg)",
-            maxWidth: "400px",
-            zIndex: 1000,
-            animation: "fadeIn 0.3s ease-out"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              <span>⚠️</span>
-              <span>{error}</span>
-              <button
-                onClick={() => setError(null)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "white",
-                  cursor: "pointer",
-                  padding: "0",
-                  fontSize: "1.25rem",
-                  marginLeft: "auto"
-                }}
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
       </>
     );
   }
 
   // Login screen
   return (
-    <div className="fade-in" style={{ 
-      display: "flex", 
-      justifyContent: "center", 
-      alignItems: "center", 
+    <div className="fade-in" style={{
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
       minHeight: "100vh",
       padding: "1.5rem"
     }}>
-      <div className="card" style={{ 
-        width: "100%", 
+      <div className="card" style={{
+        width: "100%",
         maxWidth: "450px"
       }}>
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <h1 style={{ 
-            margin: 0, 
+          <h1 style={{
+            margin: 0,
             marginBottom: "0.5rem",
             fontSize: "2.5rem",
             background: "linear-gradient(135deg, var(--accent-primary) 0%, var(--info) 100%)",
@@ -1858,9 +1859,9 @@ export function RoomPage() {
           </p>
         </div>
 
-        <div style={{ 
-          display: "flex", 
-          gap: "0.75rem", 
+        <div style={{
+          display: "flex",
+          gap: "0.75rem",
           marginBottom: "1.5rem",
           padding: "0.25rem",
           background: "var(--bg-tertiary)",
@@ -1872,7 +1873,7 @@ export function RoomPage() {
               setError(null);
             }}
             className={mode === "create" ? "btn-primary" : "btn-secondary"}
-            style={{ 
+            style={{
               flex: 1,
               borderRadius: "var(--radius)"
             }}
@@ -1885,7 +1886,7 @@ export function RoomPage() {
               setError(null);
             }}
             className={mode === "join" ? "btn-primary" : "btn-secondary"}
-            style={{ 
+            style={{
               flex: 1,
               borderRadius: "var(--radius)"
             }}
@@ -1895,9 +1896,9 @@ export function RoomPage() {
         </div>
 
         {error && (
-          <div style={{ 
-            padding: "1rem", 
-            background: "var(--danger-light)", 
+          <div style={{
+            padding: "1rem",
+            background: "var(--danger-light)",
             color: "var(--danger)",
             border: "1px solid var(--danger)",
             borderRadius: "var(--radius)",
@@ -1913,9 +1914,9 @@ export function RoomPage() {
 
         <form onSubmit={mode === "create" ? handleCreateRoom : handleJoinRoom} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           <div>
-            <label style={{ 
-              display: "block", 
-              marginBottom: "0.5rem", 
+            <label style={{
+              display: "block",
+              marginBottom: "0.5rem",
               fontSize: "0.875rem",
               fontWeight: "500",
               color: "var(--text-secondary)"
@@ -1934,9 +1935,9 @@ export function RoomPage() {
 
           {mode === "create" ? (
             <div>
-              <label style={{ 
-                display: "block", 
-                marginBottom: "0.5rem", 
+              <label style={{
+                display: "block",
+                marginBottom: "0.5rem",
                 fontSize: "0.875rem",
                 fontWeight: "500",
                 color: "var(--text-secondary)"
@@ -1953,9 +1954,9 @@ export function RoomPage() {
             </div>
           ) : (
             <div>
-              <label style={{ 
-                display: "block", 
-                marginBottom: "0.5rem", 
+              <label style={{
+                display: "block",
+                marginBottom: "0.5rem",
                 fontSize: "0.875rem",
                 fontWeight: "500",
                 color: "var(--text-secondary)"
@@ -1983,7 +1984,7 @@ export function RoomPage() {
             type="submit"
             disabled={loading}
             className="btn-primary w-full"
-            style={{ 
+            style={{
               padding: "1rem",
               fontSize: "1.125rem"
             }}

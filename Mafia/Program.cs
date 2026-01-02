@@ -32,6 +32,12 @@ builder.Services.AddHostedService<GameTimerService>();
 // HttpClient для LiveKit proxy
 builder.Services.AddHttpClient();
 
+builder.Services.AddHttpClient<VideoCallService>(client =>
+{
+    client.BaseAddress = new Uri("https://calls.trexon.ru/");
+    client.DefaultRequestHeaders.Add("X-API-Key", "dev_key_12345");
+});
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {

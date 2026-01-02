@@ -24,54 +24,56 @@ export function VideoCall({
 }: VideoCallProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [permissionsGranted, setPermissionsGranted] = useState(false);
 
   // Используем переменную окружения или дефолтное значение
-  const defaultVideoCallUrl = import.meta.env.VITE_VIDEO_CALL_FRONTEND_URL || "http://localhost:3000";
+  const defaultVideoCallUrl = import.meta.env.VITE_VIDEO_CALL_FRONTEND_URL || "https://calls.trexon.ru";
   const finalVideoCallUrl = videoCallUrl || defaultVideoCallUrl;
 
-  // Запрашиваем разрешения на камеру/микрофон перед загрузкой iframe
   useEffect(() => {
-    if (!roomId || !userName) return;
-
+    // Явный запрос разрешений перед загрузкой iframe
     const requestPermissions = async () => {
       try {
-        console.log("[VideoCall] Requesting camera/microphone permissions...");
         await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         console.log("[VideoCall] Permissions granted");
-        setPermissionsGranted(true);
-      } catch (error) {
-        console.error("[VideoCall] Permission denied:", error);
-        // Даже если разрешения отклонены, загружаем iframe - пользователь сможет попробовать снова
-        setPermissionsGranted(true);
+      } catch (err) {
+        console.error("[VideoCall] Failed to get permissions:", err);
       }
     };
 
     requestPermissions();
-  }, [roomId, userName]);
+  }, []);
 
   useEffect(() => {
-    if (!roomId || !userName || !permissionsGranted) return;
+    if (!roomId || !userName) return;
 
-    const url = new URL(finalVideoCallUrl);
-    url.searchParams.set("room", roomId);
-    url.searchParams.set("name", userName);
+    // Construct URL with query parameters manually to ensure order and presence
+    const baseUrl = finalVideoCallUrl.split('?')[0];
+    const params = new URLSearchParams();
+
+    params.set("room", roomId);
+    params.set("name", userName);
+    params.set("autoJoin", "true"); // Always force autoJoin
+    params.set("hideControls", "true"); // Always hide controls (managed by admin)
+
     if (isAdmin) {
-      url.searchParams.set("creator", "true");
+      params.set("creator", "true");
     }
-    url.searchParams.set("hideControls", "true");
-    // Временно отключаем autoJoin из-за бага в UI сервиса видеозвонков
-    // url.searchParams.set("autoJoin", "true");
+
     if (currentSpeakerName) {
-      url.searchParams.set("highlightSpeaker", currentSpeakerName);
+      params.set("highlightSpeaker", currentSpeakerName);
     }
+
+    const fullUrl = `${baseUrl}?${params.toString()}`;
 
     if (iframeRef.current) {
-      iframeRef.current.src = url.toString();
+      if (iframeRef.current.src !== fullUrl) {
+        console.log("[VideoCall] Setting URL:", fullUrl);
+        console.log("[VideoCall] Params check -> autoJoin:", params.get("autoJoin"), "isAdmin:", isAdmin);
+        iframeRef.current.src = fullUrl;
+      }
       setIsLoaded(true);
-      console.log("[VideoCall] Loading iframe with URL:", url.toString());
     }
-  }, [roomId, userName, isAdmin, currentSpeakerName, finalVideoCallUrl, permissionsGranted]);
+  }, [roomId, userName, isAdmin, currentSpeakerName, finalVideoCallUrl]);
 
   return (
     <div
@@ -112,7 +114,7 @@ export function VideoCall({
       )}
       <iframe
         ref={iframeRef}
-        allow="camera;microphone;autoplay"
+        allow="camera *; microphone *; autoplay *; display-capture *; fullscreen *; clipboard-read *; clipboard-write *"
         style={{
           width: "100%",
           height: "100%",
@@ -124,4 +126,3 @@ export function VideoCall({
     </div>
   );
 }
-

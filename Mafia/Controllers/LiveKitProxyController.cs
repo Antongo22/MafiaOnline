@@ -109,6 +109,9 @@ public class LiveKitProxyController : ControllerBase
             var client = _httpClientFactory.CreateClient();
             var apiUrl = GetLiveKitApiUrl();
             var url = $"{apiUrl}/participants/{roomId}";
+            
+            client.DefaultRequestHeaders.Remove("X-API-Key");
+            client.DefaultRequestHeaders.Add("X-API-Key", "dev_key_12345");
 
             var response = await client.GetAsync(url);
             var responseBody = await response.Content.ReadAsStringAsync();
