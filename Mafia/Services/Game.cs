@@ -25,6 +25,11 @@ public static class Game
     public static Dictionary<string, List<ChatMessageDTO>> MafiaChatMessages = new();
     
     /// <summary>
+    /// Маппинг ConnectionId -> (RoomId, UserId) для отслеживания отключений
+    /// </summary>
+    public static System.Collections.Concurrent.ConcurrentDictionary<string, (string RoomId, string UserId)> UserConnections = new();
+    
+    /// <summary>
     /// Распределяет роли случайным образом между игроками
     /// </summary>
     public static Dictionary<string, Role> ShufflePlayersWithRoles(GameCreateDTO game)

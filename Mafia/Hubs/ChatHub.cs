@@ -27,6 +27,9 @@ public class ChatHub : Hub
         // Добавляем пользователя в группу комнаты
         await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
 
+        // Сохраняем связь ConnectionId -> User
+        Game.UserConnections.TryAdd(Context.ConnectionId, (roomId, userId));
+
         // Отправляем историю сообщений
         if (Game.ChatMessages.TryGetValue(roomId, out var messages))
         {
@@ -356,6 +359,64 @@ public class ChatHub : Hub
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
+        if (Game.UserConnections.TryRemove(Context.ConnectionId, out var userParams))
+        {
+            var (roomId, userId) = userParams;
+            var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
+            
+            if (room != null)
+            {
+                var user = room.Users.FirstOrDefault(u => u.Id == userId);
+                if (user != null)
+                {
+                    // Если отключился Админ - распускаем комнату в любом статусе
+                    if (user.Status == Enums.UserStatus.Admin)
+                    {
+                        // Уведомляем всех
+                        await Clients.Group(roomId).SendAsync("RoomDisbanded", new { roomId = roomId });
+                        
+                        // Удаляем комнату и чаты
+                        Game.Rooms.Remove(room);
+                        if (Game.ChatMessages.ContainsKey(roomId)) Game.ChatMessages.Remove(roomId);
+                        if (Game.MafiaChatMessages.ContainsKey(roomId)) Game.MafiaChatMessages.Remove(roomId);
+                    }
+                    // Если обычный игрок и мы в Лобби - удаляем его (чтобы можно было перезайти)
+                    else if (room.Status == Enums.GameStatus.Created)
+                    {
+                        room.Users.Remove(user);
+                        
+                        // Отправляем всем обновленный список пользователей
+                        var activeUsers = room.Users.Where(u => u.Status != Enums.UserStatus.Leave).ToList();
+                        await Clients.Group(roomId).SendAsync("UpdateUserList", activeUsers);
+                        await Clients.Group(roomId).SendAsync("UserLeft", new { userName = user.Name, userId = user.Id });
+                    }
+                    else
+                    {
+                        // Если игра идет - игрок умирает
+                        if (user.IsAlive)
+                        {
+                            user.IsAlive = false;
+                            
+                            // Отправляем всем обновленный список пользователей (с пометкой о смерти)
+                            var activeUsers = room.Users.Where(u => u.Status != Enums.UserStatus.Leave).ToList();
+                            await Clients.Group(roomId).SendAsync("UpdateUserList", activeUsers);
+                            
+                            // Можно отправить системное сообщение
+                            await Clients.Group(roomId).SendAsync("ReceiveMessage", new ChatMessageDTO 
+                            { 
+                                Id = Guid.NewGuid().ToString(),
+                                RoomId = roomId,
+                                UserId = "system",
+                                UserName = "System",
+                                Message = $"Игрок {user.Name} отключился и считается погибшим.",
+                                Timestamp = DateTime.UtcNow
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        
         await base.OnDisconnectedAsync(exception);
     }
 }
