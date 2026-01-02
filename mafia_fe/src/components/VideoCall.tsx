@@ -54,6 +54,7 @@ export function VideoCall({
     params.set("name", userName);
     params.set("autoJoin", "true"); // Always force autoJoin
     params.set("hideLeave", "true"); // Hide only the leave button
+    params.set("hideChat", "true"); // Hide chat button as Mafia has its own chat
 
     if (isAdmin) {
       params.set("creator", "true");
