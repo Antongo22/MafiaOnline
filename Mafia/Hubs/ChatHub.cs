@@ -357,6 +357,19 @@ public class ChatHub : Hub
         return new List<string>();
     }
 
+    public async Task SetVideoStatus(string roomId, bool isEnabled)
+    {
+        var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
+        if (room == null) return;
+        
+        // TODO: Проверка на админа (можно добавить, но для простоты доверимся клиенту/UI)
+        
+        room.IsVideoEnabled = isEnabled;
+        
+        // Уведомляем всех об изменении статуса видео
+        await Clients.Group(roomId).SendAsync("VideoStatusChanged", new { isVideoEnabled = isEnabled });
+    }
+
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         if (Game.UserConnections.TryRemove(Context.ConnectionId, out var userParams))

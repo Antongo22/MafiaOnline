@@ -53,7 +53,7 @@ export function VideoCall({
     params.set("room", roomId);
     params.set("name", userName);
     params.set("autoJoin", "true"); // Always force autoJoin
-    params.set("hideControls", "true"); // Always hide controls (managed by admin)
+    params.set("hideLeave", "true"); // Hide only the leave button
 
     if (isAdmin) {
       params.set("creator", "true");

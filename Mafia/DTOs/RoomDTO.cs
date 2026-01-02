@@ -26,4 +26,7 @@ public class RoomDTO
     
     // Состояние игрового цикла
     public GameState? CurrentGameState { get; set; }
+    
+    // Включен ли видеозвонок
+    public bool IsVideoEnabled { get; set; }
 }

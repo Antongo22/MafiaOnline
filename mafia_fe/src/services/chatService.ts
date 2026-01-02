@@ -1,11 +1,11 @@
 import * as signalR from "@microsoft/signalr";
-import type { 
-  TimerUpdate, 
-  SpeakerInfo, 
-  VoterInfo, 
-  VotingResults, 
-  NightResults, 
-  CardRevealed, 
+import type {
+  TimerUpdate,
+  SpeakerInfo,
+  VoterInfo,
+  VotingResults,
+  NightResults,
+  CardRevealed,
   GameOverData,
   TieBreakerStarted,
   TieBreakerResults
@@ -45,7 +45,7 @@ class ChatService {
   private gameResetHandlers: (() => void)[] = [];
   private mafiaMessageHandlers: ((message: ChatMessage) => void)[] = [];
   private mafiaHistoryHandlers: ((messages: ChatMessage[]) => void)[] = [];
-  
+
   // Game cycle handlers
   private timerUpdateHandlers: ((data: TimerUpdate) => void)[] = [];
   private gameCycleStartedHandlers: ((data: any) => void)[] = [];
@@ -66,6 +66,7 @@ class ChatService {
   private playerEliminatedHandlers: ((data: { userId: string; userName: string; role: string; reason: string }) => void)[] = [];
   private tieBreakerStartedHandlers: ((data: TieBreakerStarted) => void)[] = [];
   private tieBreakerResultsHandlers: ((data: TieBreakerResults) => void)[] = [];
+  private videoStatusChangedHandlers: ((data: { isVideoEnabled: boolean }) => void)[] = [];
 
   async connect(apiUrl: string = "http://localhost:5141"): Promise<void> {
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
@@ -230,6 +231,10 @@ class ChatService {
       this.playerEliminatedHandlers.forEach((handler) => handler(data));
     });
 
+    this.connection.on("VideoStatusChanged", (data: { isVideoEnabled: boolean }) => {
+      this.videoStatusChangedHandlers.forEach((handler) => handler(data));
+    });
+
     await this.connection.start();
   }
 
@@ -281,7 +286,7 @@ class ChatService {
     }
     await this.connection.invoke("KickPlayers", roomId, adminId, targetUserIds);
   }
-  
+
   // Обратная совместимость для одиночного исключения
   async kickPlayer(roomId: string, adminId: string, targetUserId: string): Promise<void> {
     await this.kickPlayers(roomId, adminId, [targetUserId]);
@@ -292,6 +297,13 @@ class ChatService {
       throw new Error("Connection is not established");
     }
     await this.connection.invoke("DisbandRoom", roomId);
+  }
+
+  async setVideoStatus(roomId: string, isEnabled: boolean): Promise<void> {
+    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+      throw new Error("Connection is not established");
+    }
+    await this.connection.invoke("SetVideoStatus", roomId, isEnabled);
   }
 
   onMessage(handler: (message: ChatMessage) => void): void {
@@ -571,6 +583,14 @@ class ChatService {
 
   removeTieBreakerResultsHandler(handler: (data: TieBreakerResults) => void): void {
     this.tieBreakerResultsHandlers = this.tieBreakerResultsHandlers.filter((h) => h !== handler);
+  }
+
+  onVideoStatusChanged(handler: (data: { isVideoEnabled: boolean }) => void): void {
+    this.videoStatusChangedHandlers.push(handler);
+  }
+
+  removeVideoStatusChangedHandler(handler: (data: { isVideoEnabled: boolean }) => void): void {
+    this.videoStatusChangedHandlers = this.videoStatusChangedHandlers.filter((h) => h !== handler);
   }
 
   isConnected(): boolean {

@@ -53,6 +53,7 @@ import { GamePhase, type VoterInfo, type NightResults } from "../types/game";
 import { saveRoomState, loadRoomState, clearRoomState, saveLastUsedNames, loadLastUsedNames } from "../utils/storage";
 import { rolesService, type RoleInfo } from "../services/rolesService";
 // import { videoCallService } from "../services/videoCallService";
+import { Chat } from "../components/Chat";
 
 interface Room {
   id: string;
@@ -60,6 +61,7 @@ interface Room {
   inviteCode: string;
   users: Array<{ id: string; name: string; status: string }>;
   status: string;
+  isVideoEnabled?: boolean;
 }
 
 const API_URL = import.meta.env.VITE_API_URL !== undefined ? import.meta.env.VITE_API_URL : "http://localhost:5141";
@@ -97,6 +99,8 @@ export function RoomPage() {
     eliminated: Array<{ userName: string; role: string }>;
     tie: boolean;
   } | null>(null);
+
+  const [isVideoEnabled, setIsVideoEnabled] = useState(false);
 
   // Night results modal
   const [nightResultsModal, setNightResultsModal] = useState<{
@@ -296,6 +300,10 @@ export function RoomPage() {
             }
           } catch (gameStateError) {
             console.error("Failed to load game state:", gameStateError);
+          }
+
+          if (data.isVideoEnabled) {
+            setIsVideoEnabled(true);
           }
         } else {
           // 404 - комната не найдена, очищаем состояние
@@ -672,6 +680,11 @@ export function RoomPage() {
     chatService.onPlayerEliminated(handlePlayerEliminated);
     chatService.onTieBreakerStarted(handleTieBreakerStarted);
     chatService.onTieBreakerResults(handleTieBreakerResults);
+
+    chatService.onVideoStatusChanged((data) => {
+      setIsVideoEnabled(data.isVideoEnabled);
+      showAlert(data.isVideoEnabled ? "📹 Видеозвонок включен админом" : "📹 Видеозвонок отключен", "info");
+    });
 
     // Unsubscribe
     return () => {
@@ -1663,6 +1676,17 @@ export function RoomPage() {
                 >
                   Сохранить настройки
                 </button>
+
+                <div style={{ marginTop: "1.5rem", borderTop: "1px solid var(--border)", paddingTop: "1rem" }}>
+                  <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem" }}>Видеосвязь</h4>
+                  <button
+                    onClick={() => chatService.setVideoStatus(room.id, !isVideoEnabled)}
+                    className={isVideoEnabled ? "btn-danger" : "btn-success"}
+                    style={{ width: "100%" }}
+                  >
+                    {isVideoEnabled ? "Отключить видеозвонок" : "Включить видеозвонок"}
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1715,24 +1739,26 @@ export function RoomPage() {
               marginTop: "1rem"
             }}>
               {/* Видеозвонок */}
-              <div style={{ minHeight: "600px", height: "600px", flex: 1 }}>
-                <VideoCall
+              {isVideoEnabled && (
+                <div style={{ minHeight: "600px", height: "600px", flex: 1 }}>
+                  <VideoCall
+                    roomId={room.id}
+                    userName={userName}
+                    userId={userId}
+                    isAdmin={isAdmin || false}
+                    currentSpeakerName={currentSpeakerName || undefined}
+                  />
+                </div>
+              )}
+
+              {/* Общий чат */}
+              <div style={{ minHeight: "300px" }}>
+                <Chat
+                  userId={userId}
                   roomId={room.id}
                   userName={userName}
-                  userId={userId}
-                  isAdmin={isAdmin || false}
-                  currentSpeakerName={currentSpeakerName || undefined}
                 />
               </div>
-
-              {/* Общий чат через LiveKit API - временно отключен из-за CORS */}
-              {/* TODO: Включить после настройки CORS на сервере calls.trexon.ru */}
-              {/* <div style={{ minHeight: "300px" }}>
-              <LiveKitChat 
-                roomId={room.id} 
-                userName={userName}
-              />
-            </div> */}
 
               {/* Чат мафии (только для мафии ночью) */}
               {isMafia && gameStatus === "InProgress" && gamePhase === GamePhase.Night && (
@@ -1824,7 +1850,7 @@ export function RoomPage() {
               </div>
             </div>
           )}
-        </div>
+        </div >
       </>
     );
   }
