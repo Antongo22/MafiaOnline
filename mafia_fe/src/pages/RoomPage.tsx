@@ -949,6 +949,10 @@ export function RoomPage() {
           console.error("Failed to connect to SignalR:", signalRError);
         }
 
+        if (data.isVideoEnabled) {
+          setIsVideoEnabled(true);
+        }
+
         // Загружаем роль игрока
         if (data.status === "InProgress" || data.status === "Finished") {
           try {
