@@ -251,11 +251,18 @@ export function RoomPage() {
           }
 
           // Подключаемся к SignalR
+          if (!chatService.isConnected()) {
+            try {
+              await chatService.connect(API_URL);
+            } catch (signalRError) {
+              console.error("Failed to connect to SignalR:", signalRError);
+            }
+          }
+
           try {
-            await chatService.connect(API_URL);
             await chatService.joinRoom(data.id, savedState.userId);
-          } catch (signalRError) {
-            console.error("Failed to connect to SignalR:", signalRError);
+          } catch (joinError) {
+            console.error("Failed to join SignalR room:", joinError);
           }
 
           // Загружаем роль игрока
