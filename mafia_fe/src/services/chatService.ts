@@ -251,14 +251,17 @@ class ChatService {
       return;
     }
 
+    // @ts-ignore: TS checking state overlap
     if (this.connection.state !== signalR.HubConnectionState.Connected) {
       console.log("Waiting for connection to be ready...");
       let attempts = 0;
+      // @ts-ignore: TS checking state overlap
       while (this.connection.state !== signalR.HubConnectionState.Connected && attempts < 10) {
         await new Promise(resolve => setTimeout(resolve, 500));
         attempts++;
       }
 
+      // @ts-ignore: TS checking state overlap
       if (this.connection.state !== signalR.HubConnectionState.Connected) {
         throw new Error("Connection is not established after waiting");
       }
