@@ -223,10 +223,15 @@ export function RoomPage() {
 
           // Проверяем, что комната существует и пользователь в ней
           const userInRoom = data.users.find(u => u.id === savedState.userId);
-          if (!userInRoom || userInRoom.status === "Leave") {
-            console.log("[RoomPage] User left or not in room, clearing state");
+          if (!userInRoom) {
+            console.log("[RoomPage] User not in room, clearing state");
             clearRoomState();
             return;
+          }
+
+          if (userInRoom.status === "Leave") {
+            console.warn("[RoomPage] User status is Leave, but allowing RECONNECT attempt...");
+            // Do NOT return here. Allow execution to proceed to setRoom/setUserId
           }
 
           setRoom(data);
@@ -1563,7 +1568,7 @@ export function RoomPage() {
             </div>
 
             {/* Блок настроек игры */}
-            {isAdmin && gamePhase === GamePhase.Lobby && (
+            {isAdmin && (
               <div className="card" style={{
                 display: "flex",
                 flexDirection: "column",
