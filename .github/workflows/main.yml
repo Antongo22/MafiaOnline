@@ -27,7 +27,8 @@ jobs:
           cd ~/Documents/MafiaOnline
 
           echo "📦 Обновление кода из Git..."
-          git pull
+          git fetch origin
+          git reset --hard origin/main
 
           echo "🧹 Остановка старых контейнеров..."
           docker-compose down || true
@@ -60,9 +61,9 @@ jobs:
          
 
           **Действия на сервере:**
-          1. `git pull`
+          1. `git fetch origin && git reset --hard origin/main`
           2. `docker-compose down`
-          3. `sudo fuser -k 8123/tcp`
+          3. `sudo fuser -k 5173/tcp`
           4. `docker-compose up --build -d`
           
           **Для логов:** `docker-compose logs -f`
