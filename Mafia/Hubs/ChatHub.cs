@@ -382,6 +382,10 @@ public class ChatHub : Hub
                 var user = room.Users.FirstOrDefault(u => u.Id == userId);
                 if (user != null)
                 {
+                    // Временно убираем удаление комнаты и пользователей при дисконнекте,
+                    // чтобы работала перезагрузка страницы (F5)
+
+                    /*
                     // Если отключился Админ - распускаем комнату в любом статусе
                     if (user.Status == Enums.UserStatus.Admin)
                     {
@@ -406,26 +410,16 @@ public class ChatHub : Hub
                     else
                     {
                         // Если игра идет - игрок умирает
-                        if (user.IsAlive)
+                         if (user.IsAlive)
                         {
-                            user.IsAlive = false;
-                            
-                            // Отправляем всем обновленный список пользователей (с пометкой о смерти)
-                            var activeUsers = room.Users.Where(u => u.Status != Enums.UserStatus.Leave).ToList();
-                            await Clients.Group(roomId).SendAsync("UpdateUserList", activeUsers);
-                            
-                            // Можно отправить системное сообщение
-                            await Clients.Group(roomId).SendAsync("ReceiveMessage", new ChatMessageDTO 
-                            { 
-                                Id = Guid.NewGuid().ToString(),
-                                RoomId = roomId,
-                                UserId = "system",
-                                UserName = "System",
-                                Message = $"Игрок {user.Name} отключился и считается погибшим.",
-                                Timestamp = DateTime.UtcNow
-                            });
+                           // Здесь тоже может быть спорно: если интернет моргнул, игрок умрет?
+                           // Пока оставим или закомментируем
                         }
                     }
+                    */
+                    
+                    // Просто логируем или ничего не делаем
+                    // Можно пометить, что connectionId отвалился, но user остался
                 }
             }
         }
