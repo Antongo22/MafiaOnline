@@ -382,22 +382,12 @@ public class ChatHub : Hub
                 var user = room.Users.FirstOrDefault(u => u.Id == userId);
                 if (user != null)
                 {
-                    // Временно убираем удаление комнаты и пользователей при дисконнекте,
-                    // чтобы работала перезагрузка страницы (F5)
-
-                    /*
-                    // Если отключился Админ - распускаем комнату в любом статусе
+                    // Если отключился Админ - ничего не делаем, чтобы работала перезагрузка страницы
                     if (user.Status == Enums.UserStatus.Admin)
                     {
-                        // Уведомляем всех
-                        await Clients.Group(roomId).SendAsync("RoomDisbanded", new { roomId = roomId });
-                        
-                        // Удаляем комнату и чаты
-                        Game.Rooms.Remove(room);
-                        if (Game.ChatMessages.ContainsKey(roomId)) Game.ChatMessages.Remove(roomId);
-                        if (Game.MafiaChatMessages.ContainsKey(roomId)) Game.MafiaChatMessages.Remove(roomId);
+                        // Оставляем пустым: комната и админ остаются в памяти.
                     }
-                    // Если обычный игрок и мы в Лобби - удаляем его (чтобы можно было перезайти)
+                    // Если обычный игрок и мы в Лобби - удаляем его сразу
                     else if (room.Status == Enums.GameStatus.Created)
                     {
                         room.Users.Remove(user);
@@ -410,16 +400,26 @@ public class ChatHub : Hub
                     else
                     {
                         // Если игра идет - игрок умирает
-                         if (user.IsAlive)
+                        if (user.IsAlive)
                         {
-                           // Здесь тоже может быть спорно: если интернет моргнул, игрок умрет?
-                           // Пока оставим или закомментируем
+                            user.IsAlive = false;
+                            
+                            // Отправляем всем обновленный список пользователей (с пометкой о смерти)
+                            var activeUsers = room.Users.Where(u => u.Status != Enums.UserStatus.Leave).ToList();
+                            await Clients.Group(roomId).SendAsync("UpdateUserList", activeUsers);
+                            
+                            // Системное сообщение
+                            await Clients.Group(roomId).SendAsync("ReceiveMessage", new ChatMessageDTO 
+                            { 
+                                Id = Guid.NewGuid().ToString(),
+                                RoomId = roomId,
+                                UserId = "system",
+                                UserName = "System",
+                                Message = $"Игрок {user.Name} отключился и считается погибшим.",
+                                Timestamp = DateTime.UtcNow
+                            });
                         }
                     }
-                    */
-                    
-                    // Просто логируем или ничего не делаем
-                    // Можно пометить, что connectionId отвалился, но user остался
                 }
             }
         }
