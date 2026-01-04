@@ -1,11 +1,21 @@
 using Microsoft.AspNetCore.SignalR;
 using Mafia.DTOs;
 using Mafia.Services;
+using Microsoft.Extensions.Logging;
 
 namespace Mafia.Hubs;
 
 public class ChatHub : Hub
 {
+    private readonly VideoCallService _videoCallService;
+    private readonly ILogger<ChatHub> _logger;
+
+    public ChatHub(VideoCallService videoCallService, ILogger<ChatHub> logger)
+    {
+        _videoCallService = videoCallService;
+        _logger = logger;
+    }
+
     public async Task JoinRoom(string roomId, string userId)
     {
         // Проверяем существование комнаты
@@ -363,6 +373,26 @@ public class ChatHub : Hub
         if (room == null) return;
         
         // TODO: Проверка на админа (можно добавить, но для простоты доверимся клиенту/UI)
+
+        if (isEnabled)
+        {
+            try
+            {
+                // Гарантируем, что комната существует на видео-сервере.
+                // Она могла протухнуть (таймаут 5 минут при простое), поэтому пересоздаем.
+                var admin = room.Users.FirstOrDefault(u => u.Status == Enums.UserStatus.Admin);
+                var creatorName = admin?.Name ?? "Admin";
+                
+                await _videoCallService.CreateRoomAsync(roomId, creatorName);
+                _logger.LogInformation($"Video room {roomId} ensured/created when enabling video.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to ensure video room {roomId} exists.");
+                // Не прерываем процесс, возможно комната уже есть или ошибка временная.
+                // Если прервем, то UI может рассинхронизироваться.
+            }
+        }
         
         room.IsVideoEnabled = isEnabled;
         
