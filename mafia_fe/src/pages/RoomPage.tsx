@@ -1474,7 +1474,10 @@ export function RoomPage() {
               <div style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: "0.5rem"
+                gap: "0.5rem",
+                maxHeight: "400px",
+                overflowY: "auto",
+                paddingRight: "0.25rem"
               }}>
                 {users.map((user) => {
                   const isCurrentUser = user.id === userId;
