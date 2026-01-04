@@ -314,9 +314,10 @@ export function RoomPage() {
             console.error("Failed to load game state:", gameStateError);
           }
 
-          if (data.isVideoEnabled) {
-            setIsVideoEnabled(true);
-          }
+          // Синхронизируем статус видеозвонка. Если undefined, считаем false.
+          setIsVideoEnabled(!!data.isVideoEnabled);
+          console.log("[RoomPage] Loaded room state. IsVideoEnabled:", !!data.isVideoEnabled);
+
         } else {
           // 404 - комната не найдена, очищаем состояние
           console.log("[RoomPage] Room not found, clearing state");
@@ -872,6 +873,7 @@ export function RoomPage() {
       setUserId(data.users[0].id);
       setUserName(userName);
       setGameStatus(data.status || "Created");
+      setIsVideoEnabled(!!data.isVideoEnabled);
 
       // Сохраняем последние использованные имена
       saveLastUsedNames(userName, roomName);
@@ -961,9 +963,8 @@ export function RoomPage() {
           console.error("Failed to connect to SignalR:", signalRError);
         }
 
-        if (data.isVideoEnabled) {
-          setIsVideoEnabled(true);
-        }
+        // Синхронизируем статус видеозвонка
+        setIsVideoEnabled(!!data.isVideoEnabled);
 
         // Загружаем роль игрока
         if (data.status === "InProgress" || data.status === "Finished") {
