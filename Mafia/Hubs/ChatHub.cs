@@ -388,7 +388,7 @@ public class ChatHub : Hub
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Failed to ensure video room {roomId} exists.");
+                _logger.LogWarning(ex, $"Failed to ensure video room {roomId} exists. Video will not be available.");
                 // Не прерываем процесс, возможно комната уже есть или ошибка временная.
                 // Если прервем, то UI может рассинхронизироваться.
             }

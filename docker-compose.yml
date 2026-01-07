@@ -10,6 +10,11 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
+      - CALLS_API_URL=${CALLS_API_URL:-https://calls.trexon.ru/}
+      - MASTER_ADMIN_KEY=${MASTER_ADMIN_KEY}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - LIVEKIT_WS_URL=${LIVEKIT_WS_URL}
     networks:
       - mafia-network
     restart: unless-stopped
