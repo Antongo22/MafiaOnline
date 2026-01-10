@@ -48,4 +48,15 @@ public static class ValidationHelper
             throw new ArgumentException($"Параметр '{paramName}' должен быть положительным числом", paramName);
         }
     }
+
+    /// <summary>
+    /// Проверяет минимальную длину строки
+    /// </summary>
+    public static void ValidateMinLength(string? value, int minLength, string paramName)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Trim().Length < minLength)
+        {
+            throw new ArgumentException($"Параметр '{paramName}' должен содержать минимум {minLength} символа(ов)", paramName);
+        }
+    }
 }

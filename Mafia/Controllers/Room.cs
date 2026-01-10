@@ -30,6 +30,7 @@ public class Room : ControllerBase
     {
         ValidationHelper.ValidateNotEmpty(inviteCode, nameof(inviteCode));
         ValidationHelper.ValidateNotEmpty(playerName, nameof(playerName));
+        ValidationHelper.ValidateMinLength(playerName, 2, nameof(playerName));
         
         var room = Game.Rooms.FirstOrDefault(x => x.InviteCode == inviteCode);
         if (room == null)
@@ -60,6 +61,7 @@ public class Room : ControllerBase
     {
         ValidationHelper.ValidateNotEmpty(roomName, nameof(roomName));
         ValidationHelper.ValidateNotEmpty(playerName, nameof(playerName));
+        ValidationHelper.ValidateMinLength(playerName, 2, nameof(playerName));
         
         var userId = Guid.NewGuid().ToString();
         var room = new RoomDTO
