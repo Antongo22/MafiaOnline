@@ -79,6 +79,7 @@ var app = builder.Build();
 // Глобальный перехват ошибок
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+// Swagger - только для Development режима
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

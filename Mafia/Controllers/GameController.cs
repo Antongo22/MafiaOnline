@@ -13,10 +13,26 @@ namespace Mafia.Controllers;
 public class GameController : ControllerBase
 {
     private readonly IHubContext<ChatHub> _hubContext;
+    private readonly IConfiguration _configuration;
+    private readonly int _minPlayers;
 
-    public GameController(IHubContext<ChatHub> hubContext)
+    public GameController(IHubContext<ChatHub> hubContext, IConfiguration configuration)
     {
         _hubContext = hubContext;
+        _configuration = configuration;
+        _minPlayers = int.TryParse(_configuration["MIN_PLAYERS"], out var min) ? min : 3;
+    }
+
+    /// <summary>
+    /// Получить настройки игры (минимум игроков и т.д.)
+    /// </summary>
+    [HttpGet("settings")]
+    public ActionResult GetSettings()
+    {
+        return Ok(new
+        {
+            minPlayers = _minPlayers
+        });
     }
 
     /// <summary>
@@ -39,10 +55,10 @@ public class GameController : ControllerBase
         if (room.Status != GameStatus.Created)
             return BadRequest("Game can only be started from Created status");
         
-        // Проверяем минимальное количество игроков
+        // Проверяем минимальное количество игроков (из .env или по умолчанию 3)
         var activePlayersCount = room.Users.Count(u => u.Status != UserStatus.Leave);
-        if (activePlayersCount < 4)
-            return BadRequest($"Minimum 4 players required to start the game. Current players: {activePlayersCount}");
+        if (activePlayersCount < _minPlayers)
+            return BadRequest($"Минимум {_minPlayers} игрока(ов) для старта игры. Сейчас: {activePlayersCount}");
         
         // Переводим в статус выбора ролей
         room.Status = GameStatus.Waiting;

@@ -79,7 +79,23 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
   const [hoveredRole, setHoveredRole] = useState<string | null>(null);
   const [availableRoles, setAvailableRoles] = useState<RoleInfo[]>([]);
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+  const [minPlayers, setMinPlayers] = useState(3); // Минимум игроков (загружается из API)
 
+  // Загружаем настройки игры (минимум игроков)
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/api/Game/settings`);
+        if (response.ok) {
+          const settings = await response.json();
+          setMinPlayers(settings.minPlayers || 3);
+        }
+      } catch (err) {
+        console.error("Failed to fetch game settings:", err);
+      }
+    };
+    fetchSettings();
+  }, [apiUrl]);
   // Загружаем доступные роли с backend
   useEffect(() => {
     const fetchRoles = async () => {
@@ -136,7 +152,7 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
       if (!response.ok) throw new Error(await response.text());
       const result = await response.json();
       onStatusChange(result.status);
-      
+
       // Инициализируем роли после старта
       setRoleCounts(getDefaultRoles(playerCount));
     } catch (err) {
@@ -162,13 +178,13 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
         body: JSON.stringify(roleCounts),
       });
       if (!selectResponse.ok) throw new Error(await selectResponse.text());
-      
+
       // Затем раздаем их
       const distributeResponse = await fetch(`${apiUrl}/api/Game/distribute-roles?roomId=${roomId}&adminId=${userId}`, {
         method: "POST",
       });
       if (!distributeResponse.ok) throw new Error(await distributeResponse.text());
-      
+
       const result = await distributeResponse.json();
       onStatusChange(result.status);
     } catch (err) {
@@ -221,7 +237,7 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
 
   const handleFinishGame = async () => {
     if (!window.confirm("Завершить игру?")) return;
-    
+
     setLoading(true);
     setError(null);
     try {
@@ -240,7 +256,7 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
 
   const handleResetGame = async () => {
     if (!window.confirm("Начать новую игру? Игроки со статусом 'Вышел' будут удалены.")) return;
-    
+
     setLoading(true);
     setError(null);
     try {
@@ -286,14 +302,14 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
           </p>
           <button
             onClick={handleStartGame}
-            disabled={loading || playerCount < 4}
+            disabled={loading || playerCount < minPlayers}
             className="btn-primary w-full"
           >
             {loading ? "..." : "🎮 Начать игру"}
           </button>
-          {playerCount < 4 && (
+          {playerCount < minPlayers && (
             <p style={{ margin: 0, color: "var(--warning)", fontSize: "0.75rem", textAlign: "center" }}>
-              Нужно минимум 4 игрока
+              Нужно минимум {minPlayers} игрока(ов). Сейчас: {playerCount}
             </p>
           )}
         </>
@@ -305,9 +321,9 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
             Выберите роли для игры. Всего игроков: <strong>{playerCount}</strong>
           </p>
 
-          <div style={{ 
-            display: "flex", 
-            flexDirection: "column", 
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
             gap: "0.5rem",
             maxHeight: "400px",
             overflowY: "auto",
@@ -317,9 +333,9 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
             {availableRoles.map(role => {
               const count = roleCounts[role.roleValue] || 0;
               const teamColor = getTeamColor(role.team);
-              
+
               return (
-                <div 
+                <div
                   key={role.roleValue}
                   style={{
                     display: "flex",
@@ -336,8 +352,8 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
                   onMouseLeave={handleMouseLeave}
                 >
                   <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
-                    <span style={{ 
-                      fontSize: "0.875rem", 
+                    <span style={{
+                      fontSize: "0.875rem",
                       fontWeight: "500",
                       color: count > 0 ? teamColor : "inherit",
                       whiteSpace: "nowrap",
@@ -410,13 +426,13 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
       {gameStatus === "InProgress" && (
         <>
           <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: "0.875rem" }}>
-            {gameCycleStarted 
-              ? isPaused 
-                ? "⏸️ Игра на паузе" 
-                : "▶️ Игра в процессе. Следите за фазами игры." 
+            {gameCycleStarted
+              ? isPaused
+                ? "⏸️ Игра на паузе"
+                : "▶️ Игра в процессе. Следите за фазами игры."
               : "Игра в процессе. Роли розданы."}
           </p>
-          
+
           {!gameCycleStarted && (
             <button
               onClick={handleStartGameCycle}
@@ -427,7 +443,7 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
               {loading ? "..." : "▶️ Начать игровой цикл"}
             </button>
           )}
-          
+
           {gameCycleStarted && (
             <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
               <button
@@ -440,7 +456,7 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
               </button>
             </div>
           )}
-          
+
           <button
             onClick={handleFinishGame}
             disabled={loading}
