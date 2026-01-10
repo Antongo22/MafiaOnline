@@ -169,9 +169,9 @@ public class GameTimerService : BackgroundService
                 timeSeconds = settings.FreeDiscussionTime
             });
 
-            // Free Discussion: Unmute all audio, ensure video is on
-            await _videoCallService.UnmuteAllAudioAsync(room.Id);
-            await _videoCallService.UnmuteAllVideoAsync(room.Id);
+            // УПРОЩЕНИЕ: Автоуправление медиа отключено - участники сами управляют камерой/микрофоном
+            // await _videoCallService.UnmuteAllAudioAsync(room.Id);
+            // await _videoCallService.UnmuteAllVideoAsync(room.Id);
         }
         else
         {
@@ -190,12 +190,12 @@ public class GameTimerService : BackgroundService
                 timeSeconds = settings.IndividualSpeechTime
             });
 
-            // Switch Speaker: Mute everyone else, unmute new speaker
-            if (speaker?.Name != null)
-            {
-                await _videoCallService.MuteAllAudioAsync(room.Id, speaker.Name);
-                await _videoCallService.MuteUserAudioAsync(room.Id, speaker.Name, false);
-            }
+            // УПРОЩЕНИЕ: Автоуправление медиа отключено
+            // if (speaker?.Name != null)
+            // {
+            //     await _videoCallService.MuteAllAudioAsync(room.Id, speaker.Name);
+            //     await _videoCallService.MuteUserAudioAsync(room.Id, speaker.Name, false);
+            // }
         }
     }
 
@@ -234,10 +234,9 @@ public class GameTimerService : BackgroundService
             timeSeconds = settings.VotingTime
         });
 
-        // Voting: Mute all audio
-        await _videoCallService.MuteAllAudioAsync(room.Id);
-        // Ensure video is on (should be already, but to be safe)
-        await _videoCallService.UnmuteAllVideoAsync(room.Id);
+        // УПРОЩЕНИЕ: Автоуправление медиа отключено
+        // await _videoCallService.MuteAllAudioAsync(room.Id);
+        // await _videoCallService.UnmuteAllVideoAsync(room.Id);
     }
 
     private async Task AdvanceVoting(RoomDTO room)
@@ -555,9 +554,9 @@ public class GameTimerService : BackgroundService
         // Определяем первую ночную фазу
         await AdvanceNight(room);
 
-        // Night Started: Mute all audio and video
-        await _videoCallService.MuteAllAudioAsync(room.Id);
-        await _videoCallService.MuteAllVideoAsync(room.Id);
+        // УПРОЩЕНИЕ: Автоуправление медиа отключено
+        // await _videoCallService.MuteAllAudioAsync(room.Id);
+        // await _videoCallService.MuteAllVideoAsync(room.Id);
     }
 
     private async Task AdvanceNight(RoomDTO room)
@@ -946,19 +945,18 @@ public class GameTimerService : BackgroundService
             timeSeconds = 30
         });
 
-        // Start Individual Speech (Morning): Unmute video for everyone, Mute audio for all except speaker
-        await _videoCallService.UnmuteAllVideoAsync(room.Id);
-        
-        var speaker = room.Users.FirstOrDefault(u => u.Id == gameState.CurrentSpeakerId);
-        if (speaker?.Name != null)
-        {
-            await _videoCallService.MuteAllAudioAsync(room.Id, speaker.Name);
-            await _videoCallService.MuteUserAudioAsync(room.Id, speaker.Name, false);
-        }
-        else
-        {
-             await _videoCallService.MuteAllAudioAsync(room.Id);
-        }
+        // УПРОЩЕНИЕ: Автоуправление медиа отключено - участники сами управляют камерой/микрофоном
+        // await _videoCallService.UnmuteAllVideoAsync(room.Id);
+        // var speaker = room.Users.FirstOrDefault(u => u.Id == gameState.CurrentSpeakerId);
+        // if (speaker?.Name != null)
+        // {
+        //     await _videoCallService.MuteAllAudioAsync(room.Id, speaker.Name);
+        //     await _videoCallService.MuteUserAudioAsync(room.Id, speaker.Name, false);
+        // }
+        // else
+        // {
+        //     await _videoCallService.MuteAllAudioAsync(room.Id);
+        // }
     }
 
     private async Task EndGame(RoomDTO room, Team winner)
@@ -990,9 +988,9 @@ public class GameTimerService : BackgroundService
         // Также отправляем событие смены статуса
         await _hubContext.Clients.Group(room.Id).SendAsync("GameStatusChanged", new { status = room.Status.ToString() });
 
-        // End Game: Unmute everyone so they can discuss
-        await _videoCallService.UnmuteAllAudioAsync(room.Id);
-        await _videoCallService.UnmuteAllVideoAsync(room.Id);
+        // УПРОЩЕНИЕ: Автоуправление медиа отключено
+        // await _videoCallService.UnmuteAllAudioAsync(room.Id);
+        // await _videoCallService.UnmuteAllVideoAsync(room.Id);
     }
 }
 
