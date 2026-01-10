@@ -865,7 +865,17 @@ export function RoomPage() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "Failed to create room");
+        let errorMessage = "Не удалось создать комнату";
+        try {
+          const errorJson = JSON.parse(errorText);
+          // Извлекаем сообщение из JSON и убираем "(Parameter 'xxx')" в конце
+          if (errorJson.message) {
+            errorMessage = errorJson.message.replace(/\s*\(Parameter\s+'[^']*'\)$/, '');
+          }
+        } catch {
+          if (errorText) errorMessage = errorText;
+        }
+        throw new Error(errorMessage);
       }
 
       const data: Room = await response.json();
@@ -929,7 +939,16 @@ export function RoomPage() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "Failed to join room");
+        let errorMessage = "Не удалось присоединиться";
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.message) {
+            errorMessage = errorJson.message.replace(/\s*\(Parameter\s+'[^']*'\)$/, '');
+          }
+        } catch {
+          if (errorText) errorMessage = errorText;
+        }
+        throw new Error(errorMessage);
       }
 
       const data: Room = await response.json();
