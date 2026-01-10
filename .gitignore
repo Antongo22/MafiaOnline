@@ -402,3 +402,7 @@ FodyWeavers.xsd
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# Environment files
+.env
+!.env.example

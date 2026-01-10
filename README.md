@@ -1,26 +1,53 @@
-# Игра в Мафию
+# 🎭 Mafia Online
 
-Многопользовательская игра в мафию с WebSocket чатом.
+Многопользовательская игра в мафию с видеозвонками и WebSocket чатом.
 
-## Технологии
+## 🚀 Технологии
 
 ### Backend
 - ASP.NET Core 9.0
 - SignalR (WebSocket)
 - In-memory хранилище
+- Интеграция с Trexon Calls (видеозвонки)
 
 ### Frontend
 - React 19
 - TypeScript
 - Vite
 - SignalR Client
+- LiveKit (видеозвонки)
 
-## Запуск через Docker Compose
+## 📹 Видеозвонки
+
+Игра интегрирована с **Trexon Calls** для видео/аудио связи между игроками.
+
+### Возможности:
+- Автоматическое создание видеокомнаты при старте игры
+- Управление микрофонами по фазам игры
+- Подсветка активного спикера
+- Уникальные имена участников
+
+### Управление медиа по фазам:
+
+| Фаза игры | Микрофоны | Камеры |
+|-----------|-----------|--------|
+| IndividualSpeech | Только у выступающего | У всех |
+| FreeDiscussion | У всех | У всех |
+| Voting | Выключены | У всех |
+| Night | Выключены | Выключены |
+| GameOver | У всех | У всех |
+
+### Конфигурация (.env):
+```bash
+CALLS_API_URL=https://calls.trexon.ru/
+MASTER_ADMIN_KEY=your_master_admin_key
+```
+
+## 🐳 Запуск через Docker Compose
 
 ### Требования
 - Docker
 - Docker Compose
-
 
 ### Подробный запуск
 
@@ -29,7 +56,13 @@
 cd Mafia
 ```
 
-2. Запустите все сервисы:
+2. Настройте переменные окружения:
+```bash
+cp .env.example .env
+# Отредактируйте .env
+```
+
+3. Запустите все сервисы:
 
 **Production режим:**
 ```bash
@@ -41,7 +74,7 @@ docker-compose up --build
 docker-compose -f docker-compose.dev.yml up --build
 ```
 
-3. Откройте браузер:
+4. Откройте браузер:
 
 **Production:**
 - Frontend: http://localhost
@@ -59,7 +92,7 @@ docker-compose down
 docker-compose -f docker-compose.dev.yml down
 ```
 
-## Локальный запуск (для разработки)
+## 💻 Локальный запуск (для разработки)
 
 ### Backend
 
@@ -99,32 +132,43 @@ npm run dev
 
 Frontend будет доступен на http://localhost:5173
 
-## Как играть
+## 🎮 Как играть
 
 1. **Создайте комнату**: введите своё имя и название комнаты
 2. **Поделитесь кодом**: получите код приглашения и отправьте друзьям
 3. **Присоединяйтесь**: друзья могут присоединиться по коду
-4. **Общайтесь**: используйте встроенный чат для общения в реальном времени
+4. **Видеозвонок**: автоматически подключается при входе в комнату
+5. **Играйте**: ведущий управляет игрой, микрофоны переключаются автоматически
 
-## Особенности
+## ✨ Особенности
 
-- Регистрация не требуется (только никнейм)
-- Чат работает через WebSocket (SignalR)
-- История сообщений сохраняется пока комната активна
-- Автоматическое переподключение при разрыве соединения
-- Изоляция чатов по комнатам
+- 📹 Встроенные видеозвонки
+- 💬 Чат через WebSocket (SignalR)
+- 🎤 Автоматическое управление микрофонами по фазам
+- 👤 Регистрация не требуется (только никнейм)
+- 🔄 Автоматическое переподключение при разрыве
+- 🏠 Изоляция комнат
+- 🗑️ Автоудаление пустых комнат через 5 минут
 
-## Архитектура
+## 🏗️ Архитектура
 
 ```
 ┌─────────────┐         WebSocket (SignalR)         ┌─────────────┐
-│   Browser   │ <──────────────────────────────────> │   ASP.NET   │
-│  (React)    │                                      │    Core     │
-└─────────────┘         HTTP REST API               └─────────────┘
-                  (создание/присоединение)
+│   Browser   │ <────────────────────────────────> │   ASP.NET   │
+│  (React)    │                                     │    Core     │
+└──────┬──────┘         HTTP REST API              └──────┬──────┘
+       │                                                   │
+       │  WebRTC                              REST API     │
+       │                                                   │
+       ▼                                                   ▼
+┌─────────────┐                                   ┌─────────────┐
+│  Trexon     │ <─────────────────────────────── │   Calls     │
+│   Calls     │         Admin API                │   Backend   │
+│  (LiveKit)  │                                   └─────────────┘
+└─────────────┘
 ```
 
-## API Endpoints
+## 📡 API Endpoints
 
 ### REST API
 - `POST /api/Room/create` - Создать комнату
@@ -136,7 +180,15 @@ Frontend будет доступен на http://localhost:5173
   - `JoinRoom(roomId, userId)` - Присоединиться к чату комнаты
   - `SendMessage(roomId, userId, userName, message)` - Отправить сообщение
 
-## Структура проекта
+### VideoCallService (внутренний)
+- `CreateRoomAsync(roomName, creatorName)` - Создать видеокомнату
+- `MuteAllAudioAsync(roomName, exceptUser)` - Выключить микрофоны всем
+- `UnmuteAllAudioAsync(roomName)` - Включить микрофоны всем
+- `MuteUserAudioAsync(roomName, identity, muted)` - Управление микрофоном игрока
+- `MuteAllVideoAsync(roomName)` - Выключить камеры
+- `UnmuteAllVideoAsync(roomName)` - Включить камеры
+
+## 📁 Структура проекта
 
 ```
 Mafia/
@@ -146,6 +198,9 @@ Mafia/
 │   ├── Enums/             # Перечисления
 │   ├── Hubs/              # SignalR Hubs
 │   ├── Services/          # Бизнес-логика
+│   │   ├── GameService.cs         # Логика игры
+│   │   ├── GameTimerService.cs    # Таймеры фаз
+│   │   └── VideoCallService.cs    # Интеграция с Calls
 │   └── Program.cs         # Точка входа
 ├── mafia_fe/              # Frontend (React)
 │   ├── src/
@@ -154,30 +209,28 @@ Mafia/
 │   │   └── services/      # Сервисы (SignalR)
 │   └── package.json
 ├── docker-compose.yml     # Docker Compose конфигурация
+├── .env.example          # Пример переменных окружения
 └── README.md
 ```
 
-## Разработка
+## ⚙️ Переменные окружения
 
-### Переменные окружения
+### Backend (.env)
+```bash
+# Trexon Calls интеграция
+CALLS_API_URL=https://calls.trexon.ru/
+MASTER_ADMIN_KEY=your_master_admin_key
 
-Frontend (`.env`):
+# Logging
+ASPNETCORE_ENVIRONMENT=Production
 ```
+
+### Frontend (.env)
+```bash
 VITE_API_URL=http://localhost:5141
+VITE_CALLS_URL=https://calls.trexon.ru
 ```
 
-Backend (`appsettings.Development.json`):
-```json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information"
-    }
-  }
-}
-```
-
-## Лицензия
+## 📝 Лицензия
 
 MIT
-

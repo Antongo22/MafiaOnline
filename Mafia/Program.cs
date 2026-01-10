@@ -36,7 +36,7 @@ builder.Services.AddHttpClient<VideoCallService>((sp, client) =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
     var callsApiUrl = config["CALLS_API_URL"] ?? "https://calls.trexon.ru/";
-    var masterAdminKey = config["MASTER_ADMIN_KEY"] ?? "dev_key_12345";
+    var masterAdminKey = config["MASTER_ADMIN_KEY"] ?? "none";
     
     client.BaseAddress = new Uri(callsApiUrl);
     client.DefaultRequestHeaders.Add("X-API-Key", masterAdminKey);
