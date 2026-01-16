@@ -1806,17 +1806,19 @@ export function RoomPage() {
                 </div>
               )}
 
-              {/* Общий чат */}
-              <div style={{ minHeight: "300px" }}>
-                <Chat
-                  userId={userId}
-                  roomId={room.id}
-                  userName={userName}
-                />
-              </div>
+              {/* Общий чат - скрыт на mobile (показывается во вкладке Чат) */}
+              {!isMobile && (
+                <div style={{ minHeight: "300px" }}>
+                  <Chat
+                    userId={userId}
+                    roomId={room.id}
+                    userName={userName}
+                  />
+                </div>
+              )}
 
-              {/* Чат мафии (только для мафии ночью) */}
-              {isMafia && gameStatus === "InProgress" && gamePhase === GamePhase.Night && (
+              {/* Чат мафии (только для мафии ночью) - скрыт на mobile */}
+              {!isMobile && isMafia && gameStatus === "InProgress" && gamePhase === GamePhase.Night && (
                 <div style={{ minHeight: "300px" }}>
                   <MafiaChat
                     roomId={room.id}
@@ -1827,6 +1829,37 @@ export function RoomPage() {
               )}
             </div>
           </div>
+
+          {/* Вкладка Чат - показывается только на mobile */}
+          {isMobile && mobileTab === 'chat' && (
+            <div className="room-sidebar-right mobile-active" style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              gap: "1rem",
+              height: "100%"
+            }}>
+              {/* Общий чат */}
+              <div style={{ flex: 1, minHeight: "300px" }}>
+                <Chat
+                  userId={userId}
+                  roomId={room.id}
+                  userName={userName}
+                />
+              </div>
+
+              {/* Чат мафии (только для мафии ночью) */}
+              {isMafia && gameStatus === "InProgress" && gamePhase === GamePhase.Night && (
+                <div style={{ minHeight: "200px" }}>
+                  <MafiaChat
+                    roomId={room.id}
+                    userId={userId}
+                    userName={userName}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Alert notification */}
           {alert && (
