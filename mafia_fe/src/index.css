@@ -372,12 +372,14 @@ button:disabled {
     border-radius: var(--radius);
   }
 
-  /* Inputs */
+  /* Inputs - 16px to prevent iOS zoom */
   input,
   textarea,
   select {
     min-height: 44px;
     padding: 0.625rem 0.875rem;
+    font-size: 16px !important;
+    /* Prevents auto-zoom on iOS */
   }
 
   /* Badge */
