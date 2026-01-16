@@ -56,6 +56,7 @@ import { rolesService, type RoleInfo } from "../services/rolesService";
 import { Chat } from "../components/Chat";
 import { MobileNavigation, type MobileTab } from "../components/MobileNavigation";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { useVisualViewport } from "../hooks/useVisualViewport";
 import "./RoomPage.css";
 
 
@@ -141,6 +142,7 @@ export function RoomPage() {
 
   // Mobile state
   const isMobile = useIsMobile();
+  const { viewportHeight, keyboardOpen } = useVisualViewport();
   const [mobileTab, setMobileTab] = useState<MobileTab>('game');
 
   // Video call management
@@ -1834,15 +1836,18 @@ export function RoomPage() {
           {isMobile && mobileTab === 'chat' && (
             <div style={{
               position: "fixed",
-              top: "60px",
+              top: 0,
               left: 0,
               right: 0,
-              bottom: "72px",
+              height: `${viewportHeight}px`, // Динамическая высота
               display: "flex",
               flexDirection: "column",
               background: "var(--bg-primary)",
-              zIndex: 50
+              zIndex: 50,
+              paddingTop: "0px" // Убрали отступ сверху, header будет встроен или перекрыт
             }}>
+              {/* Mobile Chat Header with Close/Back button logic if needed, but tabs handle it */}
+
               {/* Если мафия и ночь - показываем чат мафии, иначе обычный чат */}
               {isMafia && gameStatus === "InProgress" && gamePhase === GamePhase.Night ? (
                 <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -1954,8 +1959,8 @@ export function RoomPage() {
             </div>
           )}
 
-          {/* Mobile Navigation */}
-          {isMobile && (
+          {/* Mobile Navigation - скрываем при открытой клавиатуре чтобы не мешала */}
+          {isMobile && !keyboardOpen && (
             <MobileNavigation
               activeTab={mobileTab}
               onTabChange={setMobileTab}
