@@ -142,7 +142,7 @@ export function RoomPage() {
 
   // Mobile state
   const isMobile = useIsMobile();
-  const { viewportHeight, keyboardOpen } = useVisualViewport();
+  const { viewportHeight, viewportTop, keyboardOpen } = useVisualViewport();
   const [mobileTab, setMobileTab] = useState<MobileTab>('game');
 
   // Video call management
@@ -1836,7 +1836,7 @@ export function RoomPage() {
           {isMobile && mobileTab === 'chat' && (
             <div style={{
               position: "fixed",
-              top: 0,
+              top: `${viewportTop}px`, // Динамически прижимаем к верху видимой области
               left: 0,
               right: 0,
               height: `${viewportHeight}px`, // Динамическая высота
