@@ -1830,30 +1830,45 @@ export function RoomPage() {
             </div>
           </div>
 
-          {/* Вкладка Чат - показывается только на mobile */}
+          {/* Вкладка Чат - показывается только на mobile (fullscreen) */}
           {isMobile && mobileTab === 'chat' && (
-            <div className="room-sidebar-right mobile-active" style={{
-              flex: 1,
+            <div style={{
+              position: "fixed",
+              top: "60px",
+              left: 0,
+              right: 0,
+              bottom: "72px",
               display: "flex",
               flexDirection: "column",
-              gap: "1rem",
-              height: "100%"
+              background: "var(--bg-primary)",
+              zIndex: 50
             }}>
-              {/* Общий чат */}
-              <div style={{ flex: 1, minHeight: "300px" }}>
-                <Chat
-                  userId={userId}
-                  roomId={room.id}
-                  userName={userName}
-                />
-              </div>
-
-              {/* Чат мафии (только для мафии ночью) */}
-              {isMafia && gameStatus === "InProgress" && gamePhase === GamePhase.Night && (
-                <div style={{ minHeight: "200px" }}>
-                  <MafiaChat
-                    roomId={room.id}
+              {/* Если мафия и ночь - показываем чат мафии, иначе обычный чат */}
+              {isMafia && gameStatus === "InProgress" && gamePhase === GamePhase.Night ? (
+                <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                  <div style={{
+                    padding: "0.5rem 1rem",
+                    background: "var(--danger-light)",
+                    color: "var(--danger)",
+                    fontWeight: 600,
+                    fontSize: "0.875rem",
+                    textAlign: "center"
+                  }}>
+                    🌙 Чат мафии (только вы видите)
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <MafiaChat
+                      roomId={room.id}
+                      userId={userId}
+                      userName={userName}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                  <Chat
                     userId={userId}
+                    roomId={room.id}
                     userName={userName}
                   />
                 </div>
