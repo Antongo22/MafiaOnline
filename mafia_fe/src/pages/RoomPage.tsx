@@ -144,6 +144,35 @@ export function RoomPage() {
   const isMobile = useIsMobile();
   const { viewportHeight, viewportTop, keyboardOpen } = useVisualViewport();
   const [mobileTab, setMobileTab] = useState<MobileTab>('game');
+  const [isInputFocused, setIsInputFocused] = useState(false);
+
+  // Отслеживание фокуса на инпутах для скрытия навигации
+  useEffect(() => {
+    const handleFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        setIsInputFocused(true);
+      }
+    };
+
+    const handleFocusOut = () => {
+      // Небольшая задержка, чтобы избежать мигания при переключении между инпутами
+      setTimeout(() => {
+        const active = document.activeElement as HTMLElement;
+        if (!active || (active.tagName !== 'INPUT' && active.tagName !== 'TEXTAREA')) {
+          setIsInputFocused(false);
+        }
+      }, 100);
+    };
+
+    document.addEventListener('focusin', handleFocusIn);
+    document.addEventListener('focusout', handleFocusOut);
+
+    return () => {
+      document.removeEventListener('focusin', handleFocusIn);
+      document.removeEventListener('focusout', handleFocusOut);
+    };
+  }, []);
 
   // Video call management
   // const mediaControlTimeoutRef = useRef<number | null>(null);
@@ -1845,7 +1874,7 @@ export function RoomPage() {
               background: "var(--bg-primary)",
               zIndex: 50,
               paddingTop: "0px",
-              paddingBottom: keyboardOpen ? "0px" : "90px" // Отступ под навигацию, если клавиатура закрыта
+              paddingBottom: (isInputFocused || keyboardOpen) ? "0px" : "90px" // Убираем отступ когда пишем
             }}>
               {/* Mobile Chat Header with Close/Back button logic if needed, but tabs handle it */}
 
@@ -1960,8 +1989,8 @@ export function RoomPage() {
             </div>
           )}
 
-          {/* Mobile Navigation - скрываем при открытой клавиатуре чтобы не мешала */}
-          {isMobile && !keyboardOpen && (
+          {/* Mobile Navigation - скрываем когда фокус на инпуте или клавиатура открыта */}
+          {isMobile && !isInputFocused && !keyboardOpen && (
             <MobileNavigation
               activeTab={mobileTab}
               onTabChange={setMobileTab}
