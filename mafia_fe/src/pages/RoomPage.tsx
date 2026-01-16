@@ -54,6 +54,10 @@ import { saveRoomState, loadRoomState, clearRoomState, saveLastUsedNames, loadLa
 import { rolesService, type RoleInfo } from "../services/rolesService";
 // import { videoCallService } from "../services/videoCallService";
 import { Chat } from "../components/Chat";
+import { MobileNavigation, type MobileTab } from "../components/MobileNavigation";
+import { useIsMobile } from "../hooks/useIsMobile";
+import "./RoomPage.css";
+
 
 interface Room {
   id: string;
@@ -134,6 +138,10 @@ export function RoomPage() {
 
   // Roles data
   const [rolesData, setRolesData] = useState<RoleInfo[]>([]);
+
+  // Mobile state
+  const isMobile = useIsMobile();
+  const [mobileTab, setMobileTab] = useState<MobileTab>('game');
 
   // Video call management
   // const mediaControlTimeoutRef = useRef<number | null>(null);
@@ -1346,28 +1354,35 @@ export function RoomPage() {
           </div>
         )}
 
+        <div className={`room-container fade-in ${isMobile ? 'mobile-content' : ''}`}>
+          {/* Mobile header - показывается только на мобильных */}
+          {isMobile && (
+            <div className="mobile-header">
+              <h2>{room.name}</h2>
+              <div className="mobile-header-actions">
+                <button
+                  onClick={copyInviteCode}
+                  className="btn-secondary btn-sm"
+                  title="Копировать код"
+                >
+                  📋 {room.inviteCode}
+                </button>
+              </div>
+            </div>
+          )}
 
-        <div className="fade-in" style={{
-          display: "flex",
-          flexDirection: "row",
-          height: "100vh",
-          padding: "1.5rem",
-          gap: "1.5rem",
-          maxWidth: "1600px",
-          margin: "0 auto",
-          overflow: "hidden"
-        }}>
-          {/* Левая панель */}
-          <div style={{
+          {/* Левая панель - скрыта на мобильных в режиме game/chat */}
+          <div className={`room-sidebar-left ${isMobile && mobileTab === 'participants' ? 'mobile-active' : ''}`} style={isMobile ? {} : {
             width: "320px",
             display: "flex",
             flexDirection: "column",
             gap: "1rem",
             flexShrink: 0,
-            height: "100vh"
+            maxHeight: "100vh",
+            overflowY: "auto"
           }}>
             {/* Информация о комнате */}
-            <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div className="card room-info-card" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div>
                 <h2 style={{ margin: 0, marginBottom: "0.5rem", fontSize: "1.5rem" }}>
                   {room.name}
@@ -1731,12 +1746,13 @@ export function RoomPage() {
           </div>
 
           {/* Центральная панель - игровой контент */}
-          <div style={{
+          <div className={`room-center ${isMobile && mobileTab !== 'game' ? '' : 'mobile-active'}`} style={isMobile ? (mobileTab === 'game' ? { flex: 1, display: "flex", flexDirection: "column", gap: "1rem" } : { display: "none" }) : {
             flex: 1,
             display: "flex",
             flexDirection: "column",
             gap: "1rem",
-            height: "100vh"
+            maxHeight: "100vh",
+            overflow: "hidden"
           }}>
             {/* Фаза игры и таймер */}
             {gameCycleStarted && (
@@ -1888,6 +1904,14 @@ export function RoomPage() {
                 </button>
               </div>
             </div>
+          )}
+
+          {/* Mobile Navigation */}
+          {isMobile && (
+            <MobileNavigation
+              activeTab={mobileTab}
+              onTabChange={setMobileTab}
+            />
           )}
         </div >
       </>

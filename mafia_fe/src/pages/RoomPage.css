@@ -1,0 +1,278 @@
+/* RoomPage.css - Стили для игровой комнаты */
+
+/* Main container */
+.room-container {
+    display: flex;
+    flex-direction: row;
+    height: 100vh;
+    padding: 1.5rem;
+    gap: 1.5rem;
+    max-width: 1600px;
+    margin: 0 auto;
+    overflow: hidden;
+}
+
+/* Left sidebar */
+.room-sidebar-left {
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    flex-shrink: 0;
+    max-height: 100vh;
+    overflow-y: auto;
+}
+
+/* Center content (video + game phases) */
+.room-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Right sidebar (chat) */
+.room-sidebar-right {
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    max-height: 100vh;
+    overflow: hidden;
+}
+
+/* Room info card */
+.room-info-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Invite code display */
+.invite-code-display {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.invite-code-text {
+    flex: 1;
+    padding: 0.75rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-weight: bold;
+    font-size: 1.25rem;
+    text-align: center;
+    letter-spacing: 3px;
+    color: var(--accent-primary);
+}
+
+/* Users list */
+.users-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+
+.user-item {
+    padding: 0.75rem;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: var(--transition);
+}
+
+.user-item.is-current {
+    background: var(--accent-light);
+    border-color: var(--accent-primary);
+}
+
+.user-item.is-active {
+    background: var(--warning);
+    border-color: var(--warning);
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+}
+
+.user-item.is-dead {
+    opacity: 0.5;
+}
+
+/* Video section */
+.video-section {
+    height: 300px;
+    min-height: 200px;
+}
+
+/* Game content section */
+.game-content-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow-y: auto;
+}
+
+/* ========================================= */
+/* MOBILE STYLES                             */
+/* ========================================= */
+
+@media (max-width: 768px) {
+    .room-container {
+        flex-direction: column;
+        padding: var(--mobile-padding);
+        gap: var(--mobile-gap);
+        height: auto;
+        min-height: 100vh;
+        padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    }
+
+    /* Hide sidebars on mobile by default */
+    .room-sidebar-left,
+    .room-sidebar-right {
+        display: none;
+    }
+
+    /* Show active tab content */
+    .room-sidebar-left.mobile-active,
+    .room-sidebar-right.mobile-active,
+    .room-center.mobile-active {
+        display: flex;
+    }
+
+    .room-sidebar-left.mobile-active,
+    .room-sidebar-right.mobile-active {
+        width: 100%;
+        max-height: none;
+        height: auto;
+        flex: 1;
+    }
+
+    .room-center {
+        flex: 1;
+        min-height: 0;
+    }
+
+    /* Compact room info */
+    .room-info-compact {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        background: var(--bg-secondary);
+        border-radius: var(--radius);
+        margin-bottom: 0.5rem;
+    }
+
+    .room-info-compact h2 {
+        font-size: 1rem;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Compact invite code */
+    .invite-code-text {
+        font-size: 0.875rem;
+        padding: 0.5rem;
+        letter-spacing: 2px;
+    }
+
+    /* Video section in mobile */
+    .video-section {
+        height: 200px;
+        min-height: 150px;
+    }
+
+    /* User list mobile */
+    .users-list {
+        max-height: none;
+    }
+
+    .user-item {
+        padding: 0.625rem;
+    }
+
+    /* Game phase display compact */
+    .game-phase-compact {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem 0.75rem;
+        background: var(--bg-secondary);
+        border-radius: var(--radius);
+        font-size: 0.875rem;
+    }
+
+    .timer-compact {
+        font-size: 1.25rem;
+        font-weight: bold;
+        color: var(--accent-primary);
+    }
+}
+
+/* Mobile tab panels */
+.mobile-tab-panel {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+.mobile-tab-panel.active {
+    display: flex;
+}
+
+/* Mobile header bar */
+.mobile-header {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .mobile-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem 0.75rem;
+        background: var(--bg-secondary);
+        border-radius: var(--radius);
+        margin-bottom: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    .mobile-header h2 {
+        font-size: 1rem;
+        margin: 0;
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .mobile-header-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .mobile-header-actions button {
+        padding: 0.375rem 0.625rem;
+        min-height: 36px;
+        font-size: 0.75rem;
+    }
+}
+
+/* Desktop-only elements */
+@media (min-width: 769px) {
+    .mobile-header {
+        display: none !important;
+    }
+}
