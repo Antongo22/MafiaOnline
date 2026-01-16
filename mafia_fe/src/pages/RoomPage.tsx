@@ -1844,7 +1844,8 @@ export function RoomPage() {
               flexDirection: "column",
               background: "var(--bg-primary)",
               zIndex: 50,
-              paddingTop: "0px" // Убрали отступ сверху, header будет встроен или перекрыт
+              paddingTop: "0px",
+              paddingBottom: keyboardOpen ? "0px" : "90px" // Отступ под навигацию, если клавиатура закрыта
             }}>
               {/* Mobile Chat Header with Close/Back button logic if needed, but tabs handle it */}
 
