@@ -87,13 +87,14 @@ export function VideoCall({
         params.set("highlightSpeaker", currentSpeakerName);
       }
 
+      // Add timestamp to prevent caching
+      params.set("_t", Date.now().toString());
+
       const fullUrl = `${baseUrl}?${params.toString()}`;
 
       if (iframeRef.current) {
-        if (iframeRef.current.src !== fullUrl) {
-          console.log("[VideoCall] Setting URL:", fullUrl);
-          iframeRef.current.src = fullUrl;
-        }
+        console.log("[VideoCall] Setting URL:", fullUrl);
+        iframeRef.current.src = fullUrl;
         setIsLoaded(true);
       }
     };
