@@ -46,34 +46,59 @@ export function VideoCall({
   useEffect(() => {
     if (!roomId || !userName) return;
 
-    // Construct URL with query parameters manually to ensure order and presence
-    const baseUrl = finalVideoCallUrl.split('?')[0];
-    const params = new URLSearchParams();
+    const setupVideoCall = async () => {
+      const baseUrl = finalVideoCallUrl.split('?')[0];
+      const apiUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash if any
 
-    params.set("room", roomId);
-    params.set("name", userName);
-    params.set("autoJoin", "true"); // Always force autoJoin
-    params.set("hideLeave", "true"); // Hide only the leave button
-    params.set("hideChat", "true"); // Hide chat button as Mafia has its own chat
-
-    if (isAdmin) {
-      params.set("creator", "true");
-    }
-
-    if (currentSpeakerName) {
-      params.set("highlightSpeaker", currentSpeakerName);
-    }
-
-    const fullUrl = `${baseUrl}?${params.toString()}`;
-
-    if (iframeRef.current) {
-      if (iframeRef.current.src !== fullUrl) {
-        console.log("[VideoCall] Setting URL:", fullUrl);
-        console.log("[VideoCall] Params check -> autoJoin:", params.get("autoJoin"), "isAdmin:", isAdmin);
-        iframeRef.current.src = fullUrl;
+      // If admin, ensure room exists by creating it (API will handle if already exists)
+      if (isAdmin) {
+        try {
+          console.log("[VideoCall] Admin creating/ensuring room exists:", roomId);
+          const response = await fetch(`${apiUrl}/api/rooms`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: roomId, creator_name: userName })
+          });
+          if (response.ok) {
+            console.log("[VideoCall] Room created/exists:", roomId);
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            console.log("[VideoCall] Room creation response:", response.status, errorData);
+          }
+        } catch (err) {
+          console.error("[VideoCall] Failed to create room:", err);
+          // Continue anyway - room might already exist
+        }
       }
-      setIsLoaded(true);
-    }
+
+      // Construct URL with query parameters
+      const params = new URLSearchParams();
+      params.set("room", roomId);
+      params.set("name", userName);
+      params.set("autoJoin", "true");
+      params.set("hideLeave", "true");
+      params.set("hideChat", "true");
+
+      if (isAdmin) {
+        params.set("creator", "true");
+      }
+
+      if (currentSpeakerName) {
+        params.set("highlightSpeaker", currentSpeakerName);
+      }
+
+      const fullUrl = `${baseUrl}?${params.toString()}`;
+
+      if (iframeRef.current) {
+        if (iframeRef.current.src !== fullUrl) {
+          console.log("[VideoCall] Setting URL:", fullUrl);
+          iframeRef.current.src = fullUrl;
+        }
+        setIsLoaded(true);
+      }
+    };
+
+    setupVideoCall();
   }, [roomId, userName, isAdmin, currentSpeakerName, finalVideoCallUrl]);
 
   return (
