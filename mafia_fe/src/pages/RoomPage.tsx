@@ -106,6 +106,7 @@ export function RoomPage() {
   } | null>(null);
 
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
+  const [videoSessionId, setVideoSessionId] = useState(Date.now()); // Для пересоздания VideoCall
 
   // Night results modal
   const [nightResultsModal, setNightResultsModal] = useState<{
@@ -735,6 +736,9 @@ export function RoomPage() {
 
     chatService.onVideoStatusChanged((data) => {
       setIsVideoEnabled(data.isVideoEnabled);
+      if (data.isVideoEnabled) {
+        setVideoSessionId(Date.now()); // Пересоздаём VideoCall при каждом включении
+      }
       showAlert(data.isVideoEnabled ? "📹 Видеозвонок включен админом" : "📹 Видеозвонок отключен", "info");
     });
 
@@ -1828,6 +1832,7 @@ export function RoomPage() {
               {isVideoEnabled && (
                 <div style={{ minHeight: "600px", height: "600px", flex: 1 }}>
                   <VideoCall
+                    key={videoSessionId}
                     roomId={room.id}
                     userName={userName}
                     userId={userId}
