@@ -46,60 +46,33 @@ export function VideoCall({
   useEffect(() => {
     if (!roomId || !userName) return;
 
-    const setupVideoCall = async () => {
-      const baseUrl = finalVideoCallUrl.split('?')[0];
-      const apiUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash if any
+    // Construct URL with query parameters
+    const baseUrl = finalVideoCallUrl.split('?')[0];
+    const params = new URLSearchParams();
+    params.set("room", roomId);
+    params.set("name", userName);
+    params.set("autoJoin", "true");
+    params.set("hideLeave", "true");
+    params.set("hideChat", "true");
 
-      // If admin, ensure room exists by creating it (API will handle if already exists)
-      if (isAdmin) {
-        try {
-          console.log("[VideoCall] Admin creating/ensuring room exists:", roomId);
-          const response = await fetch(`${apiUrl}/api/rooms`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: roomId, creator_name: userName })
-          });
-          if (response.ok) {
-            console.log("[VideoCall] Room created/exists:", roomId);
-          } else {
-            const errorData = await response.json().catch(() => ({}));
-            console.log("[VideoCall] Room creation response:", response.status, errorData);
-          }
-        } catch (err) {
-          console.error("[VideoCall] Failed to create room:", err);
-          // Continue anyway - room might already exist
-        }
-      }
+    if (isAdmin) {
+      params.set("creator", "true"); // Calls frontend will create room if needed
+    }
 
-      // Construct URL with query parameters
-      const params = new URLSearchParams();
-      params.set("room", roomId);
-      params.set("name", userName);
-      params.set("autoJoin", "true");
-      params.set("hideLeave", "true");
-      params.set("hideChat", "true");
+    if (currentSpeakerName) {
+      params.set("highlightSpeaker", currentSpeakerName);
+    }
 
-      if (isAdmin) {
-        params.set("creator", "true");
-      }
+    // Add timestamp to prevent caching
+    params.set("_t", Date.now().toString());
 
-      if (currentSpeakerName) {
-        params.set("highlightSpeaker", currentSpeakerName);
-      }
+    const fullUrl = `${baseUrl}?${params.toString()}`;
 
-      // Add timestamp to prevent caching
-      params.set("_t", Date.now().toString());
-
-      const fullUrl = `${baseUrl}?${params.toString()}`;
-
-      if (iframeRef.current) {
-        console.log("[VideoCall] Setting URL:", fullUrl);
-        iframeRef.current.src = fullUrl;
-        setIsLoaded(true);
-      }
-    };
-
-    setupVideoCall();
+    if (iframeRef.current) {
+      console.log("[VideoCall] Setting URL:", fullUrl);
+      iframeRef.current.src = fullUrl;
+      setIsLoaded(true);
+    }
   }, [roomId, userName, isAdmin, currentSpeakerName, finalVideoCallUrl]);
 
   return (
