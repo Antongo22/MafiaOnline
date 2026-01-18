@@ -110,7 +110,7 @@ public class AdminController : ControllerBase
             _logger.LogError(ex, $"Error controlling video in room {roomId}");
             return StatusCode(500, new { error = "Failed to control video" });
         }
-    }
+    } 
 
     /// <summary>
     /// Управление микрофоном конкретного игрока
