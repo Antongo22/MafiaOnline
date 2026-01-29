@@ -1647,8 +1647,8 @@ export function RoomPage() {
               </div>
             </div>
 
-            {/* Блок настроек игры */}
-            {isAdmin && (
+            {/* Блок настроек игры - только в лобби */}
+            {isAdmin && gameStatus === "Created" && (
               <div className="card" style={{
                 display: "flex",
                 flexDirection: "column",
