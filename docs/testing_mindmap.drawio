@@ -1,0 +1,135 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.3.0 Chrome/140.0.7339.249 Electron/38.7.2 Safari/537.36" version="29.3.0">
+  <diagram name="Testing Mind Map" id="testing-mindmap">
+    <mxGraphModel dx="1215" dy="866" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1169" pageHeight="827" background="none" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="center" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#7c3aed;strokeColor=#4c1d95;fontColor=#ffffff;fontSize=14;fontStyle=1;" value="Mafia Online&#xa;Тестирование" vertex="1">
+          <mxGeometry height="80" width="140" x="450" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="win" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#059669;strokeColor=#047857;fontColor=#ffffff;fontSize=12;fontStyle=1;" value="Условия победы" vertex="1">
+          <mxGeometry height="40" width="140" x="150" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_win" edge="1" parent="1" source="center" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#10b981;" target="win">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="win1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#134e4a;strokeColor=#10b981;fontColor=#e2e8f0;fontSize=10;" value="TC-001: Победа мафии&#xa;(мафии &gt;= мирных)" vertex="1">
+          <mxGeometry height="50" width="130" x="20" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="win2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#134e4a;strokeColor=#10b981;fontColor=#e2e8f0;fontSize=10;" value="TC-002: Победа мирных&#xa;(вся мафия мертва)" vertex="1">
+          <mxGeometry height="50" width="130" x="160" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="win3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#134e4a;strokeColor=#10b981;fontColor=#e2e8f0;fontSize=10;" value="TC-003: Победа маньяка&#xa;(один в живых)" vertex="1">
+          <mxGeometry height="50" width="130" x="300" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="win4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#134e4a;strokeColor=#10b981;fontColor=#e2e8f0;fontSize=10;" value="TC-004: Игра продолжается&#xa;(нет победителя)" vertex="1">
+          <mxGeometry height="50" width="130" x="10" y="82" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="win" style="rounded=1;strokeColor=#10b981;" target="win1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="win" style="rounded=1;strokeColor=#10b981;" target="win2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="win" style="rounded=1;strokeColor=#10b981;" target="win3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="win" style="rounded=1;strokeColor=#10b981;" target="win4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="vote" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dc2626;strokeColor=#991b1b;fontColor=#ffffff;fontSize=12;fontStyle=1;" value="Голосование" vertex="1">
+          <mxGeometry height="40" width="120" x="650" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_vote" edge="1" parent="1" source="center" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#ef4444;" target="vote">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="vote1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#450a0a;strokeColor=#ef4444;fontColor=#fca5a5;fontSize=10;" value="TC-005: Нельзя голосовать&#xa;за мертвого" vertex="1">
+          <mxGeometry height="50" width="130" x="550" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="vote2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#450a0a;strokeColor=#ef4444;fontColor=#fca5a5;fontSize=10;" value="TC-006: Нельзя голосовать&#xa;за вышедшего" vertex="1">
+          <mxGeometry height="50" width="130" x="690" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="vote3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#450a0a;strokeColor=#ef4444;fontColor=#fca5a5;fontSize=10;" value="TC-007: Успешное&#xa;голосование" vertex="1">
+          <mxGeometry height="50" width="110" x="830" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ev1" edge="1" parent="1" source="vote" style="rounded=1;strokeColor=#ef4444;" target="vote1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ev2" edge="1" parent="1" source="vote" style="rounded=1;strokeColor=#ef4444;" target="vote2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ev3" edge="1" parent="1" source="vote" style="rounded=1;strokeColor=#ef4444;" target="vote3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="roles" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2563eb;strokeColor=#1e40af;fontColor=#ffffff;fontSize=12;fontStyle=1;" value="Распределение ролей" vertex="1">
+          <mxGeometry height="40" width="160" x="100" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_roles" edge="1" parent="1" source="center" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#3b82f6;" target="roles">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="role1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1e3a5f;strokeColor=#3b82f6;fontColor=#e2e8f0;fontSize=10;" value="TC-008: Корректное&#xa;распределение" vertex="1">
+          <mxGeometry height="50" width="120" x="20" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="role2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1e3a5f;strokeColor=#3b82f6;fontColor=#e2e8f0;fontSize=10;" value="TC-009: Ошибка при&#xa;несовпадении" vertex="1">
+          <mxGeometry height="50" width="120" x="150" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="er1" edge="1" parent="1" source="roles" style="rounded=1;strokeColor=#3b82f6;" target="role1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="er2" edge="1" parent="1" source="roles" style="rounded=1;strokeColor=#3b82f6;" target="role2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="room" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ea580c;strokeColor=#c2410c;fontColor=#ffffff;fontSize=12;fontStyle=1;" value="API Комнат" vertex="1">
+          <mxGeometry height="40" width="120" x="650" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_room" edge="1" parent="1" source="center" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeWidth=2;strokeColor=#f97316;" target="room">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="room1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#431407;strokeColor=#f97316;fontColor=#fed7aa;fontSize=10;" value="TC-010: Создание&#xa;комнаты" vertex="1">
+          <mxGeometry height="50" width="100" x="530" y="485" as="geometry" />
+        </mxCell>
+        <mxCell id="room2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#431407;strokeColor=#f97316;fontColor=#fed7aa;fontSize=10;" value="TC-011: Ошибка&#xa;пустое имя" vertex="1">
+          <mxGeometry height="50" width="100" x="660" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="room3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#431407;strokeColor=#f97316;fontColor=#fed7aa;fontSize=10;" value="TC-012: Вход по&#xa;коду" vertex="1">
+          <mxGeometry height="50" width="100" x="785" y="485" as="geometry" />
+        </mxCell>
+        <mxCell id="room4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#431407;strokeColor=#f97316;fontColor=#fed7aa;fontSize=10;" value="TC-013: Неверный&#xa;код" vertex="1">
+          <mxGeometry height="50" width="100" x="550" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="room5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#431407;strokeColor=#f97316;fontColor=#fed7aa;fontSize=10;" value="TC-014: Права&#xa;админа" vertex="1">
+          <mxGeometry height="50" width="100" x="660" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="room6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#431407;strokeColor=#f97316;fontColor=#fed7aa;fontSize=10;" value="TC-015: Выход&#xa;админа" vertex="1">
+          <mxGeometry height="50" width="100" x="770" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="eroom1" edge="1" parent="1" source="room" style="rounded=1;strokeColor=#f97316;" target="room1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eroom2" edge="1" parent="1" source="room" style="rounded=1;strokeColor=#f97316;" target="room2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eroom3" edge="1" parent="1" source="room" style="rounded=1;strokeColor=#f97316;" target="room3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eroom4" edge="1" parent="1" source="room" style="rounded=1;strokeColor=#f97316;" target="room4">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="642" y="524" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="eroom5" edge="1" parent="1" source="room" style="rounded=1;strokeColor=#f97316;" target="room5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eroom6" edge="1" parent="1" source="room" style="rounded=1;strokeColor=#f97316;" target="room6">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="770" y="524" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

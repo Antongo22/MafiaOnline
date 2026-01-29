@@ -150,6 +150,20 @@ Frontend будет доступен на http://localhost:5173
 - 🏠 Изоляция комнат
 - 🗑️ Автоудаление пустых комнат через 5 минут
 
+## 🧪 Тестирование
+
+Проект покрыт автоматическими тестами (Unit и Integration).
+
+- [Документация по тестированию](./docs/TESTING_REPORT.md)
+- [Тест-кейсы (CSV)](./docs/test_cases.csv)
+- [Mind Map](./docs/testing_mindmap.drawio)
+
+### Запуск тестов
+```bash
+cd Mafia
+dotnet test
+```
+
 ## 🏗️ Архитектура
 
 ```
