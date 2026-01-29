@@ -25,15 +25,35 @@ public class GameControllerTests : IClassFixture<WebApplicationFactory<Program>>
         };
     }
 
-    [Fact]
-    public async Task StartGame_WithValidAdmin_ShouldChangeStatusToWaiting()
+    /// <summary>
+    /// Вспомогательный метод: создаёт комнату и добавляет нужное количество игроков
+    /// </summary>
+    private async Task<(RoomDTO room, string adminId)> CreateRoomWithPlayers(int playerCount = 3)
     {
-        // Arrange - создаём комнату
+        // Создаём комнату с админом
         var createResponse = await _client.PostAsync(
             "/api/Room/create?roomName=TestRoom&playerName=Admin", 
             null);
         var room = await createResponse.Content.ReadFromJsonAsync<RoomDTO>(_jsonOptions);
         var adminId = room!.Users[0].Id;
+
+        // Добавляем остальных игроков
+        for (int i = 2; i <= playerCount; i++)
+        {
+            var joinResponse = await _client.PostAsync(
+                $"/api/Room/invite?inviteCode={room.InviteCode}&playerName=Player{i}", 
+                null);
+            room = await joinResponse.Content.ReadFromJsonAsync<RoomDTO>(_jsonOptions);
+        }
+
+        return (room!, adminId);
+    }
+
+    [Fact]
+    public async Task StartGame_WithValidAdmin_ShouldChangeStatusToWaiting()
+    {
+        // Arrange - создаём комнату с 3 игроками (минимум)
+        var (room, adminId) = await CreateRoomWithPlayers(3);
 
         // Act - запускаем игру
         var startResponse = await _client.PostAsync(
@@ -52,17 +72,9 @@ public class GameControllerTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task StartGame_WithNonAdmin_ShouldReturnUnauthorized()
     {
-        // Arrange - создаём комнату и добавляем второго игрока
-        var createResponse = await _client.PostAsync(
-            "/api/Room/create?roomName=TestRoom&playerName=Admin", 
-            null);
-        var room = await createResponse.Content.ReadFromJsonAsync<RoomDTO>(_jsonOptions);
-        
-        var joinResponse = await _client.PostAsync(
-            $"/api/Room/invite?inviteCode={room!.InviteCode}&playerName=Player2", 
-            null);
-        var updatedRoom = await joinResponse.Content.ReadFromJsonAsync<RoomDTO>(_jsonOptions);
-        var playerId = updatedRoom!.Users[1].Id;
+        // Arrange - создаём комнату с 3 игроками
+        var (room, _) = await CreateRoomWithPlayers(3);
+        var playerId = room.Users[1].Id; // Не админ
 
         // Act - обычный игрок пытается запустить игру
         var startResponse = await _client.PostAsync(
@@ -76,19 +88,15 @@ public class GameControllerTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task SelectRoles_WithValidData_ShouldSaveRoleSettings()
     {
-        // Arrange - создаём комнату и запускаем игру
-        var createResponse = await _client.PostAsync(
-            "/api/Room/create?roomName=TestRoom&playerName=Admin", 
-            null);
-        var room = await createResponse.Content.ReadFromJsonAsync<RoomDTO>(_jsonOptions);
-        var adminId = room!.Users[0].Id;
-
+        // Arrange - создаём комнату с 3 игроками и запускаем игру
+        var (room, adminId) = await CreateRoomWithPlayers(3);
         await _client.PostAsync($"/api/Game/start?roomId={room.Id}&adminId={adminId}", null);
 
-        // Подготавливаем роли
+        // Подготавливаем роли (3 роли для 3 игроков)
         var roles = new Dictionary<Role, int>
         {
-            { Role.Citizen, 1 }
+            { Role.Citizen, 2 },
+            { Role.Mafia, 1 }
         };
         var content = new StringContent(
             JsonSerializer.Serialize(roles), 
@@ -107,16 +115,15 @@ public class GameControllerTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task DistributeRoles_WithValidData_ShouldStartGame()
     {
-        // Arrange - создаём комнату, запускаем и выбираем роли
-        var createResponse = await _client.PostAsync(
-            "/api/Room/create?roomName=TestRoom&playerName=Admin", 
-            null);
-        var room = await createResponse.Content.ReadFromJsonAsync<RoomDTO>(_jsonOptions);
-        var adminId = room!.Users[0].Id;
-
+        // Arrange - создаём комнату с 3 игроками, запускаем и выбираем роли
+        var (room, adminId) = await CreateRoomWithPlayers(3);
         await _client.PostAsync($"/api/Game/start?roomId={room.Id}&adminId={adminId}", null);
 
-        var roles = new Dictionary<Role, int> { { Role.Citizen, 1 } };
+        var roles = new Dictionary<Role, int> 
+        { 
+            { Role.Citizen, 2 },
+            { Role.Mafia, 1 }
+        };
         var content = new StringContent(
             JsonSerializer.Serialize(roles), 
             Encoding.UTF8, 
@@ -138,5 +145,4 @@ public class GameControllerTests : IClassFixture<WebApplicationFactory<Program>>
         var updatedRoom = await getRoomResponse.Content.ReadFromJsonAsync<RoomDTO>(_jsonOptions);
         Assert.Equal(GameStatus.InProgress, updatedRoom!.Status);
     }
-
 }

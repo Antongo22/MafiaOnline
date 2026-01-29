@@ -135,7 +135,7 @@ public class WinConditionServiceTests
     }
 
     [Fact]
-    public void CheckWinCondition_NoAlivePlayers_ShouldReturnGood()
+    public void CheckWinCondition_NoAlivePlayers_ShouldReturnDraw()
     {
         // Arrange
         var room = new RoomDTO
@@ -154,6 +154,6 @@ public class WinConditionServiceTests
         var winner = WinConditionService.CheckWinCondition(room);
 
         // Assert
-        Assert.Equal(Team.Good, winner);
+        Assert.Equal(Team.Draw, winner);
     }
 }
