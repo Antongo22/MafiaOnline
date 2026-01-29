@@ -559,7 +559,18 @@ public class GameTimerService : BackgroundService
         });
 
         // Определяем первую ночную фазу
-        await AdvanceNight(room);
+        var nextPhase = GetNextNightPhase(room, null);
+        
+        if (nextPhase == null)
+        {
+            // Если ночных фаз нет (нет активных ролей) - сразу итоги
+            await ProcessNightResults(room);
+        }
+        else
+        {
+            // Запускаем первую фазу
+            await StartNightPhase(room, nextPhase.Value);
+        }
 
         // УПРОЩЕНИЕ: Автоуправление медиа отключено
         // await _videoCallService.MuteAllAudioAsync(room.Id);
@@ -570,17 +581,13 @@ public class GameTimerService : BackgroundService
     {
         var gameState = room.CurrentGameState!;
 
-        // Если CurrentNightPhase == null, значит это задержка после ProcessNightResults
-        // Переходим к индивидуальным выступлениям
+        // Если CurrentNightPhase == null, значит это задержка после ProcessNightResults. Переходим к дню.
         if (gameState.CurrentNightPhase == null)
         {
             _logger.LogInformation($"[Room {room.Id}] Night delay ended -> Starting IndividualSpeech (Day {gameState.DayNumber})");
             await StartIndividualSpeech(room);
             return;
         }
-
-        // Обрабатываем текущую ночную фазу
-        // Здесь можно добавить обработку автоматических действий (если игрок не успел)
 
         // Переходим к следующей ночной фазе
         var nextPhase = GetNextNightPhase(room, gameState.CurrentNightPhase);
@@ -592,28 +599,35 @@ public class GameTimerService : BackgroundService
         }
         else
         {
-            var settings = GetGameSettings(room);
-            gameState.CurrentNightPhase = nextPhase;
-            gameState.PhaseStartTime = DateTime.UtcNow;
-            gameState.PhaseTimeSeconds = settings.NightActionTime;
-
-            // Формируем список живых игроков для выбора цели
-            var alivePlayers = room.Users
-                .Where(u => u.Status != UserStatus.Leave && u.IsAlive && room.PlayerRoles!.ContainsKey(u.Id))
-                .Select(u => new
-                {
-                    userId = u.Id,
-                    userName = u.Name
-                })
-                .ToList();
-
-            await _hubContext.Clients.Group(room.Id).SendAsync("NightPhaseChanged", new
-            {
-                nightPhase = nextPhase.ToString(),
-                timeSeconds = 30,
-                aliveTargets = alivePlayers // Список живых игроков для выбора цели
-            });
+            await StartNightPhase(room, nextPhase.Value);
         }
+    }
+
+    private async Task StartNightPhase(RoomDTO room, NightPhase phase)
+    {
+        var gameState = room.CurrentGameState!;
+        var settings = GetGameSettings(room);
+        
+        gameState.CurrentNightPhase = phase;
+        gameState.PhaseStartTime = DateTime.UtcNow;
+        gameState.PhaseTimeSeconds = settings.NightActionTime;
+
+        // Формируем список живых игроков для выбора цели
+        var alivePlayers = room.Users
+            .Where(u => u.Status != UserStatus.Leave && u.IsAlive && room.PlayerRoles!.ContainsKey(u.Id))
+            .Select(u => new
+            {
+                userId = u.Id,
+                userName = u.Name
+            })
+            .ToList();
+
+        await _hubContext.Clients.Group(room.Id).SendAsync("NightPhaseChanged", new
+        {
+            nightPhase = phase.ToString(),
+            timeSeconds = settings.NightActionTime,
+            aliveTargets = alivePlayers
+        });
     }
 
     private NightPhase? GetNextNightPhase(RoomDTO room, NightPhase? currentPhase)
