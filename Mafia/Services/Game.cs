@@ -30,6 +30,11 @@ public static class Game
     public static System.Collections.Concurrent.ConcurrentDictionary<string, (string RoomId, string UserId)> UserConnections = new();
     
     /// <summary>
+    /// Отложенные отключения (UserId -> CancellationTokenSource) для grace period при перезагрузке
+    /// </summary>
+    public static System.Collections.Concurrent.ConcurrentDictionary<string, CancellationTokenSource> PendingDisconnections = new();
+    
+    /// <summary>
     /// Распределяет роли случайным образом между игроками
     /// </summary>
     public static Dictionary<string, Role> ShufflePlayersWithRoles(GameCreateDTO game)

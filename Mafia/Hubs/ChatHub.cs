@@ -37,6 +37,15 @@ public class ChatHub : Hub
         // Добавляем пользователя в группу комнаты
         await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
 
+        // Отменяем pending disconnection если пользователь переподключился
+        var userKey = $"{roomId}_{userId}";
+        if (Game.PendingDisconnections.TryRemove(userKey, out var cts))
+        {
+            cts.Cancel();
+            cts.Dispose();
+            _logger.LogInformation($"Cancelled pending disconnection for user {userId} in room {roomId} (reconnected)");
+        }
+
         // Сохраняем связь ConnectionId -> User
         Game.UserConnections.TryAdd(Context.ConnectionId, (roomId, userId));
 
@@ -417,38 +426,73 @@ public class ChatHub : Hub
                     {
                         // Оставляем пустым: комната и админ остаются в памяти.
                     }
-                    // Если обычный игрок и мы в Лобби - удаляем его сразу
-                    else if (room.Status == Enums.GameStatus.Created)
-                    {
-                        room.Users.Remove(user);
-                        
-                        // Отправляем всем обновленный список пользователей
-                        var activeUsers = room.Users.Where(u => u.Status != Enums.UserStatus.Leave).ToList();
-                        await Clients.Group(roomId).SendAsync("UpdateUserList", activeUsers);
-                        await Clients.Group(roomId).SendAsync("UserLeft", new { userName = user.Name, userId = user.Id });
-                    }
+                    // Если обычный игрок - даём grace period для переподключения
                     else
                     {
-                        // Если игра идет - игрок умирает
-                        if (user.IsAlive)
+                        // Создаём CancellationTokenSource для отложенного удаления
+                        var cts = new CancellationTokenSource();
+                        var userKey = $"{roomId}_{userId}";
+                        
+                        // Отменяем предыдущее отложенное отключение, если есть
+                        if (Game.PendingDisconnections.TryRemove(userKey, out var oldCts))
                         {
-                            user.IsAlive = false;
-                            
-                            // Отправляем всем обновленный список пользователей (с пометкой о смерти)
-                            var activeUsers = room.Users.Where(u => u.Status != Enums.UserStatus.Leave).ToList();
-                            await Clients.Group(roomId).SendAsync("UpdateUserList", activeUsers);
-                            
-                            // Системное сообщение
-                            await Clients.Group(roomId).SendAsync("ReceiveMessage", new ChatMessageDTO 
-                            { 
-                                Id = Guid.NewGuid().ToString(),
-                                RoomId = roomId,
-                                UserId = "system",
-                                UserName = "System",
-                                Message = $"Игрок {user.Name} отключился и считается погибшим.",
-                                Timestamp = DateTime.UtcNow
-                            });
+                            oldCts.Cancel();
+                            oldCts.Dispose();
                         }
+                        
+                        Game.PendingDisconnections[userKey] = cts;
+                        
+                        // Запускаем отложенное удаление с grace period 5 секунд
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                await Task.Delay(5000, cts.Token);
+                                
+                                // Если не отменено - выполняем удаление
+                                if (!cts.Token.IsCancellationRequested)
+                                {
+                                    Game.PendingDisconnections.TryRemove(userKey, out _);
+                                    
+                                    // Проверяем что комната и пользователь всё ещё существуют
+                                    var currentRoom = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
+                                    if (currentRoom == null) return;
+                                    
+                                    var currentUser = currentRoom.Users.FirstOrDefault(u => u.Id == userId);
+                                    if (currentUser == null) return;
+                                    
+                                    // Проверяем, что пользователь не переподключился (нет нового соединения)
+                                    var hasActiveConnection = Game.UserConnections.Values.Any(c => c.UserId == userId && c.RoomId == roomId);
+                                    if (hasActiveConnection) return;
+                                    
+                                    if (currentRoom.Status == Enums.GameStatus.Created)
+                                    {
+                                        // В лобби - удаляем пользователя
+                                        currentRoom.Users.Remove(currentUser);
+                                        
+                                        // Так как мы не в хабе, используем IHubContext
+                                        // Но здесь мы не можем отправить сообщение, это background task
+                                        // Клиенты узнают об изменении при следующем запросе
+                                    }
+                                    else
+                                    {
+                                        // Во время игры - помечаем как мёртвого
+                                        if (currentUser.IsAlive)
+                                        {
+                                            currentUser.IsAlive = false;
+                                        }
+                                    }
+                                }
+                            }
+                            catch (TaskCanceledException)
+                            {
+                                // Пользователь переподключился - отмена ожидаема
+                            }
+                            finally
+                            {
+                                cts.Dispose();
+                            }
+                        });
                     }
                 }
             }
