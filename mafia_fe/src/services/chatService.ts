@@ -57,6 +57,7 @@ class ChatService {
   private allVotesCompletedHandlers: ((data: { message: string }) => void)[] = [];
   private votingResultsHandlers: ((data: VotingResults) => void)[] = [];
   private nightPhaseChangedHandlers: ((data: { nightPhase: string; timeSeconds: number }) => void)[] = [];
+  private nightStartedHandlers: ((data: { dayNumber: number }) => void)[] = [];
   private nightResultsHandlers: ((data: NightResults) => void)[] = [];
   private cardRevealedHandlers: ((data: CardRevealed) => void)[] = [];
   private gameOverHandlers: ((data: GameOverData) => void)[] = [];
@@ -191,6 +192,10 @@ class ChatService {
 
     this.connection.on("NightPhaseChanged", (data: { nightPhase: string; timeSeconds: number }) => {
       this.nightPhaseChangedHandlers.forEach((handler) => handler(data));
+    });
+
+    this.connection.on("NightStarted", (data: { dayNumber: number }) => {
+      this.nightStartedHandlers.forEach((handler) => handler(data));
     });
 
     this.connection.on("NightResults", (data: NightResults) => {
@@ -528,6 +533,14 @@ class ChatService {
 
   removeNightPhaseChangedHandler(handler: (data: { nightPhase: string; timeSeconds: number }) => void): void {
     this.nightPhaseChangedHandlers = this.nightPhaseChangedHandlers.filter((h) => h !== handler);
+  }
+
+  onNightStarted(handler: (data: { dayNumber: number }) => void): void {
+    this.nightStartedHandlers.push(handler);
+  }
+
+  removeNightStartedHandler(handler: (data: { dayNumber: number }) => void): void {
+    this.nightStartedHandlers = this.nightStartedHandlers.filter((h) => h !== handler);
   }
 
   onNightResults(handler: (data: NightResults) => void): void {

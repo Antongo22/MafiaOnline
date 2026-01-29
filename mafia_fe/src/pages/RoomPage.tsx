@@ -549,6 +549,12 @@ export function RoomPage() {
       }
     };
 
+    const handleNightStarted = (data: { dayNumber: number }) => {
+      setGamePhase(GamePhase.Night);
+      setNightPhase(undefined);
+      showAlert(`🌙 Ночь ${data.dayNumber} началась! Город засыпает...`, "info");
+    };
+
     const handleNightPhaseChanged = (data: { nightPhase: string }) => {
       setNightPhase(data.nightPhase);
       setGamePhase(GamePhase.Night);
@@ -723,6 +729,7 @@ export function RoomPage() {
     chatService.onVoteReceived(handleVoteReceived);
     chatService.onAllVotesCompleted(handleAllVotesCompleted);
     chatService.onVotingResults(handleVotingResults);
+    chatService.onNightStarted(handleNightStarted);
     chatService.onNightPhaseChanged(handleNightPhaseChanged);
     chatService.onNightResults(handleNightResults);
     chatService.onCardRevealed(handleCardRevealed);
@@ -760,6 +767,7 @@ export function RoomPage() {
       chatService.removeVoteReceivedHandler(handleVoteReceived);
       chatService.removeAllVotesCompletedHandler(handleAllVotesCompleted);
       chatService.removeVotingResultsHandler(handleVotingResults);
+      chatService.removeNightStartedHandler(handleNightStarted);
       chatService.removeNightPhaseChangedHandler(handleNightPhaseChanged);
       chatService.removeNightResultsHandler(handleNightResults);
       chatService.removeCardRevealedHandler(handleCardRevealed);

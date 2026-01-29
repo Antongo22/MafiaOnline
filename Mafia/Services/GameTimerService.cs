@@ -85,6 +85,7 @@ public class GameTimerService : BackgroundService
             // Добавляем минимальную задержку 0.5 секунды чтобы избежать двойных вызовов
             if (elapsed >= gameState.PhaseTimeSeconds && elapsed >= 0.5)
             {
+                _logger.LogInformation($"[Room {room.Id}] Timer expired! Phase: {gameState.Phase}, Elapsed: {elapsed:F1}s, PhaseTime: {gameState.PhaseTimeSeconds}s. Calling AdvancePhase...");
                 await AdvancePhase(room);
             }
         }
@@ -551,6 +552,12 @@ public class GameTimerService : BackgroundService
 
         _logger.LogInformation($"[Room {room.Id}] Night started. Day number: {gameState.DayNumber}");
 
+        // Уведомляем клиентов о начале ночи
+        await _hubContext.Clients.Group(room.Id).SendAsync("NightStarted", new
+        {
+            dayNumber = gameState.DayNumber
+        });
+
         // Определяем первую ночную фазу
         await AdvanceNight(room);
 
@@ -618,7 +625,9 @@ public class GameTimerService : BackgroundService
             .Select(u => room.PlayerRoles[u.Id])
             .ToHashSet();
 
-        _logger.LogInformation($"[Room {room.Id}] GetNextNightPhase: currentPhase={currentPhase}, DonHasFoundSheriff={room.CurrentGameState!.DonHasFoundSheriff}, aliveRoles={string.Join(",", aliveRoles)}");
+        _logger.LogInformation($"[Room {room.Id}] GetNextNightPhase: currentPhase={currentPhase}, DonHasFoundSheriff={room.CurrentGameState!.DonHasFoundSheriff}");
+        _logger.LogInformation($"[Room {room.Id}] Alive players ({alivePlayers.Count}): {string.Join(", ", alivePlayers.Select(p => $"{p.Name} ({room.PlayerRoles.GetValueOrDefault(p.Id)})"))}");
+        _logger.LogInformation($"[Room {room.Id}] Alive roles set: {string.Join(", ", aliveRoles)}");
 
         var nightPhases = new[] 
         {
@@ -902,20 +911,21 @@ public class GameTimerService : BackgroundService
             gameState.FirstNightCompleted = true;
         }
 
-        // Ждем 5 секунд перед началом дня, чтобы игроки успели увидеть результаты ночи
+        // Ждем 10 секунд перед началом дня, чтобы игроки успели увидеть результаты ночи
         gameState.Phase = GamePhase.Night; // Остаемся в ночной фазе
         gameState.PhaseStartTime = DateTime.UtcNow;
-        gameState.PhaseTimeSeconds = 5; // 5 секунд задержки
+        gameState.PhaseTimeSeconds = 10; // 10 секунд задержки
         gameState.CurrentNightPhase = null; // Обнуляем ночную фазу
 
-        _logger.LogInformation($"[Room {room.Id}] Night completed, waiting 5 seconds before starting IndividualSpeech (Day {gameState.DayNumber})");
+        _logger.LogInformation($"[Room {room.Id}] Night completed, waiting 10 seconds before starting IndividualSpeech (Day {gameState.DayNumber})");
         
-        // Примечание: ProcessGameTimers автоматически перейдет к StartIndividualSpeech через 5 секунд
+        // Примечание: ProcessGameTimers автоматически перейдет к StartIndividualSpeech через 10 секунд
     }
 
     private async Task StartIndividualSpeech(RoomDTO room)
     {
         var gameState = room.CurrentGameState!;
+        var settings = GetGameSettings(room);
         
         _logger.LogInformation($"[Room {room.Id}] StartIndividualSpeech called. Day: {gameState.DayNumber}");
         
@@ -923,7 +933,7 @@ public class GameTimerService : BackgroundService
         gameState.HasSpoken.Clear();
         gameState.CurrentSpeakerIndex = 0;
         gameState.PhaseStartTime = DateTime.UtcNow;
-        gameState.PhaseTimeSeconds = 30;
+        gameState.PhaseTimeSeconds = settings.IndividualSpeechTime;
 
         // Создаем порядок выступлений (только живые игроки, случайный порядок)
         var alivePlayers = room.Users
