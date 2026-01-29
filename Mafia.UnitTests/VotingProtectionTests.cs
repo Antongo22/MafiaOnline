@@ -15,7 +15,7 @@ namespace Mafia.UnitTests;
 public class VotingProtectionTests
 {
     [Fact]
-    public void Vote_ForDeadPlayer_ShouldReturnBadRequest()
+    public async Task Vote_ForDeadPlayer_ShouldReturnBadRequest()
     {
         // Arrange
         var mockHubContext = new Mock<IHubContext<ChatHub>>();
@@ -51,7 +51,7 @@ public class VotingProtectionTests
         Game.Rooms.Add(room);
 
         // Act
-        var result = controller.Vote(roomId, voterId, deadPlayerId).Result;
+        var result = await controller.Vote(roomId, voterId, deadPlayerId);
 
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
@@ -62,7 +62,7 @@ public class VotingProtectionTests
     }
 
     [Fact]
-    public void Vote_ForPlayerWhoLeft_ShouldReturnBadRequest()
+    public async Task Vote_ForPlayerWhoLeft_ShouldReturnBadRequest()
     {
         // Arrange
         var mockHubContext = new Mock<IHubContext<ChatHub>>();
@@ -98,7 +98,7 @@ public class VotingProtectionTests
         Game.Rooms.Add(room);
 
         // Act
-        var result = controller.Vote(roomId, voterId, leftPlayerId).Result;
+        var result = await controller.Vote(roomId, voterId, leftPlayerId);
 
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
@@ -109,7 +109,7 @@ public class VotingProtectionTests
     }
 
     [Fact]
-    public void Vote_ForAlivePlayer_ShouldSucceed()
+    public async Task Vote_ForAlivePlayer_ShouldSucceed()
     {
         // Arrange
         var mockClients = new Mock<IHubClients>();
@@ -152,7 +152,7 @@ public class VotingProtectionTests
         Game.Rooms.Add(room);
 
         // Act
-        var result = controller.Vote(roomId, voterId, targetId).Result;
+        var result = await controller.Vote(roomId, voterId, targetId);
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);

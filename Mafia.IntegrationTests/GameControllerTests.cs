@@ -30,23 +30,34 @@ public class GameControllerTests : IClassFixture<WebApplicationFactory<Program>>
     /// </summary>
     private async Task<(RoomDTO room, string adminId)> CreateRoomWithPlayers(int playerCount = 3)
     {
+        // Уникальный суффикс для избежания конфликтов имён
+        var suffix = Guid.NewGuid().ToString()[..6];
+        
         // Создаём комнату с админом
         var createResponse = await _client.PostAsync(
-            "/api/Room/create?roomName=TestRoom&playerName=Admin", 
+            $"/api/Room/create?roomName=TestRoom_{suffix}&playerName=Admin_{suffix}", 
             null);
+        
+        Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
+        
         var room = await createResponse.Content.ReadFromJsonAsync<RoomDTO>(_jsonOptions);
-        var adminId = room!.Users[0].Id;
+        ArgumentNullException.ThrowIfNull(room);
+        var adminId = room.Users[0].Id;
 
         // Добавляем остальных игроков
         for (int i = 2; i <= playerCount; i++)
         {
             var joinResponse = await _client.PostAsync(
-                $"/api/Room/invite?inviteCode={room.InviteCode}&playerName=Player{i}", 
+                $"/api/Room/invite?inviteCode={room.InviteCode}&playerName=Player{i}_{suffix}", 
                 null);
+            
+            Assert.Equal(HttpStatusCode.OK, joinResponse.StatusCode);
+            
             room = await joinResponse.Content.ReadFromJsonAsync<RoomDTO>(_jsonOptions);
+            ArgumentNullException.ThrowIfNull(room);
         }
 
-        return (room!, adminId);
+        return (room, adminId);
     }
 
     [Fact]
@@ -117,7 +128,10 @@ public class GameControllerTests : IClassFixture<WebApplicationFactory<Program>>
     {
         // Arrange - создаём комнату с 3 игроками, запускаем и выбираем роли
         var (room, adminId) = await CreateRoomWithPlayers(3);
-        await _client.PostAsync($"/api/Game/start?roomId={room.Id}&adminId={adminId}", null);
+        
+        var startResponse = await _client.PostAsync(
+            $"/api/Game/start?roomId={room.Id}&adminId={adminId}", null);
+        Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
 
         var roles = new Dictionary<Role, int> 
         { 
@@ -128,9 +142,11 @@ public class GameControllerTests : IClassFixture<WebApplicationFactory<Program>>
             JsonSerializer.Serialize(roles), 
             Encoding.UTF8, 
             "application/json");
-        await _client.PostAsync(
+        
+        var selectResponse = await _client.PostAsync(
             $"/api/Game/select-roles?roomId={room.Id}&adminId={adminId}", 
             content);
+        Assert.Equal(HttpStatusCode.OK, selectResponse.StatusCode);
 
         // Act - распределяем роли
         var distributeResponse = await _client.PostAsync(
