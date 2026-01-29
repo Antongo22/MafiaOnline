@@ -276,7 +276,7 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
   const hoveredRoleInfo = availableRoles.find(r => r.roleValue === hoveredRole);
 
   return (
-    <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+    <div className="card admin-panel-card" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
       <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
         <span>👑</span>
         <span>Панель управления</span>
@@ -489,28 +489,29 @@ export function AdminPanel({ roomId, userId, gameStatus, playerCount, apiUrl, on
           left: `${tooltipPosition.x}px`,
           top: `${tooltipPosition.y}px`,
           transform: "translate(-50%, -100%)",
-          padding: "0.75rem 1rem",
+          padding: "1rem 1.25rem",
           background: "var(--bg-primary)",
           border: `2px solid ${getTeamColor(hoveredRoleInfo.team)}`,
           borderRadius: "var(--radius)",
           boxShadow: "0 10px 25px rgba(0, 0, 0, 0.5)",
           zIndex: 9999,
-          maxWidth: "300px",
+          minWidth: "250px",
+          maxWidth: "350px",
           pointerEvents: "none",
           animation: "fadeIn 0.15s ease-out"
         }}>
           <div style={{
-            fontSize: "0.875rem",
+            fontSize: "1rem",
             fontWeight: "600",
             color: getTeamColor(hoveredRoleInfo.team),
-            marginBottom: "0.25rem"
+            marginBottom: "0.5rem"
           }}>
             {hoveredRoleInfo.name}
           </div>
           <div style={{
-            fontSize: "0.75rem",
+            fontSize: "0.875rem",
             color: "var(--text-secondary)",
-            lineHeight: "1.4"
+            lineHeight: "1.5"
           }}>
             {hoveredRoleInfo.description}
           </div>

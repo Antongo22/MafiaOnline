@@ -1512,7 +1512,7 @@ export function RoomPage() {
             />
 
             {/* Список пользователей */}
-            <div className="card" style={{
+            <div className="card participants-card" style={{
               flex: 1,
               display: "flex",
               flexDirection: "column",
@@ -1649,7 +1649,7 @@ export function RoomPage() {
 
             {/* Блок настроек игры - только в лобби */}
             {isAdmin && gameStatus === "Created" && (
-              <div className="card" style={{
+              <div className="card settings-card" style={{
                 display: "flex",
                 flexDirection: "column",
                 overflow: "hidden"
