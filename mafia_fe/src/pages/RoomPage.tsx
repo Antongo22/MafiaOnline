@@ -1438,12 +1438,14 @@ export function RoomPage() {
             )}
 
             {/* Отображение ролей */}
-            <RoleDisplay
-              myRole={myRole}
-              revealedRoles={revealedRoles}
-              gameStatus={gameStatus}
-              users={users}
-            />
+            <div style={{ flexShrink: 0, marginBottom: "1rem" }}>
+              <RoleDisplay
+                myRole={myRole}
+                revealedRoles={revealedRoles}
+                gameStatus={gameStatus}
+                users={users}
+              />
+            </div>
 
             {/* Список пользователей */}
             <div className="card participants-card" style={{
