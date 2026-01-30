@@ -966,7 +966,7 @@ public class GameTimerService : BackgroundService
             speakerId = gameState.CurrentSpeakerId,
             speakerName = room.Users.FirstOrDefault(u => u.Id == gameState.CurrentSpeakerId)?.Name,
             speakerOrder = alivePlayers,
-            timeSeconds = 30
+            timeSeconds = settings.IndividualSpeechTime
         });
 
         // УПРОЩЕНИЕ: Автоуправление медиа отключено - участники сами управляют камерой/микрофоном

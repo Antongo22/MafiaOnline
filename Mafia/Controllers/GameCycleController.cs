@@ -378,11 +378,32 @@ public class GameCycleController : ControllerBase
         // Обрабатываем действие
         await ProcessNightAction(room, userId, userRole, action);
         
-        // Завершаем таймер немедленно - переходим к следующей ночной фазе
-        // Но только если фаза не изменилась (чтобы не сбросить таймер новой фазы)
-        if (gameState.CurrentNightPhase == phaseBeforeAction)
+        // Проверяем, все ли игроки, которые должны походить в эту фазу, уже походили
+        var potentialActors = room.Users
+            .Where(u => u.IsAlive && u.Status != UserStatus.Leave && room.PlayerRoles!.ContainsKey(u.Id))
+            .Where(u => 
+            {
+                 var r = room.PlayerRoles![u.Id];
+                 return gameState.CurrentNightPhase switch
+                 {
+                    NightPhase.Don => r == Role.Don,
+                    NightPhase.Mafia => RoleInfo.GetTeam(r) == Team.Evil, // Вся мафия (включая Дона) ходит
+                    NightPhase.Maniac => r == Role.Maniac,
+                    NightPhase.Sheriff => r == Role.Sheriff,
+                    NightPhase.Doctor => r == Role.Doctor,
+                    NightPhase.Prostitute => r == Role.Prostitute,
+                    _ => false
+                 };
+            })
+            .Select(u => u.Id)
+            .ToList();
+
+        var allActed = potentialActors.All(id => gameState.NightActions.ContainsKey(id));
+
+        // Завершаем таймер немедленно, только если все походили
+        if (allActed && gameState.CurrentNightPhase == phaseBeforeAction)
         {
-            _logger.LogInformation($"Room {roomId}: Player {userId} completed night action, ending phase immediately");
+            _logger.LogInformation($"Room {roomId}: All players ({potentialActors.Count}) for phase {gameState.CurrentNightPhase} completed night action, ending phase immediately");
             gameState.PhaseStartTime = DateTime.UtcNow.AddSeconds(-gameState.PhaseTimeSeconds);
         }
 
@@ -418,6 +439,9 @@ public class GameCycleController : ControllerBase
                             reason = "Don found Sheriff"
                         });
                     }
+                    
+                    // Записываем действие, чтобы отследить, что Дон походил
+                    gameState.NightActions[userId] = JsonSerializer.Serialize(new { action = "check", targetId = action.TargetId });
                 }
                 break;
 
@@ -464,6 +488,9 @@ public class GameCycleController : ControllerBase
                             reason = "Sheriff checked"
                         });
                     }
+                    
+                    // Записываем действие, чтобы отследить, что Шериф походил
+                    gameState.NightActions[userId] = JsonSerializer.Serialize(new { action = "check", targetId = action.TargetId });
                 }
                 break;
 

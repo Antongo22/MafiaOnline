@@ -1267,6 +1267,9 @@ export function RoomPage() {
 
       const canAct = roleNightPhaseMap[myRole] === nightPhase;
 
+      // Если сейчас не ход игрока - не показываем модальное окно
+      if (!canAct) return null;
+
       // Описания действий
       const actionDescriptions: Record<string, { title: string; description: string }> = {
         Don: { title: "Поиск шерифа", description: "Выберите игрока для проверки. Если это шериф, его карта откроется для вас." },
