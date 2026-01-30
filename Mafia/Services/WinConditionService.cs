@@ -16,7 +16,7 @@ public class WinConditionService
         var alivePlayers = room.Users.Where(u => u.Status != UserStatus.Leave && u.IsAlive).ToList();
         
         if (alivePlayers.Count == 0)
-            return Team.Draw; // Ничья - никого не осталось
+            return Team.Evil; // Все мертвы - победа мафии
         
         var alivePlayersWithRoles = alivePlayers
             .Where(u => room.PlayerRoles != null && room.PlayerRoles.ContainsKey(u.Id))

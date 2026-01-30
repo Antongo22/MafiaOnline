@@ -450,10 +450,8 @@ public class GameTimerService : BackgroundService
         // Проверяем, сколько игроков останется после убийства
         var wouldRemainAlive = alivePlayers.Except(gameState.TieBreakerCandidates).Count();
         
-        // ВАЖНОЕ ПРАВИЛО: Убиваем только если:
-        // 1. Голосов "убить" больше чем "помиловать"
-        // 2. После убийства останется хотя бы 1 игрок
-        bool shouldKill = killVotes > pardonVotes && wouldRemainAlive >= 1;
+        // ВАЖНОЕ ПРАВИЛО: Убиваем только если голосов "убить" больше чем "помиловать"
+        bool shouldKill = killVotes > pardonVotes;
         
         if (shouldKill)
         {

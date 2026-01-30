@@ -105,6 +105,9 @@ export function RoomPage() {
     tie: boolean;
   } | null>(null);
 
+  // Состояние: действовал ли игрок в текущей фазе (чтобы скрыть модалку)
+  const [hasActedCurrentPhase, setHasActedCurrentPhase] = useState(false);
+
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
   const [videoSessionId, setVideoSessionId] = useState(Date.now()); // Для пересоздания VideoCall
 
@@ -552,12 +555,14 @@ export function RoomPage() {
     const handleNightStarted = (data: { dayNumber: number }) => {
       setGamePhase(GamePhase.Night);
       setNightPhase(undefined);
+      setHasActedCurrentPhase(false); // Сбрасываем флаг действия для новой ночи
       showAlert(`🌙 Ночь ${data.dayNumber} началась! Город засыпает...`, "info");
     };
 
     const handleNightPhaseChanged = (data: { nightPhase: string }) => {
       setNightPhase(data.nightPhase);
       setGamePhase(GamePhase.Night);
+      setHasActedCurrentPhase(false); // Сбрасываем флаг действия для новой фазы
 
       const nightPhaseNames: Record<string, string> = {
         Don: "Дон ищет шерифа",
@@ -1220,6 +1225,8 @@ export function RoomPage() {
 
     try {
       await gameService.nightAction(room.id, userId, { targetId, actionType });
+      setHasActedCurrentPhase(true); // Запоминаем, что действие выполнено
+      showAlert("✅ Действие принято", "success");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to perform night action");
     }
@@ -1267,8 +1274,8 @@ export function RoomPage() {
 
       const canAct = roleNightPhaseMap[myRole] === nightPhase;
 
-      // Если сейчас не ход игрока - не показываем модальное окно
-      if (!canAct) return null;
+      // Если сейчас не ход игрока или он уже походил - не показываем модальное окно
+      if (!canAct || hasActedCurrentPhase) return null;
 
       // Описания действий
       const actionDescriptions: Record<string, { title: string; description: string }> = {

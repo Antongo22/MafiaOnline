@@ -154,6 +154,6 @@ public class WinConditionServiceTests
         var winner = WinConditionService.CheckWinCondition(room);
 
         // Assert
-        Assert.Equal(Team.Draw, winner);
+        Assert.Equal(Team.Evil, winner);
     }
 }
