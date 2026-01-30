@@ -1568,7 +1568,9 @@ export function RoomPage() {
                           border: "1px solid var(--border)",
                           display: "flex",
                           alignItems: "center",
-                          gap: "0.5rem"
+                          gap: "0.5rem",
+                          minHeight: "40px",
+                          flexShrink: 0
                         }}>
                           <span>🎭</span>
                           <span style={{ fontWeight: "500" }}>{getRussianRoleName(revealedRole)}</span>
@@ -1850,7 +1852,7 @@ export function RoomPage() {
             }}>
               {/* Видеозвонок */}
               {isVideoEnabled && (
-                <div style={{ width: "100%", aspectRatio: "16/9", maxHeight: "60vh", minHeight: "300px" }}>
+                <div style={{ width: "100%", aspectRatio: isMobile ? "3/4" : "16/9", maxHeight: isMobile ? "70vh" : "60vh", minHeight: "300px" }}>
                   <VideoCall
                     key={videoSessionId}
                     roomId={room.id}

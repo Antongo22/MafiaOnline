@@ -85,6 +85,9 @@ public class ChatHub : Hub
             return;
         }
 
+        // Удаляем пользователя из списка участников комнаты
+        room.Users.Remove(user);
+
         // Удаляем из группы SignalR
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId);
 
@@ -423,94 +426,10 @@ public class ChatHub : Hub
                 var user = room.Users.FirstOrDefault(u => u.Id == userId);
                 if (user != null)
                 {
-                    // Если отключился Админ - ничего не делаем, чтобы работала перезагрузка страницы
-                    if (user.Status == Enums.UserStatus.Admin)
-                    {
-                        // Оставляем пустым: комната и админ остаются в памяти.
-                    }
-                    // Если обычный игрок - даём grace period для переподключения
-                    else
-                    {
-                        // Создаём CancellationTokenSource для отложенного удаления
-                        var cts = new CancellationTokenSource();
-                        var userKey = $"{roomId}_{userId}";
-                        
-                        // Отменяем предыдущее отложенное отключение, если есть
-                        if (Game.PendingDisconnections.TryRemove(userKey, out var oldCts))
-                        {
-                            oldCts.Cancel();
-                            oldCts.Dispose();
-                        }
-                        
-                        Game.PendingDisconnections[userKey] = cts;
-                        
-                        // Запускаем отложенное удаление с grace period 30 секунд (было 5)
-                        _ = Task.Run(async () =>
-                        {
-                            // Захватываем необходимые сервисы и ID, так как Context может быть уничтожен
-                            var capturedHubContext = _hubContext;
-                            
-                            try
-                            {
-                                await Task.Delay(30000, cts.Token);
-                                
-                                // Если не отменено - выполняем удаление
-                                if (!cts.Token.IsCancellationRequested)
-                                {
-                                    Game.PendingDisconnections.TryRemove(userKey, out _);
-                                    
-                                    // Проверяем что комната и пользователь всё ещё существуют
-                                    var currentRoom = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
-                                    if (currentRoom == null) return;
-                                    
-                                    var currentUser = currentRoom.Users.FirstOrDefault(u => u.Id == userId);
-                                    if (currentUser == null) return;
-                                    
-                                    // Проверяем, что пользователь не переподключился (нет нового соединения)
-                                    var hasActiveConnection = Game.UserConnections.Values.Any(c => c.UserId == userId && c.RoomId == roomId);
-                                    if (hasActiveConnection) return;
-                                    
-                                    if (currentRoom.Status == Enums.GameStatus.Created || currentRoom.Status == Enums.GameStatus.Waiting)
-                                    {
-                                        // В лобби - удаляем пользователя
-                                        currentRoom.Users.Remove(currentUser);
-                                        
-                                        // Уведомляем остальных об удалении
-                                        await capturedHubContext.Clients.Group(roomId).SendAsync("UpdateUserList", currentRoom.Users);
-                                        await capturedHubContext.Clients.Group(roomId).SendAsync("UserLeft", new { userName = currentUser.Name, userId = currentUser.Id });
-                                    }
-                                    else
-                                    {
-                                        // Во время игры - помечаем как мёртвого
-                                        if (currentUser.IsAlive)
-                                        {
-                                            currentUser.IsAlive = false;
-                                            
-                                            // Уведомляем клиентов о смерти игрока из-за дисконнекта
-                                            await capturedHubContext.Clients.Group(roomId).SendAsync("PlayerEliminated", new
-                                            {
-                                                userId = currentUser.Id,
-                                                userName = currentUser.Name,
-                                                role = "Unknown", // Роль не раскрываем при дисконнекте? Или раскрываем? Обычно нет.
-                                                reason = "disconnected"
-                                            });
-                                            
-                                            // Обновляем список пользователей (чтобы череп появился)
-                                            await capturedHubContext.Clients.Group(roomId).SendAsync("UpdateUserList", currentRoom.Users.Where(u => u.Status != Enums.UserStatus.Leave).ToList());
-                                        }
-                                    }
-                                }
-                            }
-                            catch (TaskCanceledException)
-                            {
-                                // Пользователь переподключился - отмена ожидаема
-                            }
-                            finally
-                            {
-                                cts.Dispose();
-                            }
-                        });
-                    }
+                    // Мы больше НЕ выкидываем пользователей автоматически при разрыве соединения.
+                    // Пользователь остается в комнате пока сам не выйдет или его не кикнет админ.
+                    // Это решает проблему со случайными отключениями на мобильных устройствах.
+                    _logger.LogInformation($"User {user.Name} ({userId}) disconnected but remains in room {roomId}");
                 }
             }
         }
