@@ -27,7 +27,10 @@ builder.Services.AddCors(options =>
 builder.Services.AddSignalR();
 
 // Background services
-builder.Services.AddHostedService<GameTimerService>();
+// Регистрируем как singleton для инъекции в контроллеры
+builder.Services.AddSingleton<GameTimerService>();
+// Добавляем как hosted service используя уже зарегистрированный singleton
+builder.Services.AddHostedService<GameTimerService>(provider => provider.GetRequiredService<GameTimerService>());
 
 // HttpClient для LiveKit proxy
 builder.Services.AddHttpClient();

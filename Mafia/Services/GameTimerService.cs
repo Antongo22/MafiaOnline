@@ -91,6 +91,18 @@ public class GameTimerService : BackgroundService
         }
     }
 
+    /// <summary>
+    /// Принудительно продвинуть фазу игры (вызывается из контроллеров для мгновенного перехода)
+    /// </summary>
+    public async Task ForceAdvancePhaseAsync(string roomId)
+    {
+        var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
+        if (room?.CurrentGameState == null) return;
+        
+        _logger.LogInformation($"[Room {roomId}] ForceAdvancePhaseAsync called, current phase: {room.CurrentGameState.Phase}");
+        await AdvancePhase(room);
+    }
+
     private async Task AdvancePhase(RoomDTO room)
     {
         var gameState = room.CurrentGameState!;
@@ -626,6 +638,15 @@ public class GameTimerService : BackgroundService
             timeSeconds = settings.NightActionTime,
             aliveTargets = alivePlayers
         });
+        
+        // Отправляем немедленное обновление таймера
+        await _hubContext.Clients.Group(room.Id).SendAsync("TimerUpdate", new
+        {
+            phase = gameState.Phase.ToString(),
+            timeLeft = settings.NightActionTime,
+            isPaused = false,
+            nightPhase = phase.ToString()
+        });
     }
 
     private NightPhase? GetNextNightPhase(RoomDTO room, NightPhase? currentPhase)
@@ -923,15 +944,24 @@ public class GameTimerService : BackgroundService
             gameState.FirstNightCompleted = true;
         }
 
-        // Ждем 10 секунд перед началом дня, чтобы игроки успели увидеть результаты ночи
+        // Ждем 5 секунд перед началом дня, чтобы игроки успели увидеть результаты ночи
         gameState.Phase = GamePhase.Night; // Остаемся в ночной фазе
         gameState.PhaseStartTime = DateTime.UtcNow;
-        gameState.PhaseTimeSeconds = 10; // 10 секунд задержки
+        gameState.PhaseTimeSeconds = 5; // 5 секунд задержки (сокращено для быстрого геймплея)
         gameState.CurrentNightPhase = null; // Обнуляем ночную фазу
 
-        _logger.LogInformation($"[Room {room.Id}] Night completed, waiting 10 seconds before starting IndividualSpeech (Day {gameState.DayNumber})");
+        _logger.LogInformation($"[Room {room.Id}] Night completed, waiting 5 seconds before starting IndividualSpeech (Day {gameState.DayNumber})");
         
-        // Примечание: ProcessGameTimers автоматически перейдет к StartIndividualSpeech через 10 секунд
+        // Отправляем немедленное обновление таймера чтобы фронтенд обновился
+        await _hubContext.Clients.Group(room.Id).SendAsync("TimerUpdate", new
+        {
+            phase = gameState.Phase.ToString(),
+            timeLeft = gameState.PhaseTimeSeconds,
+            isPaused = false,
+            nightPhase = (string?)null // Сбрасываем ночную фазу
+        });
+        
+        // Примечание: ProcessGameTimers автоматически перейдет к StartIndividualSpeech через 5 секунд
     }
 
     private async Task StartIndividualSpeech(RoomDTO room)

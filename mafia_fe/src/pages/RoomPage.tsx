@@ -443,10 +443,19 @@ export function RoomPage() {
     };
 
     // Game cycle events
-    const handleTimerUpdate = (data: { phase: string; timeLeft: number; isPaused?: boolean }) => {
+    const handleTimerUpdate = (data: { phase: string; timeLeft: number; isPaused?: boolean; nightPhase?: string | null }) => {
       setTimeLeft(data.timeLeft);
       setGamePhase(data.phase);
       setIsPaused(data.isPaused || false);
+
+      // Обновляем ночную фазу если она пришла в данных
+      if (data.nightPhase !== undefined) {
+        setNightPhase(data.nightPhase || undefined);
+        // Сбрасываем флаг действия при смене фазы
+        if (data.nightPhase) {
+          setHasActedCurrentPhase(false);
+        }
+      }
     };
 
     const handleGameCycleStarted = (data: any) => {
@@ -1752,18 +1761,16 @@ export function RoomPage() {
                   Выберите игрока, за которого хотите проголосовать:
                 </p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                  {votingCandidates
-                    .filter(c => c.userId !== userId)
-                    .map(candidate => (
-                      <button
-                        key={candidate.userId}
-                        onClick={() => handleVote(candidate.userId)}
-                        className="btn-secondary"
-                        style={{ padding: "0.75rem 1rem" }}
-                      >
-                        {candidate.userName}
-                      </button>
-                    ))}
+                  {votingCandidates.map(candidate => (
+                    <button
+                      key={candidate.userId}
+                      onClick={() => handleVote(candidate.userId)}
+                      className={candidate.userId === userId ? "btn-warning" : "btn-secondary"}
+                      style={{ padding: "0.75rem 1rem" }}
+                    >
+                      {candidate.userName} {candidate.userId === userId && "(вы)"}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}

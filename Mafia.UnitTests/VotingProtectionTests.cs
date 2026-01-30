@@ -19,7 +19,8 @@ public class VotingProtectionTests
     {
         // Arrange
         var mockHubContext = new Mock<IHubContext<ChatHub>>();
-        var controller = new GameCycleController(mockHubContext.Object, Mock.Of<ILogger<GameCycleController>>());
+        var mockGameTimerService = new Mock<GameTimerService>(MockBehavior.Loose, mockHubContext.Object, Mock.Of<ILogger<GameTimerService>>(), Mock.Of<VideoCallService>());
+        var controller = new GameCycleController(mockHubContext.Object, Mock.Of<ILogger<GameCycleController>>(), mockGameTimerService.Object);
         
         var roomId = Guid.NewGuid().ToString();
         var voterId = "voter1";
@@ -66,7 +67,8 @@ public class VotingProtectionTests
     {
         // Arrange
         var mockHubContext = new Mock<IHubContext<ChatHub>>();
-        var controller = new GameCycleController(mockHubContext.Object, Mock.Of<ILogger<GameCycleController>>());
+        var mockGameTimerService = new Mock<GameTimerService>(MockBehavior.Loose, mockHubContext.Object, Mock.Of<ILogger<GameTimerService>>(), Mock.Of<VideoCallService>());
+        var controller = new GameCycleController(mockHubContext.Object, Mock.Of<ILogger<GameCycleController>>(), mockGameTimerService.Object);
         
         var roomId = Guid.NewGuid().ToString();
         var voterId = "voter1";
@@ -119,7 +121,8 @@ public class VotingProtectionTests
         var mockHubContext = new Mock<IHubContext<ChatHub>>();
         mockHubContext.Setup(h => h.Clients).Returns(mockClients.Object);
         
-        var controller = new GameCycleController(mockHubContext.Object, Mock.Of<ILogger<GameCycleController>>());
+        var mockGameTimerService = new Mock<GameTimerService>(MockBehavior.Loose, mockHubContext.Object, Mock.Of<ILogger<GameTimerService>>(), Mock.Of<VideoCallService>());
+        var controller = new GameCycleController(mockHubContext.Object, Mock.Of<ILogger<GameCycleController>>(), mockGameTimerService.Object);
         
         var roomId = Guid.NewGuid().ToString();
         var voterId = "voter1";

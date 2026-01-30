@@ -16,11 +16,13 @@ public class GameCycleController : ControllerBase
 {
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly ILogger<GameCycleController> _logger;
+    private readonly GameTimerService _gameTimerService;
 
-    public GameCycleController(IHubContext<ChatHub> hubContext, ILogger<GameCycleController> logger)
+    public GameCycleController(IHubContext<ChatHub> hubContext, ILogger<GameCycleController> logger, GameTimerService gameTimerService)
     {
         _hubContext = hubContext;
         _logger = logger;
+        _gameTimerService = gameTimerService;
     }
 
     /// <summary>
@@ -277,15 +279,17 @@ public class GameCycleController : ControllerBase
         else
         {
             // Все проголосовали - завершаем фазу немедленно
-            _logger.LogInformation($"Room {roomId}: All players voted, ending voting phase immediately");
+            _logger.LogInformation($"Room {roomId}: All players voted, forcing phase advance immediately");
             gameState.CurrentVoterId = null; // Сбрасываем текущего голосующего
-            gameState.PhaseStartTime = DateTime.UtcNow.AddSeconds(-gameState.PhaseTimeSeconds);
             
             // Отправляем событие что голосование завершено
             await _hubContext.Clients.Group(roomId).SendAsync("AllVotesCompleted", new
             {
                 message = "Все проголосовали, подсчитываем голоса..."
             });
+            
+            // Принудительно продвигаем фазу
+            await _gameTimerService.ForceAdvancePhaseAsync(roomId);
         }
 
         return Ok(new { message = "Vote recorded" });
@@ -329,8 +333,8 @@ public class GameCycleController : ControllerBase
             
         if (gameState.TieBreakerVotes.Count >= activePlayers.Count)
         {
-            _logger.LogInformation($"Room {roomId}: All players voted in TieBreaker, ending phase immediately");
-            gameState.PhaseStartTime = DateTime.UtcNow.AddSeconds(-gameState.PhaseTimeSeconds);
+            _logger.LogInformation($"Room {roomId}: All players voted in TieBreaker, forcing phase advance immediately");
+            await _gameTimerService.ForceAdvancePhaseAsync(roomId);
         }
 
         return Ok(new { message = "Tie breaker vote recorded" });
@@ -411,11 +415,12 @@ public class GameCycleController : ControllerBase
 
         var allActed = potentialActors.All(id => gameState.NightActions.ContainsKey(id));
 
-        // Завершаем таймер немедленно, только если все походили
+        // Завершаем фазу немедленно, если все походили
         if (allActed && gameState.CurrentNightPhase == phaseBeforeAction)
         {
-            _logger.LogInformation($"Room {roomId}: All players ({potentialActors.Count}) for phase {gameState.CurrentNightPhase} completed night action, ending phase immediately");
-            gameState.PhaseStartTime = DateTime.UtcNow.AddSeconds(-gameState.PhaseTimeSeconds);
+            _logger.LogInformation($"Room {roomId}: All players ({potentialActors.Count}) for phase {gameState.CurrentNightPhase} completed night action, forcing phase advance immediately");
+            // Вызываем принудительное продвижение фазы вместо ожидания тика таймера
+            await _gameTimerService.ForceAdvancePhaseAsync(roomId);
         }
 
         return Ok(new { message = "Action recorded" });
