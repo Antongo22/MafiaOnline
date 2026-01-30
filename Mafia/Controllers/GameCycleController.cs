@@ -326,14 +326,20 @@ public class GameCycleController : ControllerBase
             decision = killAll ? "kill" : "pardon"
         });
 
-        // Проверяем, все ли проголосовали
-        var activePlayers = room.Users
-            .Where(u => u.Status != UserStatus.Leave && u.IsAlive && room.PlayerRoles!.ContainsKey(u.Id))
-            .ToList();
+        // Проверяем, все ли проголосовали (среди подключенных игроков)
+        // Чтобы не ждать AFK/отключившихся, проверяем активные соединения
+        var connectedUserIds = Game.UserConnections.Values
+             .Where(v => v.RoomId == roomId)
+             .Select(v => v.UserId)
+             .ToHashSet();
+
+        var activeConnectedPlayersCount = room.Users
+            .Count(u => u.Status != UserStatus.Leave && u.IsAlive && room.PlayerRoles!.ContainsKey(u.Id) && connectedUserIds.Contains(u.Id));
             
-        if (gameState.TieBreakerVotes.Count >= activePlayers.Count)
+        // Если количество голосов >= количеству активных подключенных игроков -> завершаем
+        if (gameState.TieBreakerVotes.Count >= activeConnectedPlayersCount)
         {
-            _logger.LogInformation($"Room {roomId}: All players voted in TieBreaker, forcing phase advance immediately");
+            _logger.LogInformation($"Room {roomId}: All connected players ({activeConnectedPlayersCount}) voted in TieBreaker, forcing phase advance immediately");
             await _gameTimerService.ForceAdvancePhaseAsync(roomId);
         }
 
