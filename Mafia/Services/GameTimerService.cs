@@ -115,6 +115,12 @@ public class GameTimerService : BackgroundService
                 _logger.LogInformation($"[Room {room.Id}] Advancing IndividualSpeech");
                 await AdvanceIndividualSpeech(room);
                 break;
+
+            case GamePhase.GameOver:
+                 _logger.LogInformation($"[Room {room.Id}] GameOver phase ended -> Setting Status to Finished");
+                 room.Status = GameStatus.Finished;
+                 await _hubContext.Clients.Group(room.Id).SendAsync("GameStatusChanged", new { status = room.Status.ToString() });
+                 break;
             
             case GamePhase.FreeDiscussion:
                 // Первый цикл: Обсуждение → Ночь → Обсуждение → Голосование
@@ -1006,8 +1012,14 @@ public class GameTimerService : BackgroundService
 
     private async Task EndGame(RoomDTO room, Team winner)
     {
-        room.Status = GameStatus.Finished;
+        // Не завершаем игру сразу, даем 10 секунд фазы GameOver, 
+        // чтобы все клиенты успели получить обновление фазы через таймер
+        // room.Status = GameStatus.Finished; <-- Убрали немедленное завершение
+        
         room.CurrentGameState!.Phase = GamePhase.GameOver;
+        room.CurrentGameState.PhaseStartTime = DateTime.UtcNow;
+        room.CurrentGameState.PhaseTimeSeconds = 10; // 10 секунд показываем Game Over перед полным стопом
+        
         room.CurrentGameState.WinningTeam = winner;
 
         // Преобразуем роли: userId -> userName, Role -> string
@@ -1030,8 +1042,8 @@ public class GameTimerService : BackgroundService
             roles = rolesWithNames
         });
         
-        // Также отправляем событие смены статуса
-        await _hubContext.Clients.Group(room.Id).SendAsync("GameStatusChanged", new { status = room.Status.ToString() });
+        // Статус изменим позже в AdvancePhase
+        // await _hubContext.Clients.Group(room.Id).SendAsync("GameStatusChanged", new { status = room.Status.ToString() });
 
         // Включаем медиа всем после игры
         await _videoCallService.UnmuteAllAudioAsync(room.Id);
