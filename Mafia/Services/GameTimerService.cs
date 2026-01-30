@@ -13,12 +13,12 @@ public class GameTimerService : BackgroundService
 {
     private readonly IHubContext<ChatHub> _hubContext;
     private readonly ILogger<GameTimerService> _logger;
-    private readonly VideoCallService _videoCallService;
+    private readonly IVideoCallService _videoCallService;
 
     public GameTimerService(
         IHubContext<ChatHub> hubContext,
         ILogger<GameTimerService> logger,
-        VideoCallService videoCallService)
+        IVideoCallService videoCallService)
     {
         _hubContext = hubContext;
         _logger = logger;
@@ -94,7 +94,7 @@ public class GameTimerService : BackgroundService
     /// <summary>
     /// Принудительно продвинуть фазу игры (вызывается из контроллеров для мгновенного перехода)
     /// </summary>
-    public async Task ForceAdvancePhaseAsync(string roomId)
+    public virtual async Task ForceAdvancePhaseAsync(string roomId)
     {
         var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
         if (room?.CurrentGameState == null) return;

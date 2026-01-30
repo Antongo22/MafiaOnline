@@ -12,6 +12,7 @@ using Xunit;
 
 namespace Mafia.UnitTests;
 
+[Collection("GameTests")]
 public class VotingProtectionTests
 {
     [Fact]
@@ -19,7 +20,7 @@ public class VotingProtectionTests
     {
         // Arrange
         var mockHubContext = new Mock<IHubContext<ChatHub>>();
-        var mockGameTimerService = new Mock<GameTimerService>(MockBehavior.Loose, mockHubContext.Object, Mock.Of<ILogger<GameTimerService>>(), Mock.Of<VideoCallService>());
+        var mockGameTimerService = new Mock<GameTimerService>(MockBehavior.Loose, mockHubContext.Object, Mock.Of<ILogger<GameTimerService>>(), Mock.Of<IVideoCallService>());
         var controller = new GameCycleController(mockHubContext.Object, Mock.Of<ILogger<GameCycleController>>(), mockGameTimerService.Object);
         
         var roomId = Guid.NewGuid().ToString();
@@ -67,7 +68,7 @@ public class VotingProtectionTests
     {
         // Arrange
         var mockHubContext = new Mock<IHubContext<ChatHub>>();
-        var mockGameTimerService = new Mock<GameTimerService>(MockBehavior.Loose, mockHubContext.Object, Mock.Of<ILogger<GameTimerService>>(), Mock.Of<VideoCallService>());
+        var mockGameTimerService = new Mock<GameTimerService>(MockBehavior.Loose, mockHubContext.Object, Mock.Of<ILogger<GameTimerService>>(), Mock.Of<IVideoCallService>());
         var controller = new GameCycleController(mockHubContext.Object, Mock.Of<ILogger<GameCycleController>>(), mockGameTimerService.Object);
         
         var roomId = Guid.NewGuid().ToString();
@@ -121,7 +122,7 @@ public class VotingProtectionTests
         var mockHubContext = new Mock<IHubContext<ChatHub>>();
         mockHubContext.Setup(h => h.Clients).Returns(mockClients.Object);
         
-        var mockGameTimerService = new Mock<GameTimerService>(MockBehavior.Loose, mockHubContext.Object, Mock.Of<ILogger<GameTimerService>>(), Mock.Of<VideoCallService>());
+        var mockGameTimerService = new Mock<GameTimerService>(MockBehavior.Loose, mockHubContext.Object, Mock.Of<ILogger<GameTimerService>>(), Mock.Of<IVideoCallService>());
         var controller = new GameCycleController(mockHubContext.Object, Mock.Of<ILogger<GameCycleController>>(), mockGameTimerService.Object);
         
         var roomId = Guid.NewGuid().ToString();
@@ -133,8 +134,8 @@ public class VotingProtectionTests
             Id = roomId,
             Users = new List<UserDTO>
             {
-                new() { Id = voterId, IsAlive = true, Status = UserStatus.Player },
-                new() { Id = targetId, IsAlive = true, Status = UserStatus.Player }
+                new() { Id = voterId, Name = "Voter", IsAlive = true, Status = UserStatus.Player },
+                new() { Id = targetId, Name = "Target", IsAlive = true, Status = UserStatus.Player }
             },
             PlayerRoles = new Dictionary<string, Role>
             {

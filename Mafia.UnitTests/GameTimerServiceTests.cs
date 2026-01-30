@@ -1,0 +1,121 @@
+using Mafia.DTOs;
+using Mafia.Enums;
+using Mafia.Hubs;
+using Mafia.Models;
+using Mafia.Services;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Xunit;
+
+namespace Mafia.UnitTests;
+
+/// <summary>
+/// Тесты для GameTimerService
+/// </summary>
+[Collection("GameTests")]
+public class GameTimerServiceTests
+{
+    private GameTimerService CreateService(out Mock<IHubContext<ChatHub>> mockHubContext)
+    {
+        var mockClients = new Mock<IHubClients>();
+        var mockClientProxy = new Mock<IClientProxy>();
+        mockClients.Setup(c => c.Group(It.IsAny<string>())).Returns(mockClientProxy.Object);
+        
+        mockHubContext = new Mock<IHubContext<ChatHub>>();
+        mockHubContext.Setup(h => h.Clients).Returns(mockClients.Object);
+        
+        return new GameTimerService(
+            mockHubContext.Object,
+            Mock.Of<ILogger<GameTimerService>>(),
+            Mock.Of<IVideoCallService>());
+    }
+
+    [Fact]
+    public async Task ForceAdvancePhaseAsync_RoomNotFound_ShouldNotThrow()
+    {
+        var service = CreateService(out _);
+        Game.Rooms.Clear();
+        await service.ForceAdvancePhaseAsync("nonexistent");
+    }
+
+    [Fact]
+    public async Task ForceAdvancePhaseAsync_NoGameState_ShouldNotThrow()
+    {
+        var service = CreateService(out _);
+        var room = new RoomDTO { Id = Guid.NewGuid().ToString(), CurrentGameState = null };
+        Game.Rooms.Clear();
+        Game.Rooms.Add(room);
+
+        await service.ForceAdvancePhaseAsync(room.Id);
+        Game.Rooms.Clear();
+    }
+
+    [Fact]
+    public async Task ForceAdvancePhaseAsync_IndividualSpeech_ShouldAdvanceToNextSpeaker()
+    {
+        var service = CreateService(out var mockHubContext);
+        var room = new RoomDTO
+        {
+            Id = Guid.NewGuid().ToString(),
+            Users = new List<UserDTO>
+            {
+                new() { Id = "p1", Name = "Player1", IsAlive = true, Status = UserStatus.Player },
+                new() { Id = "p2", Name = "Player2", IsAlive = true, Status = UserStatus.Player }
+            },
+            CurrentGameState = new GameState
+            {
+                Phase = GamePhase.IndividualSpeech,
+                DayNumber = 1,
+                CurrentSpeakerId = "p1",
+                SpeakerOrder = new List<string> { "p1", "p2" },
+                CurrentSpeakerIndex = 0,
+                HasSpoken = new Dictionary<string, bool>(),
+                PhaseStartTime = DateTime.UtcNow.AddSeconds(-60),
+                PhaseTimeSeconds = 30
+            }
+        };
+        Game.Rooms.Clear();
+        Game.Rooms.Add(room);
+
+        await service.ForceAdvancePhaseAsync(room.Id);
+
+        mockHubContext.Verify(
+            h => h.Clients.Group(room.Id).SendCoreAsync(
+                It.IsAny<string>(),
+                It.IsAny<object[]>(),
+                default),
+            Times.AtLeastOnce);
+        Game.Rooms.Clear();
+    }
+}
+
+public class GameSettingsTests
+{
+    [Fact]
+    public void GameSettings_DefaultValues_ShouldBeReasonable()
+    {
+        var settings = new GameSettings();
+        Assert.True(settings.IndividualSpeechTime > 0);
+        Assert.True(settings.VotingTime > 0);
+    }
+}
+
+public class GameStateModelTests
+{
+    [Fact]
+    public void GameState_Initialize_ShouldHaveDefaultValues()
+    {
+        var state = new GameState();
+        Assert.NotNull(state.Votes);
+        Assert.NotNull(state.NightActions);
+        Assert.NotNull(state.HasSpoken);
+    }
+
+    [Fact]
+    public void GameState_ManiacSelfHeals_ShouldStartWithOne()
+    {
+        var state = new GameState();
+        Assert.Equal(1, state.ManiacSelfHealsLeft);
+    }
+}

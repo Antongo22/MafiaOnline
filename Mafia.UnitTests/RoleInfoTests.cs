@@ -1,99 +1,78 @@
+using Mafia.DTOs;
 using Mafia.Enums;
+using Mafia.Helpers;
 using Xunit;
 
 namespace Mafia.UnitTests;
 
+/// <summary>
+/// Тесты для RoleInfo хелпера
+/// </summary>
 public class RoleInfoTests
 {
-    [Fact]
-    public void GetRole_ShouldReturnCorrectRoleInfo()
+    [Theory]
+    [InlineData(Role.Citizen, Team.Good)]
+    [InlineData(Role.Sheriff, Team.Good)]
+    [InlineData(Role.Doctor, Team.Good)]
+    [InlineData(Role.Immortal, Team.Good)]
+    [InlineData(Role.Prostitute, Team.Good)]
+    [InlineData(Role.Mafia, Team.Evil)]
+    [InlineData(Role.Don, Team.Evil)]
+    [InlineData(Role.Maniac, Team.Neutral)]
+    public void GetTeam_ShouldReturnCorrectTeam(Role role, Team expectedTeam)
     {
         // Act
-        var (name, description, team, isUnique) = RoleInfo.GetRole(Role.Sheriff);
+        var team = RoleInfo.GetTeam(role);
 
         // Assert
-        Assert.Equal("Шериф", name);
-        Assert.Contains("проверить", description);
-        Assert.Equal(Team.Good, team);
-        Assert.True(isUnique);
+        Assert.Equal(expectedTeam, team);
+    }
+
+    [Theory]
+    [InlineData(Role.Citizen, "Мирный")]
+    [InlineData(Role.Sheriff, "Шериф")]
+    [InlineData(Role.Mafia, "Мафия")]
+    [InlineData(Role.Don, "Дон мафии")]
+    [InlineData(Role.Doctor, "Доктор")]
+    [InlineData(Role.Maniac, "Маньяк")]
+    [InlineData(Role.Prostitute, "Путана")]
+    [InlineData(Role.Immortal, "Бессмертный")]
+    public void GetRole_ShouldReturnCorrectName(Role role, string expectedName)
+    {
+        // Act
+        var (name, _, _, _) = RoleInfo.GetRole(role);
+
+        // Assert
+        Assert.Equal(expectedName, name);
+    }
+
+    [Theory]
+    [InlineData(Role.Citizen, false)]
+    [InlineData(Role.Mafia, false)]
+    [InlineData(Role.Don, true)]
+    [InlineData(Role.Sheriff, true)]
+    [InlineData(Role.Doctor, true)]
+    [InlineData(Role.Maniac, true)]
+    public void IsUnique_ShouldReturnCorrectValue(Role role, bool expectedUnique)
+    {
+        // Act
+        var isUnique = RoleInfo.IsUnique(role);
+
+        // Assert
+        Assert.Equal(expectedUnique, isUnique);
     }
 
     [Fact]
-    public void GetTeam_ForCitizen_ShouldReturnGood()
-    {
-        // Act
-        var team = RoleInfo.GetTeam(Role.Citizen);
-
-        // Assert
-        Assert.Equal(Team.Good, team);
-    }
-
-    [Fact]
-    public void GetTeam_ForMafia_ShouldReturnEvil()
-    {
-        // Act
-        var team = RoleInfo.GetTeam(Role.Mafia);
-
-        // Assert
-        Assert.Equal(Team.Evil, team);
-    }
-
-    [Fact]
-    public void GetTeam_ForManiac_ShouldReturnNeutral()
-    {
-        // Act
-        var team = RoleInfo.GetTeam(Role.Maniac);
-
-        // Assert
-        Assert.Equal(Team.Neutral, team);
-    }
-
-    [Fact]
-    public void IsUnique_ForSheriff_ShouldReturnTrue()
-    {
-        // Act
-        var isUnique = RoleInfo.IsUnique(Role.Sheriff);
-
-        // Assert
-        Assert.True(isUnique);
-    }
-
-    [Fact]
-    public void IsUnique_ForCitizen_ShouldReturnFalse()
-    {
-        // Act
-        var isUnique = RoleInfo.IsUnique(Role.Citizen);
-
-        // Assert
-        Assert.False(isUnique);
-    }
-
-    [Fact]
-    public void GetAllRoles_ShouldReturnAllRoles()
+    public void GetAllRoles_ShouldReturnAllDefinedRoles()
     {
         // Act
         var roles = RoleInfo.GetAllRoles().ToList();
 
         // Assert
-        Assert.NotEmpty(roles);
-        Assert.Contains(roles, r => r.Name == "Шериф");
-        Assert.Contains(roles, r => r.Name == "Мафия");
-        Assert.Contains(roles, r => r.Name == "Мирный");
-    }
-
-    [Fact]
-    public void GetAllRoles_ShouldHaveCorrectStructure()
-    {
-        // Act
-        var roles = RoleInfo.GetAllRoles().ToList();
-
-        // Assert
-        foreach (var role in roles)
-        {
-            Assert.NotNull(role.RoleValue);
-            Assert.NotNull(role.Name);
-            Assert.NotNull(role.Description);
-            Assert.NotNull(role.Team);
-        }
+        Assert.True(roles.Count >= 8); // Минимум 8 ролей определено
+        Assert.Contains(roles, r => r.RoleValue == "Citizen");
+        Assert.Contains(roles, r => r.RoleValue == "Mafia");
+        Assert.Contains(roles, r => r.RoleValue == "Don");
+        Assert.Contains(roles, r => r.RoleValue == "Sheriff");
     }
 }

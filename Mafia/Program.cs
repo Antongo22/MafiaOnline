@@ -44,6 +44,7 @@ builder.Services.AddHttpClient<VideoCallService>((sp, client) =>
     client.BaseAddress = new Uri(callsApiUrl);
     client.DefaultRequestHeaders.Add("X-API-Key", masterAdminKey);
 });
+builder.Services.AddTransient<IVideoCallService>(sp => sp.GetRequiredService<VideoCallService>());
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>

@@ -7,7 +7,7 @@ namespace Mafia.Services;
 /// <summary>
 /// Сервис для управления видеозвонками через LiveKit Admin API
 /// </summary>
-public class VideoCallService
+public class VideoCallService : IVideoCallService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<VideoCallService> _logger;
