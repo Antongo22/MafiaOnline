@@ -141,6 +141,103 @@ public class GameTimerServiceTests
         
         Game.Rooms.Clear();
     }
+
+    [Fact]
+    public async Task NightResults_ImmortalAttacked_ShouldSurvive()
+    {
+        var service = CreateService(out _);
+        var mafiaId = "mafia1";
+        var immortalId = "immortal1";
+        
+        var room = new RoomDTO
+        {
+            Id = Guid.NewGuid().ToString(),
+            Users = new List<UserDTO>
+            {
+                new() { Id = mafiaId, Name = "Mafia", IsAlive = true, Status = UserStatus.Player },
+                new() { Id = immortalId, Name = "Immortal", IsAlive = true, Status = UserStatus.Player }
+            },
+            PlayerRoles = new Dictionary<string, Role>
+            {
+                { mafiaId, Role.Mafia },
+                { immortalId, Role.Immortal }
+            },
+            CurrentGameState = new GameState
+            {
+                Phase = GamePhase.Night,
+                CurrentNightPhase = NightPhase.Prostitute, // Последняя фаза
+                NightActions = new Dictionary<string, string>
+                {
+                    // Мафия убивает бессмертного
+                    { mafiaId, JsonSerializer.Serialize(new { action = "kill", targetId = immortalId }) }
+                },
+                PendingDeaths = new List<string>()
+            },
+            GameSettings = new GameSettings()
+        };
+        Game.Rooms.Clear();
+        Game.Rooms.Add(room);
+
+        // Act
+        await service.ForceAdvancePhaseAsync(room.Id);
+
+        // Assert
+        var immortal = room.Users.First(u => u.Id == immortalId);
+        Assert.True(immortal.IsAlive, "Immortal should survive night attack");
+        
+        Game.Rooms.Clear();
+    }
+
+    [Fact]
+    public async Task NightResults_DoctorHealsTarget_ShouldSurvive()
+    {
+        var service = CreateService(out _);
+        var mafiaId = "mafia1";
+        var doctorId = "doctor1";
+        var citizenId = "citizen1";
+        
+        var room = new RoomDTO
+        {
+            Id = Guid.NewGuid().ToString(),
+            Users = new List<UserDTO>
+            {
+                new() { Id = mafiaId, Name = "Mafia", IsAlive = true, Status = UserStatus.Player },
+                new() { Id = doctorId, Name = "Doctor", IsAlive = true, Status = UserStatus.Player },
+                new() { Id = citizenId, Name = "Citizen", IsAlive = true, Status = UserStatus.Player }
+            },
+            PlayerRoles = new Dictionary<string, Role>
+            {
+                { mafiaId, Role.Mafia },
+                { doctorId, Role.Doctor },
+                { citizenId, Role.Citizen }
+            },
+            CurrentGameState = new GameState
+            {
+                Phase = GamePhase.Night,
+                CurrentNightPhase = NightPhase.Prostitute, // Последняя фаза для триггера итогов
+                NightActions = new Dictionary<string, string>
+                {
+                    // Мафия убивает гражданина
+                    { mafiaId, JsonSerializer.Serialize(new { action = "kill", targetId = citizenId }) },
+                    // Доктор лечит гражданина
+                    { doctorId, JsonSerializer.Serialize(new { action = "heal", targetId = citizenId }) }
+                },
+                PendingDeaths = new List<string>()
+            },
+            GameSettings = new GameSettings()
+        };
+        Game.Rooms.Clear();
+        Game.Rooms.Add(room);
+
+        // Act
+        await service.ForceAdvancePhaseAsync(room.Id);
+
+        // Assert
+        var citizen = room.Users.First(u => u.Id == citizenId);
+        Assert.True(citizen.IsAlive, "Citizen should survive because Doctor healed them");
+        
+        Game.Rooms.Clear();
+    }
 }
 
 public class GameSettingsTests
