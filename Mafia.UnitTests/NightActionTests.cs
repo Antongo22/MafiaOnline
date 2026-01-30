@@ -232,4 +232,109 @@ public class NightActionTests
         Assert.IsType<BadRequestObjectResult>(result);
         Game.Rooms.Clear();
     }
+
+    [Fact]
+    public async Task NightAction_DonChecksSheriff_ShouldRevealRole()
+    {
+        var controller = CreateController(out var mockHubContext);
+        var donId = "don1";
+        var sheriffId = "sheriff1";
+        
+        var room = CreateNightRoom(donId, Role.Don, NightPhase.Don);
+        // Добавляем шерифа в комнату
+        room.Users.Add(new UserDTO { Id = sheriffId, Name = "Sheriff", IsAlive = true, Status = UserStatus.Player });
+        room.PlayerRoles[sheriffId] = Role.Sheriff;
+        room.CurrentGameState!.SheriffId = sheriffId;
+        
+        Game.Rooms.Clear();
+        Game.Rooms.Add(room);
+
+        var action = new NightActionDTO { TargetId = sheriffId, ActionType = "check" };
+        var result = await controller.NightAction(room.Id, donId, action);
+
+        Assert.IsType<OkObjectResult>(result);
+        
+        // Проверяем что был отправлен SignalR ивент CardRevealed
+        mockHubContext.Verify(
+            h => h.Clients.Group(room.Id).SendCoreAsync(
+                "CardRevealed",
+                It.Is<object[]>(args => 
+                    args.Length == 1 && 
+                    args[0].ToString()!.Contains(sheriffId) && // Target ID
+                    args[0].ToString()!.Contains("Sheriff")    // Role
+                ),
+                default),
+            Times.Once);
+            
+        Game.Rooms.Clear();
+    }
+
+    [Fact]
+    public async Task NightAction_SheriffChecksMafia_ShouldRevealRole()
+    {
+        var controller = CreateController(out var mockHubContext);
+        var sheriffId = "sheriff1";
+        var mafiaId = "mafia1";
+        
+        var room = CreateNightRoom(sheriffId, Role.Sheriff, NightPhase.Sheriff);
+        // Добавляем мафию
+        room.Users.Add(new UserDTO { Id = mafiaId, Name = "Mafia", IsAlive = true, Status = UserStatus.Player });
+        room.PlayerRoles[mafiaId] = Role.Mafia;
+        
+        Game.Rooms.Clear();
+        Game.Rooms.Add(room);
+
+        var action = new NightActionDTO { TargetId = mafiaId, ActionType = "check" };
+        var result = await controller.NightAction(room.Id, sheriffId, action);
+
+        Assert.IsType<OkObjectResult>(result);
+        
+        // Шериф нашел мафию -> карта раскрывается
+        mockHubContext.Verify(
+            h => h.Clients.Group(room.Id).SendCoreAsync(
+                "CardRevealed",
+                It.Is<object[]>(args => 
+                    args.Length == 1 && 
+                    args[0].ToString()!.Contains(mafiaId) &&
+                    args[0].ToString()!.Contains("Mafia")
+                ),
+                default),
+            Times.Once);
+            
+        Game.Rooms.Clear();
+    }
+
+    [Fact]
+    public async Task NightAction_SheriffChecksCitizen_ShouldNotRevealRole()
+    {
+        var controller = CreateController(out var mockHubContext);
+        var sheriffId = "sheriff1";
+        var citizenId = "citizen1";
+        
+        var room = CreateNightRoom(sheriffId, Role.Sheriff, NightPhase.Sheriff);
+        // Гражданин уже есть в дефолтном CreateNightRoom как target1, используем его или добавим нового
+        // CreateNightRoom создает "target1" с Role.Citizen.
+        citizenId = "target1";
+        
+        Game.Rooms.Clear();
+        Game.Rooms.Add(room);
+
+        var action = new NightActionDTO { TargetId = citizenId, ActionType = "check" };
+        var result = await controller.NightAction(room.Id, sheriffId, action);
+
+        Assert.IsType<OkObjectResult>(result);
+        
+        // Шериф проверил мирного -> CardRevealed НЕ отправляется (по текущей логике)
+        // Или отправляется? В коде: if (RoleInfo.GetTeam(targetRole) == Team.Evil) { SendAsync... }
+        // Citizen - не Evil. Значит не отправляется.
+        
+        mockHubContext.Verify(
+            h => h.Clients.Group(room.Id).SendCoreAsync(
+                "CardRevealed",
+                It.IsAny<object[]>(),
+                default),
+            Times.Never);
+            
+        Game.Rooms.Clear();
+    }
 }
