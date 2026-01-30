@@ -1839,6 +1839,7 @@ export function RoomPage() {
             })()}
 
             {/* Видеозвонок и чаты */}
+            {/* Видеозвонок и чаты */}
             <div style={{
               display: "flex",
               flexDirection: "column",
@@ -1849,7 +1850,7 @@ export function RoomPage() {
             }}>
               {/* Видеозвонок */}
               {isVideoEnabled && (
-                <div style={{ minHeight: "600px", height: "600px", flex: 1 }}>
+                <div style={{ width: "100%", aspectRatio: "16/9", maxHeight: "60vh", minHeight: "300px" }}>
                   <VideoCall
                     key={videoSessionId}
                     roomId={room.id}
@@ -1863,7 +1864,7 @@ export function RoomPage() {
 
               {/* Общий чат - скрыт на mobile (показывается во вкладке Чат) */}
               {!isMobile && (
-                <div style={{ minHeight: "300px" }}>
+                <div style={{ minHeight: "300px", height: "400px" }}>
                   <Chat
                     userId={userId}
                     roomId={room.id}
@@ -1874,7 +1875,7 @@ export function RoomPage() {
 
               {/* Чат мафии (только для мафии во время игры) - скрыт на mobile */}
               {!isMobile && isMafia && gameStatus === "InProgress" && (
-                <div style={{ minHeight: "300px" }}>
+                <div style={{ minHeight: "200px", height: "300px" }}>
                   <MafiaChat
                     roomId={room.id}
                     userId={userId}
@@ -1884,6 +1885,9 @@ export function RoomPage() {
               )}
             </div>
           </div>
+
+          {/* Правая панель - Чат (только десктоп) */}
+
 
           {/* Вкладка Чат - показывается только на mobile (fullscreen) */}
           {isMobile && mobileTab === 'chat' && (
