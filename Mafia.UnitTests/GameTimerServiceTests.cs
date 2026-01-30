@@ -238,6 +238,287 @@ public class GameTimerServiceTests
         
         Game.Rooms.Clear();
     }
+
+    [Fact]
+    public async Task NightResults_MafiaKill_ShouldKillTarget()
+    {
+        var service = CreateService(out _);
+        var mafiaId = "mafia1";
+        var citizenId = "citizen1";
+        
+        var room = new RoomDTO
+        {
+            Id = Guid.NewGuid().ToString(),
+            Users = new List<UserDTO>
+            {
+                new() { Id = mafiaId, Name = "Mafia", IsAlive = true, Status = UserStatus.Player },
+                new() { Id = citizenId, Name = "Citizen", IsAlive = true, Status = UserStatus.Player }
+            },
+            PlayerRoles = new Dictionary<string, Role>
+            {
+                { mafiaId, Role.Mafia },
+                { citizenId, Role.Citizen }
+            },
+            CurrentGameState = new GameState
+            {
+                Phase = GamePhase.Night,
+                CurrentNightPhase = NightPhase.Prostitute,
+                NightActions = new Dictionary<string, string>
+                {
+                    { mafiaId, JsonSerializer.Serialize(new { action = "kill", targetId = citizenId }) }
+                },
+                PendingDeaths = new List<string>()
+            },
+            GameSettings = new GameSettings()
+        };
+        Game.Rooms.Clear();
+        Game.Rooms.Add(room);
+
+        await service.ForceAdvancePhaseAsync(room.Id);
+
+        var citizen = room.Users.First(u => u.Id == citizenId);
+        Assert.False(citizen.IsAlive, "Citizen should be killed by Mafia");
+        
+        Game.Rooms.Clear();
+    }
+
+    [Fact]
+    public async Task NightResults_ManiacKill_ShouldKillTarget()
+    {
+        var service = CreateService(out _);
+        var maniacId = "maniac1";
+        var citizenId = "citizen1";
+        
+        var room = new RoomDTO
+        {
+            Id = Guid.NewGuid().ToString(),
+            Users = new List<UserDTO>
+            {
+                new() { Id = maniacId, Name = "Maniac", IsAlive = true, Status = UserStatus.Player },
+                new() { Id = citizenId, Name = "Citizen", IsAlive = true, Status = UserStatus.Player }
+            },
+            PlayerRoles = new Dictionary<string, Role>
+            {
+                { maniacId, Role.Maniac },
+                { citizenId, Role.Citizen }
+            },
+            CurrentGameState = new GameState
+            {
+                Phase = GamePhase.Night,
+                CurrentNightPhase = NightPhase.Prostitute,
+                NightActions = new Dictionary<string, string>
+                {
+                    { maniacId, JsonSerializer.Serialize(new { action = "kill", targetId = citizenId }) }
+                },
+                PendingDeaths = new List<string>()
+            },
+            GameSettings = new GameSettings()
+        };
+        Game.Rooms.Clear();
+        Game.Rooms.Add(room);
+
+        await service.ForceAdvancePhaseAsync(room.Id);
+
+        var citizen = room.Users.First(u => u.Id == citizenId);
+        Assert.False(citizen.IsAlive, "Citizen should be killed by Maniac");
+        
+        Game.Rooms.Clear();
+    }
+
+    [Fact]
+    public async Task NightResults_ProstituteProtectsAgainstManiac_ShouldSurvive()
+    {
+        var service = CreateService(out _);
+        var maniacId = "maniac1";
+        var prostituteId = "prostitute1";
+        var citizenId = "citizen1";
+        
+        var room = new RoomDTO
+        {
+            Id = Guid.NewGuid().ToString(),
+            Users = new List<UserDTO>
+            {
+                new() { Id = maniacId, Name = "Maniac", IsAlive = true, Status = UserStatus.Player },
+                new() { Id = prostituteId, Name = "Prostitute", IsAlive = true, Status = UserStatus.Player },
+                new() { Id = citizenId, Name = "Citizen", IsAlive = true, Status = UserStatus.Player }
+            },
+            PlayerRoles = new Dictionary<string, Role>
+            {
+                { maniacId, Role.Maniac },
+                { prostituteId, Role.Prostitute },
+                { citizenId, Role.Citizen }
+            },
+            CurrentGameState = new GameState
+            {
+                Phase = GamePhase.Night,
+                CurrentNightPhase = NightPhase.Prostitute,
+                NightActions = new Dictionary<string, string>
+                {
+                    { maniacId, JsonSerializer.Serialize(new { action = "kill", targetId = citizenId }) },
+                    { prostituteId, JsonSerializer.Serialize(new { action = "protect", targetId = citizenId }) }
+                },
+                PendingDeaths = new List<string>()
+            },
+            GameSettings = new GameSettings()
+        };
+        Game.Rooms.Clear();
+        Game.Rooms.Add(room);
+
+        await service.ForceAdvancePhaseAsync(room.Id);
+
+        var citizen = room.Users.First(u => u.Id == citizenId);
+        Assert.True(citizen.IsAlive, "Citizen should survive Maniac attack because of Prostitute protection");
+        
+        Game.Rooms.Clear();
+    }
+
+    [Fact]
+    public async Task NightResults_ManiacSelfHeal_ShouldSurviveMafiaAttack()
+    {
+        var service = CreateService(out _);
+        var mafiaId = "mafia1";
+        var maniacId = "maniac1";
+        
+        var room = new RoomDTO
+        {
+            Id = Guid.NewGuid().ToString(),
+            Users = new List<UserDTO>
+            {
+                new() { Id = mafiaId, Name = "Mafia", IsAlive = true, Status = UserStatus.Player },
+                new() { Id = maniacId, Name = "Maniac", IsAlive = true, Status = UserStatus.Player }
+            },
+            PlayerRoles = new Dictionary<string, Role>
+            {
+                { mafiaId, Role.Mafia },
+                { maniacId, Role.Maniac }
+            },
+            CurrentGameState = new GameState
+            {
+                Phase = GamePhase.Night,
+                CurrentNightPhase = NightPhase.Prostitute,
+                NightActions = new Dictionary<string, string>
+                {
+                    { mafiaId, JsonSerializer.Serialize(new { action = "kill", targetId = maniacId }) },
+                    // Маньяк лечит себя (self_heal)
+                    { maniacId, JsonSerializer.Serialize(new { action = "heal_self" }) }
+                },
+                PendingDeaths = new List<string>()
+            },
+            GameSettings = new GameSettings()
+        };
+        Game.Rooms.Clear();
+        Game.Rooms.Add(room);
+
+        await service.ForceAdvancePhaseAsync(room.Id);
+
+        var maniac = room.Users.First(u => u.Id == maniacId);
+        Assert.True(maniac.IsAlive, "Maniac should survive Mafia attack due to self-heal");
+        
+        Game.Rooms.Clear();
+    }
+
+    [Fact]
+    public async Task NightResults_MultiKill_DifferentTargets_ShouldKillBoth()
+    {
+        var service = CreateService(out _);
+        var mafiaId = "mafia1";
+        var maniacId = "maniac1";
+        var citizen1Id = "citizen1";
+        var citizen2Id = "citizen2";
+        
+        var room = new RoomDTO
+        {
+            Id = Guid.NewGuid().ToString(),
+            Users = new List<UserDTO>
+            {
+                new() { Id = mafiaId, Name = "Mafia", IsAlive = true, Status = UserStatus.Player },
+                new() { Id = maniacId, Name = "Maniac", IsAlive = true, Status = UserStatus.Player },
+                new() { Id = citizen1Id, Name = "Citizen1", IsAlive = true, Status = UserStatus.Player },
+                new() { Id = citizen2Id, Name = "Citizen2", IsAlive = true, Status = UserStatus.Player }
+            },
+            PlayerRoles = new Dictionary<string, Role>
+            {
+                { mafiaId, Role.Mafia },
+                { maniacId, Role.Maniac },
+                { citizen1Id, Role.Citizen },
+                { citizen2Id, Role.Citizen }
+            },
+            CurrentGameState = new GameState
+            {
+                Phase = GamePhase.Night,
+                CurrentNightPhase = NightPhase.Prostitute,
+                NightActions = new Dictionary<string, string>
+                {
+                    { mafiaId, JsonSerializer.Serialize(new { action = "kill", targetId = citizen1Id }) },
+                    { maniacId, JsonSerializer.Serialize(new { action = "kill", targetId = citizen2Id }) }
+                },
+                PendingDeaths = new List<string>()
+            },
+            GameSettings = new GameSettings()
+        };
+        Game.Rooms.Clear();
+        Game.Rooms.Add(room);
+
+        await service.ForceAdvancePhaseAsync(room.Id);
+
+        var citizen1 = room.Users.First(u => u.Id == citizen1Id);
+        var citizen2 = room.Users.First(u => u.Id == citizen2Id);
+        Assert.False(citizen1.IsAlive, "Citizen1 should be killed by Mafia");
+        Assert.False(citizen2.IsAlive, "Citizen2 should be killed by Maniac");
+        
+        Game.Rooms.Clear();
+    }
+
+    [Fact]
+    public async Task NightResults_DoubleAttack_DoctorHeals_ShouldSurvive()
+    {
+        var service = CreateService(out _);
+        var mafiaId = "mafia1";
+        var maniacId = "maniac1";
+        var doctorId = "doctor1";
+        var citizenId = "citizen1";
+        
+        var room = new RoomDTO
+        {
+            Id = Guid.NewGuid().ToString(),
+            Users = new List<UserDTO>
+            {
+                new() { Id = mafiaId, Name = "Mafia", IsAlive = true, Status = UserStatus.Player },
+                new() { Id = maniacId, Name = "Maniac", IsAlive = true, Status = UserStatus.Player },
+                new() { Id = doctorId, Name = "Doctor", IsAlive = true, Status = UserStatus.Player },
+                new() { Id = citizenId, Name = "Citizen", IsAlive = true, Status = UserStatus.Player }
+            },
+            PlayerRoles = new Dictionary<string, Role>
+            {
+                { mafiaId, Role.Mafia },
+                { maniacId, Role.Maniac },
+                { doctorId, Role.Doctor },
+                { citizenId, Role.Citizen }
+            },
+            CurrentGameState = new GameState
+            {
+                Phase = GamePhase.Night,
+                CurrentNightPhase = NightPhase.Prostitute,
+                NightActions = new Dictionary<string, string>
+                {
+                    { mafiaId, JsonSerializer.Serialize(new { action = "kill", targetId = citizenId }) },
+                    { maniacId, JsonSerializer.Serialize(new { action = "kill", targetId = citizenId }) },
+                    { doctorId, JsonSerializer.Serialize(new { action = "heal", targetId = citizenId }) }
+                },
+                PendingDeaths = new List<string>()
+            },
+            GameSettings = new GameSettings()
+        };
+        Game.Rooms.Clear();
+        Game.Rooms.Add(room);
+
+        await service.ForceAdvancePhaseAsync(room.Id);
+
+        var citizen = room.Users.First(u => u.Id == citizenId);
+        Assert.True(citizen.IsAlive, "Citizen should survive double attack because Doctor healed them");
+        
+        Game.Rooms.Clear();
+    }
 }
 
 public class GameSettingsTests
