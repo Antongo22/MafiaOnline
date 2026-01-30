@@ -43,7 +43,7 @@ import { MafiaChat } from "../components/MafiaChat";
 import { AdminPanel } from "../components/AdminPanel";
 import { RoleDisplay } from "../components/RoleDisplay";
 import { GamePhaseDisplay } from "../components/GamePhaseDisplay";
-import { ActionModal } from "../components/ActionModal";
+// import { ActionModal } from "../components/ActionModal"; // Убрано - используем встроенный UI
 import { VotingResultsDisplay } from "../components/VotingResultsDisplay";
 import { NightResultsModal } from "../components/NightResultsModal";
 import { VotingResultsModal } from "../components/VotingResultsModal";
@@ -464,7 +464,7 @@ export function RoomPage() {
       setGamePhase(GamePhase.IndividualSpeech);
       setCurrentSpeakerName(data.speakerName);
       setCurrentSpeakerId(data.speakerId);
-      setDayNumber(1);
+      setDayNumber(data.dayNumber || dayNumber || 1); // Используем dayNumber из данных если есть
       setTimeLeft(data.timeSeconds || 30);
 
       // Показываем алерт только при первом старте игры
@@ -1233,103 +1233,10 @@ export function RoomPage() {
   };
 
   // Determine which component to show based on game phase
+  // Убираем модальные окна для голосования и ночных действий.
+  // Теперь UI встроен в основную панель.
   const renderGameContent = () => {
-    // Голосование
-    if (gamePhase === GamePhase.Voting && currentVoterId) {
-      const isMyTurn = currentVoterId === userId;
-      const players = votingCandidates.map(c => ({
-        userId: c.userId,
-        userName: c.userName,
-        isCurrentUser: c.userId === userId
-      }));
-
-      return (
-        <ActionModal
-          isOpen={true}
-          title="Голосование"
-          description={isMyTurn
-            ? "Выберите игрока, за которого хотите проголосовать"
-            : "Другой игрок сейчас голосует..."}
-          players={players}
-          onAction={(targetId) => {
-            if (targetId) handleVote(targetId);
-          }}
-          actionButtonText="Проголосовать"
-          isMyTurn={isMyTurn}
-        />
-      );
-    }
-
-    // Ночные действия
-    if (gamePhase === GamePhase.Night && nightPhase && myRole) {
-      const roleNightPhaseMap: Record<string, string> = {
-        Don: "Don",
-        Mafia: "Mafia",
-        Ninja: "Mafia",
-        Maniac: "Maniac",
-        Sheriff: "Sheriff",
-        Doctor: "Doctor",
-        Prostitute: "Prostitute"
-      };
-
-      const canAct = roleNightPhaseMap[myRole] === nightPhase;
-
-      // Если сейчас не ход игрока или он уже походил - не показываем модальное окно
-      if (!canAct || hasActedCurrentPhase) return null;
-
-      // Описания действий
-      const actionDescriptions: Record<string, { title: string; description: string }> = {
-        Don: { title: "Поиск шерифа", description: "Выберите игрока для проверки. Если это шериф, его карта откроется для вас." },
-        Mafia: { title: "Выбор жертвы", description: "Проголосуйте за игрока, которого мафия убьёт этой ночью." },
-        Maniac: { title: "Действие маньяка", description: "Убейте игрока или вылечите себя (1 раз за игру)." },
-        Sheriff: { title: "Проверка игрока", description: "Выберите игрока для проверки. Если он мафия, его карта откроется для вас." },
-        Doctor: { title: "Лечение", description: "Выберите игрока для лечения. Можете вылечить себя." },
-        Prostitute: { title: "Забрать игрока", description: "Заберите игрока к себе. Если его пытаются убить, он выживет." }
-      };
-
-      const actionInfo = actionDescriptions[nightPhase];
-      if (!actionInfo) return null;
-
-      // Живые игроки (кроме себя для большинства ролей)
-      const alivePlayers = users
-        .filter(u => u.status !== "Leave" && u.isAlive !== false && u.id !== userId)
-        .map(u => ({
-          userId: u.id,
-          userName: u.name,
-          isCurrentUser: false
-        }));
-
-      // Дополнительные действия
-      let extraActions: Array<{ id: string; label: string; type: "success" | "danger" }> | undefined;
-
-      if (nightPhase === "Maniac") {
-        extraActions = [
-          { id: "kill", label: "Убить игрока", type: "danger" },
-          { id: "heal_self", label: "Вылечить себя", type: "success" }
-        ];
-      } else if (nightPhase === "Doctor") {
-        extraActions = [
-          { id: "heal_self", label: "Вылечить себя", type: "success" }
-        ];
-      }
-
-      return (
-        <ActionModal
-          isOpen={true}
-          title={actionInfo.title}
-          description={canAct ? actionInfo.description : "Не ваш ход..."}
-          players={alivePlayers}
-          extraActions={extraActions}
-          onAction={(targetId, actionType) => {
-            handleNightAction(targetId, actionType);
-          }}
-          actionButtonText="Выполнить действие"
-          isMyTurn={canAct}
-        />
-      );
-    }
-
-    return null;
+    return null; // Модальные окна действий убраны - UI встроен ниже
   };
 
   if (room && userId) {
@@ -1834,8 +1741,95 @@ export function RoomPage() {
               />
             )}
 
-            {/* Игровой контент (голосование/ночные действия) */}
+            {/* Игровой контент - встроенный UI для голосования и ночных действий */}
             {renderGameContent()}
+
+            {/* Встроенный UI для голосования */}
+            {gamePhase === GamePhase.Voting && currentVoterId === userId && (
+              <div className="card" style={{ padding: "1.5rem", background: "var(--bg-secondary)" }}>
+                <h3 style={{ margin: "0 0 1rem 0", color: "var(--warning)" }}>🗳️ Ваш ход голосовать</h3>
+                <p style={{ margin: "0 0 1rem 0", color: "var(--text-secondary)" }}>
+                  Выберите игрока, за которого хотите проголосовать:
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                  {votingCandidates
+                    .filter(c => c.userId !== userId)
+                    .map(candidate => (
+                      <button
+                        key={candidate.userId}
+                        onClick={() => handleVote(candidate.userId)}
+                        className="btn-secondary"
+                        style={{ padding: "0.75rem 1rem" }}
+                      >
+                        {candidate.userName}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Встроенный UI для ночных действий */}
+            {gamePhase === GamePhase.Night && nightPhase && myRole && (() => {
+              // Дон участвует и в фазе Дона (проверка шерифа) и в фазе Мафии (голосование за убийство)
+              const roleNightPhaseMap: Record<string, string[]> = {
+                Don: ["Don", "Mafia"], // Дон ходит в обе фазы
+                Mafia: ["Mafia"],
+                Ninja: ["Mafia"],
+                Maniac: ["Maniac"],
+                Sheriff: ["Sheriff"],
+                Doctor: ["Doctor"],
+                Prostitute: ["Prostitute"]
+              };
+              const allowedPhases = roleNightPhaseMap[myRole] || [];
+              const canAct = allowedPhases.includes(nightPhase);
+              if (!canAct || hasActedCurrentPhase) return null;
+
+              const actionDescriptions: Record<string, { title: string; description: string; emoji: string }> = {
+                Don: { title: "Поиск шерифа", description: "Выберите игрока для проверки", emoji: "🎩" },
+                Mafia: { title: "Выбор жертвы", description: "Проголосуйте за жертву", emoji: "🔫" },
+                Maniac: { title: "Действие маньяка", description: "Убейте игрока или вылечите себя", emoji: "🔪" },
+                Sheriff: { title: "Проверка игрока", description: "Выберите игрока для проверки", emoji: "🔍" },
+                Doctor: { title: "Лечение", description: "Выберите кого вылечить", emoji: "💉" },
+                Prostitute: { title: "Забрать игрока", description: "Заберите игрока к себе", emoji: "💋" }
+              };
+              const actionInfo = actionDescriptions[nightPhase];
+              if (!actionInfo) return null;
+
+              const alivePlayers = users.filter(u => u.status !== "Leave" && u.isAlive !== false && u.id !== userId);
+
+              return (
+                <div className="card" style={{ padding: "1.5rem", background: "var(--bg-secondary)", border: "2px solid var(--danger)" }}>
+                  <h3 style={{ margin: "0 0 0.5rem 0", color: "var(--danger)" }}>{actionInfo.emoji} {actionInfo.title}</h3>
+                  <p style={{ margin: "0 0 1rem 0", color: "var(--text-secondary)" }}>{actionInfo.description}</p>
+
+                  {/* Специальные действия для Доктора и Маньяка */}
+                  {(nightPhase === "Doctor" || nightPhase === "Maniac") && (
+                    <div style={{ marginBottom: "1rem" }}>
+                      <button
+                        onClick={() => handleNightAction(undefined, "heal_self")}
+                        className="btn-success"
+                        style={{ marginRight: "0.5rem" }}
+                      >
+                        💚 Вылечить себя
+                      </button>
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                    {alivePlayers.map(player => (
+                      <button
+                        key={player.id}
+                        onClick={() => handleNightAction(player.id, nightPhase === "Doctor" ? "heal" : nightPhase === "Prostitute" ? "protect" : "kill")}
+                        className={nightPhase === "Mafia" || nightPhase === "Maniac" ? "btn-danger" : "btn-secondary"}
+                        style={{ padding: "0.75rem 1rem" }}
+                      >
+                        {player.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Видеозвонок и чаты */}
             <div style={{
@@ -1871,8 +1865,8 @@ export function RoomPage() {
                 </div>
               )}
 
-              {/* Чат мафии (только для мафии ночью) - скрыт на mobile */}
-              {!isMobile && isMafia && gameStatus === "InProgress" && gamePhase === GamePhase.Night && (
+              {/* Чат мафии (только для мафии во время игры) - скрыт на mobile */}
+              {!isMobile && isMafia && gameStatus === "InProgress" && (
                 <div style={{ minHeight: "300px" }}>
                   <MafiaChat
                     roomId={room.id}

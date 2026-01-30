@@ -322,6 +322,17 @@ public class GameCycleController : ControllerBase
             decision = killAll ? "kill" : "pardon"
         });
 
+        // Проверяем, все ли проголосовали
+        var activePlayers = room.Users
+            .Where(u => u.Status != UserStatus.Leave && u.IsAlive && room.PlayerRoles!.ContainsKey(u.Id))
+            .ToList();
+            
+        if (gameState.TieBreakerVotes.Count >= activePlayers.Count)
+        {
+            _logger.LogInformation($"Room {roomId}: All players voted in TieBreaker, ending phase immediately");
+            gameState.PhaseStartTime = DateTime.UtcNow.AddSeconds(-gameState.PhaseTimeSeconds);
+        }
+
         return Ok(new { message = "Tie breaker vote recorded" });
     }
 
@@ -496,7 +507,12 @@ public class GameCycleController : ControllerBase
 
             case NightPhase.Doctor:
                 // Доктор лечит игрока
-                if (!string.IsNullOrEmpty(action.TargetId))
+                if (action.ActionType == "heal_self")
+                {
+                   // Доктор лечит себя - записываем как обычное лечение с targetId = userId
+                   gameState.NightActions[userId] = JsonSerializer.Serialize(new { action = "heal", targetId = userId });
+                }
+                else if (!string.IsNullOrEmpty(action.TargetId))
                 {
                     gameState.NightActions[userId] = JsonSerializer.Serialize(new { action = "heal", targetId = action.TargetId });
                 }
