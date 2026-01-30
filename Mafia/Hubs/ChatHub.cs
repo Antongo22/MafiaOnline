@@ -470,7 +470,7 @@ public class ChatHub : Hub
                                     var hasActiveConnection = Game.UserConnections.Values.Any(c => c.UserId == userId && c.RoomId == roomId);
                                     if (hasActiveConnection) return;
                                     
-                                    if (currentRoom.Status == Enums.GameStatus.Created)
+                                    if (currentRoom.Status == Enums.GameStatus.Created || currentRoom.Status == Enums.GameStatus.Waiting)
                                     {
                                         // В лобби - удаляем пользователя
                                         currentRoom.Users.Remove(currentUser);

@@ -197,6 +197,7 @@ public class GameController : ControllerBase
         // Отправляем каждому игроку его роль через SignalR
         foreach (var player in activePlayers)
         {
+            player.IsAlive = true; // Сбрасываем статус жизни, чтобы все начали живыми
             if (room.PlayerRoles.TryGetValue(player.Id, out var role))
             {
                 // Отправляем роль конкретному пользователю
