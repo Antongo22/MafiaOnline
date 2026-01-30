@@ -97,8 +97,7 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
       chatService.removeUserLeftHandler(handleUserLeft);
       chatService.removePlayerKickedHandler(handlePlayerKicked);
       chatService.removeRoomDisbandedHandler(handleRoomDisbanded);
-      chatService.leaveRoom(roomId, userId).catch(console.error);
-      chatService.disconnect();
+      // Removed leaveRoom and disconnect to prevent kicking user on mobile view toggle
     };
   }, [roomId, userId, actualApiUrl, onUserListUpdate]);
 
@@ -125,24 +124,24 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
   };
 
   return (
-    <div className="card" style={{ 
-      display: "flex", 
-      flexDirection: "column", 
+    <div className="card" style={{
+      display: "flex",
+      flexDirection: "column",
       height: "100%",
       overflow: "hidden",
       position: "relative"
     }}>
       {/* Header */}
-      <div style={{ 
-        padding: "1rem", 
+      <div style={{
+        padding: "1rem",
         borderBottom: "1px solid var(--border)",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
         flexShrink: 0
       }}>
-        <h3 style={{ 
-          margin: 0, 
+        <h3 style={{
+          margin: 0,
           fontSize: "1.25rem",
           display: "flex",
           alignItems: "center",
@@ -151,9 +150,9 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
           <span>💬</span>
           <span>Чат</span>
         </h3>
-        <div style={{ 
-          display: "flex", 
-          alignItems: "center", 
+        <div style={{
+          display: "flex",
+          alignItems: "center",
           gap: "0.5rem",
           fontSize: "0.875rem",
           color: "var(--text-secondary)"
@@ -170,9 +169,9 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
 
       {/* Error notification */}
       {error && (
-        <div style={{ 
-          padding: "0.75rem", 
-          background: "var(--danger-light)", 
+        <div style={{
+          padding: "0.75rem",
+          background: "var(--danger-light)",
           color: "var(--danger)",
           border: "1px solid var(--danger)",
           borderBottom: "none",
@@ -187,9 +186,9 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
       )}
 
       {/* Messages area */}
-      <div style={{ 
-        flex: 1, 
-        overflowY: "auto", 
+      <div style={{
+        flex: 1,
+        overflowY: "auto",
         padding: "1rem",
         background: "var(--bg-primary)",
         display: "flex",
@@ -197,9 +196,9 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
         gap: "0.75rem"
       }}>
         {messages.length === 0 ? (
-          <div style={{ 
-            textAlign: "center", 
-            color: "var(--text-muted)", 
+          <div style={{
+            textAlign: "center",
+            color: "var(--text-muted)",
             padding: "3rem 1rem",
             display: "flex",
             flexDirection: "column",
@@ -220,7 +219,7 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
           messages.map((msg) => {
             const isMyMessage = msg.userId === userId;
             const isSystemMessage = msg.userId === "system";
-            
+
             // Системное сообщение-разделитель
             if (isSystemMessage) {
               return (
@@ -241,7 +240,7 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
                 </div>
               );
             }
-            
+
             return (
               <div
                 key={msg.id}
@@ -258,7 +257,7 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
                     padding: "0.75rem 1rem",
                     background: isMyMessage ? "var(--accent-primary)" : "var(--bg-secondary)",
                     border: isMyMessage ? "none" : "1px solid var(--border)",
-                    borderRadius: isMyMessage 
+                    borderRadius: isMyMessage
                       ? "var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg)"
                       : "var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-sm)",
                     wordWrap: "break-word",
@@ -266,7 +265,7 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
                   }}
                 >
                   {!isMyMessage && (
-                    <div style={{ 
+                    <div style={{
                       fontSize: "0.75rem",
                       fontWeight: "600",
                       color: "var(--accent-primary)",
@@ -276,7 +275,7 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
                     </div>
                   )}
                   <div style={{ fontSize: "0.9375rem" }}>{msg.message}</div>
-                  <div style={{ 
+                  <div style={{
                     fontSize: "0.6875rem",
                     color: isMyMessage ? "rgba(255,255,255,0.7)" : "var(--text-muted)",
                     marginTop: "0.25rem",
@@ -293,8 +292,8 @@ export function Chat({ roomId, userId, userName, apiUrl, onUserListUpdate }: Cha
       </div>
 
       {/* Input area */}
-      <form onSubmit={handleSendMessage} style={{ 
-        padding: "1rem", 
+      <form onSubmit={handleSendMessage} style={{
+        padding: "1rem",
         borderTop: "1px solid var(--border)",
         display: "flex",
         gap: "0.75rem",
