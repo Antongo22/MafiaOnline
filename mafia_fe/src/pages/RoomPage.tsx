@@ -1721,7 +1721,7 @@ export function RoomPage() {
             flexDirection: "column",
             gap: "1rem",
             maxHeight: "100vh",
-            overflow: "hidden"
+            overflowY: "auto"
           }}>
             {/* Фаза игры и таймер */}
             {gameCycleStarted && (

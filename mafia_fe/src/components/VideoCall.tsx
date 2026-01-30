@@ -19,7 +19,6 @@ export function VideoCall({
   roomId,
   userName,
   isAdmin,
-  currentSpeakerName,
   videoCallUrl,
 }: VideoCallProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -59,10 +58,6 @@ export function VideoCall({
       params.set("creator", "true"); // Calls frontend will create room if needed
     }
 
-    if (currentSpeakerName) {
-      params.set("highlightSpeaker", currentSpeakerName);
-    }
-
     // Add timestamp to prevent caching
     params.set("_t", Date.now().toString());
 
@@ -73,7 +68,7 @@ export function VideoCall({
       iframeRef.current.src = fullUrl;
       setIsLoaded(true);
     }
-  }, [roomId, userName, isAdmin, currentSpeakerName, finalVideoCallUrl]);
+  }, [roomId, userName, isAdmin, finalVideoCallUrl]);
 
   return (
     <div

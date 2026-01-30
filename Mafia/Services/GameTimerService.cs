@@ -582,9 +582,9 @@ public class GameTimerService : BackgroundService
             await StartNightPhase(room, nextPhase.Value);
         }
 
-        // УПРОЩЕНИЕ: Автоуправление медиа отключено
-        // await _videoCallService.MuteAllAudioAsync(room.Id);
-        // await _videoCallService.MuteAllVideoAsync(room.Id);
+        // Отключаем микрофон и видео на ночь
+        await _videoCallService.MuteAllAudioAsync(room.Id);
+        await _videoCallService.MuteAllVideoAsync(room.Id);
     }
 
     private async Task AdvanceNight(RoomDTO room)
@@ -999,18 +999,9 @@ public class GameTimerService : BackgroundService
             dayNumber = gameState.DayNumber
         });
 
-        // УПРОЩЕНИЕ: Автоуправление медиа отключено - участники сами управляют камерой/микрофоном
-        // await _videoCallService.UnmuteAllVideoAsync(room.Id);
-        // var speaker = room.Users.FirstOrDefault(u => u.Id == gameState.CurrentSpeakerId);
-        // if (speaker?.Name != null)
-        // {
-        //     await _videoCallService.MuteAllAudioAsync(room.Id, speaker.Name);
-        //     await _videoCallService.MuteUserAudioAsync(room.Id, speaker.Name, false);
-        // }
-        // else
-        // {
-        //     await _videoCallService.MuteAllAudioAsync(room.Id);
-        // }
+        // Включаем медиа всем после ночи
+        await _videoCallService.UnmuteAllVideoAsync(room.Id);
+        await _videoCallService.UnmuteAllAudioAsync(room.Id);
     }
 
     private async Task EndGame(RoomDTO room, Team winner)
@@ -1042,9 +1033,9 @@ public class GameTimerService : BackgroundService
         // Также отправляем событие смены статуса
         await _hubContext.Clients.Group(room.Id).SendAsync("GameStatusChanged", new { status = room.Status.ToString() });
 
-        // УПРОЩЕНИЕ: Автоуправление медиа отключено
-        // await _videoCallService.UnmuteAllAudioAsync(room.Id);
-        // await _videoCallService.UnmuteAllVideoAsync(room.Id);
+        // Включаем медиа всем после игры
+        await _videoCallService.UnmuteAllAudioAsync(room.Id);
+        await _videoCallService.UnmuteAllVideoAsync(room.Id);
     }
 }
 
