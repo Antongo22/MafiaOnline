@@ -9,6 +9,7 @@ using Xunit;
 
 namespace Mafia.IntegrationTests;
 
+[Collection("IntegrationTests")]
 public class RoomControllerTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;

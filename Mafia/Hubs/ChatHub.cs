@@ -8,11 +8,13 @@ namespace Mafia.Hubs;
 public class ChatHub : Hub
 {
     private readonly VideoCallService _videoCallService;
+    private readonly IHubContext<ChatHub> _hubContext;
     private readonly ILogger<ChatHub> _logger;
 
-    public ChatHub(VideoCallService videoCallService, ILogger<ChatHub> logger)
+    public ChatHub(VideoCallService videoCallService, IHubContext<ChatHub> hubContext, ILogger<ChatHub> logger)
     {
         _videoCallService = videoCallService;
+        _hubContext = hubContext;
         _logger = logger;
     }
 
@@ -442,12 +444,15 @@ public class ChatHub : Hub
                         
                         Game.PendingDisconnections[userKey] = cts;
                         
-                        // Запускаем отложенное удаление с grace period 5 секунд
+                        // Запускаем отложенное удаление с grace period 30 секунд (было 5)
                         _ = Task.Run(async () =>
                         {
+                            // Захватываем необходимые сервисы и ID, так как Context может быть уничтожен
+                            var capturedHubContext = _hubContext;
+                            
                             try
                             {
-                                await Task.Delay(5000, cts.Token);
+                                await Task.Delay(30000, cts.Token);
                                 
                                 // Если не отменено - выполняем удаление
                                 if (!cts.Token.IsCancellationRequested)
@@ -470,9 +475,9 @@ public class ChatHub : Hub
                                         // В лобби - удаляем пользователя
                                         currentRoom.Users.Remove(currentUser);
                                         
-                                        // Так как мы не в хабе, используем IHubContext
-                                        // Но здесь мы не можем отправить сообщение, это background task
-                                        // Клиенты узнают об изменении при следующем запросе
+                                        // Уведомляем остальных об удалении
+                                        await capturedHubContext.Clients.Group(roomId).SendAsync("UpdateUserList", currentRoom.Users);
+                                        await capturedHubContext.Clients.Group(roomId).SendAsync("UserLeft", new { userName = currentUser.Name, userId = currentUser.Id });
                                     }
                                     else
                                     {
@@ -480,6 +485,18 @@ public class ChatHub : Hub
                                         if (currentUser.IsAlive)
                                         {
                                             currentUser.IsAlive = false;
+                                            
+                                            // Уведомляем клиентов о смерти игрока из-за дисконнекта
+                                            await capturedHubContext.Clients.Group(roomId).SendAsync("PlayerEliminated", new
+                                            {
+                                                userId = currentUser.Id,
+                                                userName = currentUser.Name,
+                                                role = "Unknown", // Роль не раскрываем при дисконнекте? Или раскрываем? Обычно нет.
+                                                reason = "disconnected"
+                                            });
+                                            
+                                            // Обновляем список пользователей (чтобы череп появился)
+                                            await capturedHubContext.Clients.Group(roomId).SendAsync("UpdateUserList", currentRoom.Users.Where(u => u.Status != Enums.UserStatus.Leave).ToList());
                                         }
                                     }
                                 }

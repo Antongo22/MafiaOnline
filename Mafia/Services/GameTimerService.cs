@@ -861,9 +861,10 @@ public class GameTimerService : BackgroundService
         if (!string.IsNullOrEmpty(prostituteUserId) && attackTargets.Contains(prostituteUserId))
         {
             prostituteKilled = true;
-            // Если путану убили, её цель тоже умирает
-            if (prostituteTarget != null && !protectedPlayers.Contains(prostituteTarget))
+            // Если путану убили, её цель тоже умирает (и лишается защиты путаны)
+            if (prostituteTarget != null)
             {
+                protectedPlayers.Remove(prostituteTarget);
                 attackTargets.Add(prostituteTarget);
             }
         }

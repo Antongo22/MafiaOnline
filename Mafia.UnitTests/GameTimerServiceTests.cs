@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using System.Text.Json;
+using System.Linq;
 
 namespace Mafia.UnitTests;
 
@@ -86,6 +88,57 @@ public class GameTimerServiceTests
                 It.IsAny<object[]>(),
                 default),
             Times.AtLeastOnce);
+        Game.Rooms.Clear();
+    }
+
+    [Fact]
+    public async Task NightResults_ProstituteKilledByMafia_ShouldKillBoth()
+    {
+        var service = CreateService(out _);
+        var mafiaId = "mafia1";
+        var prostituteId = "prostitute1";
+        
+        var room = new RoomDTO
+        {
+            Id = Guid.NewGuid().ToString(),
+            Users = new List<UserDTO>
+            {
+                new() { Id = mafiaId, Name = "Mafia", IsAlive = true, Status = UserStatus.Player },
+                new() { Id = prostituteId, Name = "Prostitute", IsAlive = true, Status = UserStatus.Player }
+            },
+            PlayerRoles = new Dictionary<string, Role>
+            {
+                { mafiaId, Role.Mafia },
+                { prostituteId, Role.Prostitute }
+            },
+            CurrentGameState = new GameState
+            {
+                Phase = GamePhase.Night,
+                CurrentNightPhase = NightPhase.Prostitute, // Последняя фаза
+                NightActions = new Dictionary<string, string>
+                {
+                    // Мафия убивает путану
+                    { mafiaId, JsonSerializer.Serialize(new { action = "kill", targetId = prostituteId }) },
+                    // Путана идет к мафии
+                    { prostituteId, JsonSerializer.Serialize(new { action = "protect", targetId = mafiaId }) }
+                },
+                PendingDeaths = new List<string>()
+            },
+            GameSettings = new GameSettings()
+        };
+        Game.Rooms.Clear();
+        Game.Rooms.Add(room);
+
+        // Act
+        await service.ForceAdvancePhaseAsync(room.Id);
+
+        // Assert
+        var mafia = room.Users.First(u => u.Id == mafiaId);
+        var prostitute = room.Users.First(u => u.Id == prostituteId);
+
+        Assert.False(prostitute.IsAlive, "Prostitute should be dead");
+        Assert.False(mafia.IsAlive, "Mafia should be dead because Prostitute visited them and died");
+        
         Game.Rooms.Clear();
     }
 }
