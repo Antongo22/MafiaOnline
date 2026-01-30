@@ -225,150 +225,139 @@ export function RoomPage() {
 
   // Проверяем localStorage и URL параметры при загрузке
   useEffect(() => {
+    // Проверяем URL параметры для приглашения
     const checkExistingRoom = async () => {
-      // Проверяем URL параметры для приглашения
       const urlParams = new URLSearchParams(window.location.search);
       const inviteCodeFromUrl = urlParams.get('invite');
 
+      const savedState = loadRoomState();
+
+      if (savedState) {
+        try {
+          const response = await fetch(`${API_URL}/api/Room/my?userId=${savedState.userId}`);
+          if (response.ok) {
+            const data: Room = await response.json();
+
+            // Проверяем, что комната существует и пользователь в ней
+            const userInRoom = data.users.find(u => u.id === savedState.userId);
+            if (!userInRoom) {
+              console.log("[RoomPage] User not in room, clearing state");
+              clearRoomState();
+            } else {
+              if (userInRoom.status === "Leave") {
+                console.warn("[RoomPage] User status is Leave, but allowing RECONNECT attempt...");
+              }
+
+              setRoom(data);
+              setUserId(savedState.userId);
+              setUserName(savedState.userName);
+              // Важно: не скрываем сами себя, даже если статус Leave
+              setUsers(data.users.filter(u => u.status !== "Leave" || u.id === savedState.userId));
+              setGameStatus(data.status);
+
+              if (savedState.myRole) {
+                setMyRole(savedState.myRole);
+              }
+
+              if (savedState.winningTeam) {
+                setWinningTeam(savedState.winningTeam);
+              }
+
+              if (!chatService.isConnected()) {
+                try {
+                  await chatService.connect(API_URL);
+                } catch (signalRError) {
+                  console.error("Failed to connect to SignalR:", signalRError);
+                }
+              }
+
+              try {
+                await chatService.joinRoom(data.id, savedState.userId);
+              } catch (joinError) {
+                console.error("Failed to join SignalR room:", joinError);
+              }
+
+              if (data.status === "InProgress" || data.status === "Finished") {
+                try {
+                  const roleResponse = await fetch(`${API_URL}/api/Game/my-role?roomId=${data.id}&userId=${savedState.userId}`);
+                  if (roleResponse.ok) {
+                    const roleData = await roleResponse.json();
+                    setMyRole(roleData.role);
+
+                    if (data.status === "Finished" && roleData.allRoles) {
+                      setRevealedRoles(roleData.allRoles);
+                    }
+                  }
+                } catch (roleError) {
+                  console.error("Failed to load role:", roleError);
+                  if (savedState.myRole) {
+                    setMyRole(savedState.myRole);
+                  }
+                }
+              }
+
+              try {
+                const gameStateResponse = await fetch(`${API_URL}/api/GameCycle/state?roomId=${data.id}`);
+                if (gameStateResponse.ok) {
+                  const gameStateData = await gameStateResponse.json();
+                  if (gameStateData.isActive) {
+                    setGameCycleStarted(true);
+                    setGamePhase(gameStateData.phase);
+                    setTimeLeft(gameStateData.timeLeft);
+                    setDayNumber(gameStateData.dayNumber);
+                    setNightPhase(gameStateData.nightPhase);
+                    setCurrentSpeakerName(gameStateData.currentSpeakerName);
+                    setCurrentSpeakerId(gameStateData.currentSpeakerId);
+                    setCurrentVoterName(gameStateData.currentVoterName);
+                    setCurrentVoterId(gameStateData.currentVoterId);
+                    setIsPaused(gameStateData.isPaused);
+
+                    if (gameStateData.winningTeam) {
+                      setWinningTeam(gameStateData.winningTeam);
+                    }
+                  }
+                }
+              } catch (gameStateError) {
+                console.error("Failed to load game state:", gameStateError);
+              }
+
+              setIsVideoEnabled(!!data.isVideoEnabled);
+
+              // Clear invite code from URL if we successfully restored session
+              if (inviteCodeFromUrl) {
+                window.history.replaceState({}, '', window.location.pathname);
+              }
+              return;
+            }
+          } else {
+            console.log("[RoomPage] Room not found (404), clearing state");
+            clearRoomState();
+          }
+        } catch (err) {
+          console.error("Failed to check existing room:", err);
+          // Не очищаем состояние при ошибке сети
+          return;
+        }
+      }
+
       if (inviteCodeFromUrl) {
-        // Если есть код приглашения в URL, переключаемся на режим присоединения
         setMode('join');
         setInviteCode(inviteCodeFromUrl);
-        // Очищаем URL параметры
         window.history.replaceState({}, '', window.location.pathname);
         return;
       }
 
-      const savedState = loadRoomState();
-
       if (!savedState) {
-        // Если нет сохранённой комнаты, показываем форму создания/присоединения
-        // Загружаем последние использованные имена или генерируем случайные
         const lastNames = loadLastUsedNames();
-
         if (lastNames) {
           setRoomName(lastNames.roomName);
           setUserName(lastNames.userName);
         } else {
           const autoRoomName = `Комната ${Math.floor(Math.random() * 1000)}`;
           const autoUserName = `Игрок ${Math.floor(Math.random() * 1000)}`;
-
           setRoomName(autoRoomName);
           setUserName(autoUserName);
         }
-        return;
-      }
-
-      try {
-        const response = await fetch(`${API_URL}/api/Room/my?userId=${savedState.userId}`);
-        if (response.ok) {
-          const data: Room = await response.json();
-
-          // Проверяем, что комната существует и пользователь в ней
-          const userInRoom = data.users.find(u => u.id === savedState.userId);
-          if (!userInRoom) {
-            console.log("[RoomPage] User not in room, clearing state");
-            clearRoomState();
-            return;
-          }
-
-          if (userInRoom.status === "Leave") {
-            console.warn("[RoomPage] User status is Leave, but allowing RECONNECT attempt...");
-            // Do NOT return here. Allow execution to proceed to setRoom/setUserId
-          }
-
-          setRoom(data);
-          setUserId(savedState.userId);
-          setUserName(savedState.userName);
-          setUsers(data.users.filter(u => u.status !== "Leave"));
-          setGameStatus(data.status);
-
-          // Восстанавливаем роль из localStorage
-          if (savedState.myRole) {
-            setMyRole(savedState.myRole);
-          }
-
-          // Восстанавливаем информацию о победителе
-          if (savedState.winningTeam) {
-            setWinningTeam(savedState.winningTeam);
-          }
-
-          // Подключаемся к SignalR
-          if (!chatService.isConnected()) {
-            try {
-              await chatService.connect(API_URL);
-            } catch (signalRError) {
-              console.error("Failed to connect to SignalR:", signalRError);
-            }
-          }
-
-          try {
-            await chatService.joinRoom(data.id, savedState.userId);
-          } catch (joinError) {
-            console.error("Failed to join SignalR room:", joinError);
-          }
-
-          // Загружаем роль игрока
-          if (data.status === "InProgress" || data.status === "Finished") {
-            try {
-              const roleResponse = await fetch(`${API_URL}/api/Game/my-role?roomId=${data.id}&userId=${savedState.userId}`);
-              if (roleResponse.ok) {
-                const roleData = await roleResponse.json();
-                setMyRole(roleData.role);
-
-                // Если игра закончена, загружаем все роли
-                if (data.status === "Finished" && roleData.allRoles) {
-                  setRevealedRoles(roleData.allRoles);
-                }
-              }
-            } catch (roleError) {
-              console.error("Failed to load role:", roleError);
-              // Если не удалось загрузить с сервера, используем сохранённое
-              if (savedState.myRole) {
-                setMyRole(savedState.myRole);
-              }
-            }
-          }
-
-          // Загружаем текущее состояние игры
-          try {
-            const gameStateResponse = await fetch(`${API_URL}/api/GameCycle/state?roomId=${data.id}`);
-            if (gameStateResponse.ok) {
-              const gameStateData = await gameStateResponse.json();
-              if (gameStateData.isActive) {
-                setGameCycleStarted(true);
-                setGamePhase(gameStateData.phase);
-                setTimeLeft(gameStateData.timeLeft);
-                setDayNumber(gameStateData.dayNumber);
-                setNightPhase(gameStateData.nightPhase);
-                setCurrentSpeakerName(gameStateData.currentSpeakerName);
-                setCurrentSpeakerId(gameStateData.currentSpeakerId);
-                setCurrentVoterName(gameStateData.currentVoterName);
-                setCurrentVoterId(gameStateData.currentVoterId);
-                setIsPaused(gameStateData.isPaused);
-
-                // Восстанавливаем информацию о победителе, если игра закончена
-                if (gameStateData.winningTeam) {
-                  setWinningTeam(gameStateData.winningTeam);
-                }
-              }
-            }
-          } catch (gameStateError) {
-            console.error("Failed to load game state:", gameStateError);
-          }
-
-          // Синхронизируем статус видеозвонка. Если undefined, считаем false.
-          setIsVideoEnabled(!!data.isVideoEnabled);
-          console.log("[RoomPage] Loaded room state. IsVideoEnabled:", !!data.isVideoEnabled);
-
-        } else {
-          // 404 - комната не найдена, очищаем состояние
-          console.log("[RoomPage] Room not found, clearing state");
-          clearRoomState();
-        }
-      } catch (err) {
-        console.error("Failed to check existing room:", err);
-        clearRoomState();
       }
     };
 
@@ -1341,7 +1330,7 @@ export function RoomPage() {
           )}
 
           {/* Левая панель - скрыта на мобильных в режиме game/chat */}
-          <div className={`room-sidebar-left ${isMobile && mobileTab === 'participants' ? 'mobile-active' : ''}`} style={isMobile ? {} : {
+          <div className={`room-sidebar-left ${isMobile && mobileTab === 'participants' ? 'mobile-active' : ''}`} style={isMobile ? (mobileTab === 'participants' ? {} : { display: "none" }) : {
             width: "320px",
             display: "flex",
             flexDirection: "column",
@@ -1744,6 +1733,58 @@ export function RoomPage() {
               />
             )}
 
+            {/* Видеозвонок и чаты (moved to top) */}
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "1rem",
+              minHeight: isMobile ? "auto" : "400px",
+              flex: isMobile ? 1 : undefined,
+              flexShrink: isMobile ? 1 : 0,
+            }}>
+              {/* Видеозвонок */}
+              {isVideoEnabled && (
+                <div style={{
+                  width: "100%",
+                  flex: isMobile ? 1 : undefined,
+                  minHeight: isMobile ? "50vh" : "300px",
+                  aspectRatio: isMobile ? undefined : "16/9",
+                  maxHeight: isMobile ? undefined : "60vh",
+                }}>
+                  <VideoCall
+                    key={videoSessionId}
+                    roomId={room.id}
+                    userName={userName}
+                    userId={userId}
+                    isAdmin={isAdmin || false}
+                    currentSpeakerName={currentSpeakerName || undefined}
+                  />
+                </div>
+              )}
+
+              {/* Общий чат - скрыт на mobile (показывается во вкладке Чат) */}
+              {!isMobile && (
+                <div style={{ minHeight: "300px", height: "400px" }}>
+                  <Chat
+                    userId={userId}
+                    roomId={room.id}
+                    userName={userName}
+                  />
+                </div>
+              )}
+
+              {/* Чат мафии (только для мафии во время игры) - скрыт на mobile */}
+              {!isMobile && isMafia && gameStatus === "InProgress" && (
+                <div style={{ minHeight: "200px", height: "300px" }}>
+                  <MafiaChat
+                    roomId={room.id}
+                    userId={userId}
+                    userName={userName}
+                  />
+                </div>
+              )}
+            </div>
+
             {/* Результаты голосования */}
             {votingResults && (
               <VotingResultsDisplay
@@ -1842,52 +1883,7 @@ export function RoomPage() {
               );
             })()}
 
-            {/* Видеозвонок и чаты */}
-            {/* Видеозвонок и чаты */}
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "1rem",
-              minHeight: "400px",
-              flexShrink: 0,
-              marginTop: "1rem"
-            }}>
-              {/* Видеозвонок */}
-              {isVideoEnabled && (
-                <div style={{ width: "100%", aspectRatio: isMobile ? "3/4" : "16/9", maxHeight: isMobile ? "70vh" : "60vh", minHeight: "300px" }}>
-                  <VideoCall
-                    key={videoSessionId}
-                    roomId={room.id}
-                    userName={userName}
-                    userId={userId}
-                    isAdmin={isAdmin || false}
-                    currentSpeakerName={currentSpeakerName || undefined}
-                  />
-                </div>
-              )}
 
-              {/* Общий чат - скрыт на mobile (показывается во вкладке Чат) */}
-              {!isMobile && (
-                <div style={{ minHeight: "300px", height: "400px" }}>
-                  <Chat
-                    userId={userId}
-                    roomId={room.id}
-                    userName={userName}
-                  />
-                </div>
-              )}
-
-              {/* Чат мафии (только для мафии во время игры) - скрыт на mobile */}
-              {!isMobile && isMafia && gameStatus === "InProgress" && (
-                <div style={{ minHeight: "200px", height: "300px" }}>
-                  <MafiaChat
-                    roomId={room.id}
-                    userId={userId}
-                    userName={userName}
-                  />
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Правая панель - Чат (только десктоп) */}
