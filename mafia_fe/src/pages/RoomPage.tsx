@@ -211,20 +211,29 @@ export function RoomPage() {
     loadRoles();
   }, []);
 
-  // Сохраняем состояние игры при изменениях
+  // Сохраняем состояние игры при изменениях, но только если у нас есть базовые данные
   useEffect(() => {
     if (room && userId) {
       const savedState = loadRoomState();
-      if (savedState) {
-        saveRoomState({
-          ...savedState,
-          myRole: myRole,
-          gameStatus: gameStatus,
-          winningTeam: winningTeam
-        });
+      // Если мы в процессе загрузки (роль еще не получена, но в хранилище она была), 
+      // то не перезаписываем null-ом, чтобы не потерять ее при повторном обновлении
+      if (savedState && savedState.myRole && !myRole && (gameStatus === "InProgress" || gameStatus === "Finished")) {
+        console.log("[RoomPage] Skipping state save to prevent role overwrite during restoration");
+        return;
       }
+
+      saveRoomState({
+        roomId: room.id,
+        userId: userId,
+        userName: userName,
+        roomName: room.name,
+        inviteCode: room.inviteCode,
+        myRole: myRole,
+        gameStatus: gameStatus,
+        winningTeam: winningTeam
+      });
     }
-  }, [myRole, gameStatus, winningTeam, room, userId]);
+  }, [myRole, gameStatus, winningTeam, room, userId, userName]);
 
   // Проверяем localStorage и URL параметры при загрузке
   useEffect(() => {
@@ -332,14 +341,14 @@ export function RoomPage() {
               }
               return;
             }
-          } else {
+          } else if (response.status === 404) {
             console.log("[RoomPage] Room not found (404), clearing state");
             clearRoomState();
+          } else {
+            console.error(`[RoomPage] Server returned error ${response.status} during session check`);
           }
         } catch (err) {
-          console.error("Failed to check existing room:", err);
-          // Не очищаем состояние при ошибке сети
-          return;
+          console.error("[RoomPage] Network error while checking existing room:", err);
         }
       }
 
