@@ -530,6 +530,16 @@ public class GameTimerService : BackgroundService
 
         _logger.LogInformation($"[Room {room.Id}] Night started. Day number: {gameState.DayNumber}");
 
+        // Уведомляем клиентов о подготовке к ночи (чтобы они знали что камеры отключатся)
+        await _hubContext.Clients.Group(room.Id).SendAsync("NightWarning", new
+        {
+            message = "⚠️ Город засыпает... Камеры и микрофоны будут отключены через 3 секунды!",
+            seconds = 3
+        });
+
+        // Ждем 3 секунды "подготовки", чтобы игроки успели прочитать
+        await Task.Delay(3000);
+
         // Уведомляем клиентов о начале ночи
         await _hubContext.Clients.Group(room.Id).SendAsync("NightStarted", new
         {

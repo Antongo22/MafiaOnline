@@ -141,6 +141,7 @@ export function RoomPage() {
 
   // Alerts
   const [alert, setAlert] = useState<{ message: string; type: "info" | "success" | "warning" | "danger" } | null>(null);
+  const [showNightOverlay, setShowNightOverlay] = useState(false);
 
   // Roles data
   const [rolesData, setRolesData] = useState<RoleInfo[]>([]);
@@ -568,10 +569,18 @@ export function RoomPage() {
       }
     };
 
+    const handleNightWarning = (data: { message: string, seconds: number }) => {
+      showAlert(data.message, "warning");
+      setShowNightOverlay(true);
+      // Скроем через 5 секунд (или когда начнется ночь)
+      setTimeout(() => setShowNightOverlay(false), 5000);
+    };
+
     const handleNightStarted = (data: { dayNumber: number }) => {
       setGamePhase(GamePhase.Night);
       setNightPhase(undefined);
       setHasActedCurrentPhase(false); // Сбрасываем флаг действия для новой ночи
+      setShowNightOverlay(false); // Убираем оверлей если он еще был
       showAlert(`🌙 Ночь ${data.dayNumber} началась! Город засыпает...`, "info");
     };
 
@@ -756,6 +765,7 @@ export function RoomPage() {
     chatService.onAllVotesCompleted(handleAllVotesCompleted);
     chatService.onVotingResults(handleVotingResults);
     chatService.onNightStarted(handleNightStarted);
+    chatService.onNightWarning(handleNightWarning);
     chatService.onNightPhaseChanged(handleNightPhaseChanged);
     chatService.onNightResults(handleNightResults);
     chatService.onCardRevealed(handleCardRevealed);
@@ -794,6 +804,7 @@ export function RoomPage() {
       chatService.removeAllVotesCompletedHandler(handleAllVotesCompleted);
       chatService.removeVotingResultsHandler(handleVotingResults);
       chatService.removeNightStartedHandler(handleNightStarted);
+      chatService.removeNightWarningHandler(handleNightWarning);
       chatService.removeNightPhaseChangedHandler(handleNightPhaseChanged);
       chatService.removeNightResultsHandler(handleNightResults);
       chatService.removeCardRevealedHandler(handleCardRevealed);
@@ -1790,6 +1801,54 @@ export function RoomPage() {
                     isAdmin={isAdmin || false}
                     currentSpeakerName={currentSpeakerName || undefined}
                   />
+
+                  {/* Оверлей предупреждения о ночи */}
+                  {showNightOverlay && (
+                    <div style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: "rgba(0,0,0,0.8)",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "white",
+                      zIndex: 100,
+                      padding: "2rem",
+                      textAlign: "center",
+                      animation: "fadeIn 0.5s ease-out"
+                    }}>
+                      <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🌙</div>
+                      <h2 style={{ fontSize: "2rem", marginBottom: "1rem", color: "var(--warning)" }}>Город засыпает...</h2>
+                      <p style={{ fontSize: "1.25rem", maxWidth: "400px" }}>
+                        Ночью все камеры и микрофоны <strong>отключаются автоматически</strong>.
+                      </p>
+                      <div style={{ marginTop: "2rem", fontSize: "1rem", color: "var(--text-secondary)" }}>
+                        Приготовьтесь к своей очереди...
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Информационная подсказка */}
+              {gameCycleStarted && (
+                <div style={{
+                  padding: "0.75rem",
+                  background: "var(--bg-secondary)",
+                  borderRadius: "var(--radius)",
+                  border: "1px solid var(--border)",
+                  fontSize: "0.875rem",
+                  color: "var(--text-secondary)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem"
+                }}>
+                  <span>ℹ️</span>
+                  <span>В этой игре камеры и микрофоны отключаются автоматически во время ночной фазы для соблюдения правил.</span>
                 </div>
               )}
 
