@@ -685,7 +685,10 @@ export function RoomPage() {
       localStorage.setItem('skipAutoCreate', 'true'); // Флаг чтобы не создавать автоматически
       clearRoomState();
       setRoom(null);
+      setUserId(null); // Добавлено очищение userId
       setUsers([]);
+      setMyRole(null);
+      setGameCycleStarted(false);
       showAlert("⚠️ Комната была расформирована", "danger");
     };
 
@@ -704,6 +707,8 @@ export function RoomPage() {
         setUserId(null);
         setUserName("");
         setUsers([]);
+        setMyRole(null);
+        setGameCycleStarted(false);
         showAlert(`⚠️ Вы были исключены из комнаты админом ${data.kickedBy}`, "danger");
 
         // Загружаем последние использованные имена для формы
@@ -1099,25 +1104,16 @@ export function RoomPage() {
     if (!confirmLeave) return;
 
     try {
-      // Сначала отправляем SignalR событие о выходе (обновит список у остальных)
-      if (room && userId) {
-        await chatService.leaveRoom(room.id, userId);
-      }
+      const lastRoomId = room.id;
+      const lastUserId = userId;
 
-      // Затем вызываем API для обновления состояния на сервере
-      const response = await fetch(`${API_URL}/api/Room/leave?userId=${userId}`, {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to leave room");
-      }
-
-      // Очищаем состояние для всех
+      // 1. Немедленно очищаем локальное состояние
       clearRoomState();
       setRoom(null);
       setUserId(null);
       setUsers([]);
+      setGameCycleStarted(false);
+      setMyRole(null);
 
       // Загружаем последние использованные имена для формы
       const lastNames = loadLastUsedNames();
@@ -1128,8 +1124,21 @@ export function RoomPage() {
         setUserName("");
         setRoomName("");
       }
+
+      // 2. Фоновые попытки уведомить сервер
+      try {
+        await chatService.leaveRoom(lastRoomId, lastUserId);
+      } catch (e) {
+        console.warn("[RoomPage] SignalR leaveRoom failed", e);
+      }
+
+      fetch(`${API_URL}/api/Room/leave?userId=${lastUserId}`, {
+        method: "POST",
+      }).catch(err => console.warn("[RoomPage] API leave call failed:", err));
+
+      console.log("[RoomPage] Left room successfully");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to leave room");
+      console.error("[RoomPage] Error in handleLeaveRoom:", err);
     }
   };
 
