@@ -105,9 +105,10 @@ export function RoomPage() {
     eliminated: Array<{ userName: string; role: string }>;
     tie: boolean;
   } | null>(null);
+  const [nightTargets, setNightTargets] = useState<Array<{ userId: string; userName: string }>>([]);
 
-  // Состояние: действовал ли игрок в текущей фазе (чтобы скрыть модалку)
-  const [hasActedCurrentPhase, setHasActedCurrentPhase] = useState(false);
+  // Состояние: в какой фазе игрок действовал (чтобы скрыть UI после действия)
+  const [lastActedPhase, setLastActedPhase] = useState<string | null>(null);
 
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
   const [videoSessionId, setVideoSessionId] = useState(Date.now()); // Для пересоздания VideoCall
@@ -444,7 +445,7 @@ export function RoomPage() {
         setNightPhase(data.nightPhase || undefined);
         // Сбрасываем флаг действия при смене фазы
         if (data.nightPhase) {
-          setHasActedCurrentPhase(false);
+          setLastActedPhase(null);
         }
       }
     };
@@ -579,15 +580,18 @@ export function RoomPage() {
     const handleNightStarted = (data: { dayNumber: number }) => {
       setGamePhase(GamePhase.Night);
       setNightPhase(undefined);
-      setHasActedCurrentPhase(false); // Сбрасываем флаг действия для новой ночи
+      setLastActedPhase(null); // Сбрасываем флаг действия для новой ночи
       setShowNightOverlay(false); // Убираем оверлей если он еще был
       showAlert(`🌙 Ночь ${data.dayNumber} началась! Город засыпает...`, "info");
     };
 
-    const handleNightPhaseChanged = (data: { nightPhase: string }) => {
+    const handleNightPhaseChanged = (data: { nightPhase: string, aliveTargets?: Array<{ userId: string, userName: string }> }) => {
       setNightPhase(data.nightPhase);
+      if (data.aliveTargets) {
+        setNightTargets(data.aliveTargets);
+      }
       setGamePhase(GamePhase.Night);
-      setHasActedCurrentPhase(false); // Сбрасываем флаг действия для новой фазы
+      setLastActedPhase(null); // Сбрасываем флаг действия для новой фазы
 
       const nightPhaseNames: Record<string, string> = {
         Don: "Дон ищет шерифа",
@@ -1261,7 +1265,10 @@ export function RoomPage() {
 
     try {
       await gameService.nightAction(room.id, userId, { targetId, actionType });
-      setHasActedCurrentPhase(true); // Запоминаем, что действие выполнено
+      // Запоминаем фазу, в которой подействовали
+      if (nightPhase) {
+        setLastActedPhase(nightPhase);
+      }
       showAlert("✅ Действие принято", "success");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to perform night action");
@@ -1939,7 +1946,7 @@ export function RoomPage() {
               };
               const allowedPhases = roleNightPhaseMap[myRole] || [];
               const canAct = allowedPhases.includes(nightPhase);
-              if (!canAct || hasActedCurrentPhase) return null;
+              if (!canAct || (lastActedPhase === nightPhase)) return null;
 
               const actionDescriptions: Record<string, { title: string; description: string; emoji: string }> = {
                 Don: { title: "Поиск шерифа", description: "Выберите игрока для проверки", emoji: "🎩" },
@@ -1952,7 +1959,7 @@ export function RoomPage() {
               const actionInfo = actionDescriptions[nightPhase];
               if (!actionInfo) return null;
 
-              const alivePlayers = users.filter(u => u.status !== "Leave" && u.isAlive !== false && u.id !== userId);
+              const alivePlayers = nightTargets.filter(u => u.userId !== userId);
 
               return (
                 <div className="card" style={{ padding: "1.5rem", background: "var(--bg-secondary)", border: "2px solid var(--danger)" }}>
@@ -1975,19 +1982,19 @@ export function RoomPage() {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                     {alivePlayers.map(player => (
                       <button
-                        key={player.id}
+                        key={player.userId}
                         onClick={() => {
                           const actionType =
                             nightPhase === "Don" || nightPhase === "Sheriff" ? "check" :
                               nightPhase === "Doctor" ? "heal" :
                                 nightPhase === "Prostitute" ? "protect" :
                                   "kill";
-                          handleNightAction(player.id, actionType);
+                          handleNightAction(player.userId, actionType);
                         }}
                         className={nightPhase === "Mafia" || nightPhase === "Maniac" ? "btn-danger" : "btn-secondary"}
                         style={{ padding: "0.75rem 1rem" }}
                       >
-                        {player.name}
+                        {player.userName}
                       </button>
                     ))}
                   </div>
