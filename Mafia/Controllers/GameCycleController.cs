@@ -221,12 +221,16 @@ public class GameCycleController : ControllerBase
         if (gameState == null || gameState.Phase != GamePhase.Voting)
             return BadRequest("Not in voting phase");
 
-        if (gameState.CurrentVoterId != voterId)
-            return BadRequest("Not your turn to vote");
+        // В ОДНОВРЕМЕННОМ ГОЛОСОВАНИИ проверка на очередь не нужна
+        // if (gameState.CurrentVoterId != voterId)
+        //    return BadRequest("Not your turn to vote");
 
         var voter = room.Users.FirstOrDefault(u => u.Id == voterId);
         if (voter == null || !voter.IsAlive || voter.Status == UserStatus.Leave)
             return BadRequest("You cannot vote");
+
+        if (gameState.Votes.ContainsKey(voterId))
+            return BadRequest("You have already voted");
 
         // КРИТИЧЕСКАЯ ПРОВЕРКА: цель голосования должна быть жива
         var target = room.Users.FirstOrDefault(u => u.Id == targetId);
@@ -235,9 +239,6 @@ public class GameCycleController : ControllerBase
             
         if (!target.IsAlive)
             return BadRequest("Cannot vote for dead player");
-            
-        if (target.Status == UserStatus.Leave)
-            return BadRequest("Cannot vote for player who left");
 
         // Записываем голос
         gameState.Votes[voterId] = targetId;
@@ -245,42 +246,15 @@ public class GameCycleController : ControllerBase
         await _hubContext.Clients.Group(roomId).SendAsync("VoteReceived", new
         {
             voterId,
-            // Не показываем за кого проголосовал
+            // Не показываем за кого проголосовал в процессе
         });
 
-        // Переходим к следующему голосующему
-        gameState.CurrentVoterIndex++;
-        if (gameState.CurrentVoterIndex < gameState.VoterOrder.Count)
+        // Проверяем, все ли проголосовали
+        var alivePlayersCount = room.Users.Count(u => u.Status != UserStatus.Leave && u.IsAlive && room.PlayerRoles!.ContainsKey(u.Id));
+        
+        if (gameState.Votes.Count >= alivePlayersCount)
         {
-            gameState.CurrentVoterId = gameState.VoterOrder[gameState.CurrentVoterIndex];
-            gameState.PhaseStartTime = DateTime.UtcNow;
-
-            // Формируем список кандидатов (живые игроки)
-            var alivePlayers = room.Users
-                .Where(u => u.Status != UserStatus.Leave && u.IsAlive && room.PlayerRoles!.ContainsKey(u.Id))
-                .Select(u => u.Id)
-                .ToList();
-            
-            var candidates = alivePlayers.Select(id => new
-            {
-                userId = id,
-                userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name
-            }).ToList();
-
-            var settings = room.GameSettings ?? new GameSettings();
-            await _hubContext.Clients.Group(roomId).SendAsync("VoterChanged", new
-            {
-                voterId = gameState.CurrentVoterId,
-                voterName = room.Users.FirstOrDefault(u => u.Id == gameState.CurrentVoterId)?.Name,
-                candidates = candidates, // Список живых игроков для голосования
-                timeSeconds = settings.VotingTime
-            });
-        }
-        else
-        {
-            // Все проголосовали - завершаем фазу немедленно
-            _logger.LogInformation($"Room {roomId}: All players voted, forcing phase advance immediately");
-            gameState.CurrentVoterId = null; // Сбрасываем текущего голосующего
+            _logger.LogInformation($"Room {roomId}: All players ({alivePlayersCount}) voted, forcing phase advance immediately");
             
             // Отправляем событие что голосование завершено
             await _hubContext.Clients.Group(roomId).SendAsync("AllVotesCompleted", new

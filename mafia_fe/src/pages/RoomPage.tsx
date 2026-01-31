@@ -98,6 +98,7 @@ export function RoomPage() {
   const [isPaused, setIsPaused] = useState(false);
   const [winningTeam, setWinningTeam] = useState<string | undefined>();
   const [votingCandidates, setVotingCandidates] = useState<Array<{ userId: string; userName: string }>>([]);
+  const [hasVoted, setHasVoted] = useState(false); // Новое состояние для отслеживания своего голоса
   const [votingResults, setVotingResults] = useState<{
     votesWithNames: Array<{ voterName: string; targetName: string }>;
     voteCounts: Record<string, number>;
@@ -493,10 +494,24 @@ export function RoomPage() {
 
     const handleVotingStarted = (data: VoterInfo) => {
       setGamePhase(GamePhase.Voting);
-      setCurrentVoterName(data.voterName);
-      setCurrentVoterId(data.voterId);
-      setVotingCandidates(data.candidates || []); // Сохраняем список живых игроков
+      setCurrentVoterName(undefined);
+      setCurrentVoterId(undefined);
+      setHasVoted(false); // Сбрасываем при начале нового голосования
+      setVotingCandidates(data.candidates || []);
       showAlert("🗳️ Голосование началось!", "warning");
+
+      // Переключаем на вкладку "Игра" на мобильных и скроллим
+      if (isMobile) {
+        setMobileTab('game');
+      }
+
+      // Небольшая задержка чтобы React успел отрендерить секцию
+      setTimeout(() => {
+        const votingSection = document.getElementById('voting-section');
+        if (votingSection) {
+          votingSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
     };
 
     const handleVoterChanged = (data: VoterInfo) => {
@@ -508,8 +523,11 @@ export function RoomPage() {
       }
     };
 
-    const handleVoteReceived = () => {
-      // Голос получен
+    const handleVoteReceived = (data: { voterId: string }) => {
+      // Если проголосовали мы - помечаем это
+      if (data.voterId === userId) {
+        setHasVoted(true);
+      }
     };
 
     const handleAllVotesCompleted = (data: { message: string }) => {
@@ -1812,24 +1830,39 @@ export function RoomPage() {
             {renderGameContent()}
 
             {/* Встроенный UI для голосования */}
-            {gamePhase === GamePhase.Voting && currentVoterId === userId && (
-              <div className="card" style={{ padding: "1.5rem", background: "var(--bg-secondary)" }}>
-                <h3 style={{ margin: "0 0 1rem 0", color: "var(--warning)" }}>🗳️ Ваш ход голосовать</h3>
-                <p style={{ margin: "0 0 1rem 0", color: "var(--text-secondary)" }}>
-                  Выберите игрока, за которого хотите проголосовать:
-                </p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                  {votingCandidates.map(candidate => (
-                    <button
-                      key={candidate.userId}
-                      onClick={() => handleVote(candidate.userId)}
-                      className={candidate.userId === userId ? "btn-warning" : "btn-secondary"}
-                      style={{ padding: "0.75rem 1rem" }}
-                    >
-                      {candidate.userName} {candidate.userId === userId && "(вы)"}
-                    </button>
-                  ))}
-                </div>
+            {gamePhase === GamePhase.Voting && (
+              <div id="voting-section" className="card" style={{ padding: "1.5rem", background: "var(--bg-secondary)" }}>
+                <h3 style={{ margin: "0 0 1rem 0", color: "var(--warning)" }}>🗳️ Голосование за исключение</h3>
+
+                {hasVoted ? (
+                  <div style={{ textAlign: "center", padding: "1rem" }}>
+                    <p style={{ color: "var(--success)", fontSize: "1.1rem" }}>✅ Ваш голос принят!</p>
+                    <p style={{ color: "var(--text-secondary)" }}>Ожидаем завершения голосования всей комнаты...</p>
+                  </div>
+                ) : !users.find(u => u.id === userId)?.isAlive ? (
+                  <div style={{ textAlign: "center", padding: "1rem" }}>
+                    <p style={{ color: "var(--danger)" }}>💀 Вы мертвы и не можете голосовать.</p>
+                    <p style={{ color: "var(--text-secondary)" }}>Наблюдайте за голосованием живых игроков.</p>
+                  </div>
+                ) : (
+                  <>
+                    <p style={{ margin: "0 0 1rem 0", color: "var(--text-secondary)" }}>
+                      Выберите игрока, за которого хотите проголосовать:
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                      {votingCandidates.map(candidate => (
+                        <button
+                          key={candidate.userId}
+                          onClick={() => handleVote(candidate.userId)}
+                          className={candidate.userId === userId ? "btn-warning" : "btn-secondary"}
+                          style={{ padding: "0.75rem 1rem" }}
+                        >
+                          {candidate.userName} {candidate.userId === userId && "(вы)"}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

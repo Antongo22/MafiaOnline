@@ -229,14 +229,14 @@ public class GameTimerService : BackgroundService
         gameState.PhaseStartTime = DateTime.UtcNow;
         gameState.PhaseTimeSeconds = settings.VotingTime;
 
-        // Создаем порядок голосования (только живые игроки)
+        // Определяем список голосующих (только живые игроки)
         var alivePlayers = room.Users
             .Where(u => u.Status != UserStatus.Leave && u.IsAlive && room.PlayerRoles!.ContainsKey(u.Id))
             .Select(u => u.Id)
             .ToList();
         
         gameState.VoterOrder = alivePlayers;
-        gameState.CurrentVoterId = alivePlayers.FirstOrDefault();
+        gameState.CurrentVoterId = null; // В одновременном голосовании нет текущего голосующего
 
         // Формируем список кандидатов (живые игроки)
         var candidates = alivePlayers.Select(id => new
@@ -245,64 +245,26 @@ public class GameTimerService : BackgroundService
             userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name
         }).ToList();
 
+        // Уведомляем всех, что голосование началось для всех одновременно
         await _hubContext.Clients.Group(room.Id).SendAsync("VotingStarted", new
         {
-            voterId = gameState.CurrentVoterId,
-            voterName = room.Users.FirstOrDefault(u => u.Id == gameState.CurrentVoterId)?.Name,
-            candidates = candidates, // Список живых игроков для голосования
+            voterId = (string?)null,
+            candidates = candidates,
             timeSeconds = settings.VotingTime
         });
-
-        // УПРОЩЕНИЕ: Автоуправление медиа отключено
-        // await _videoCallService.MuteAllAudioAsync(room.Id);
-        // await _videoCallService.UnmuteAllVideoAsync(room.Id);
     }
 
     private async Task AdvanceVoting(RoomDTO room)
     {
         var gameState = room.CurrentGameState!;
-
-        // Если текущий игрок не проголосовал, голосует за себя
-        if (gameState.CurrentVoterId != null && !gameState.Votes.ContainsKey(gameState.CurrentVoterId))
-        {
-            gameState.Votes[gameState.CurrentVoterId] = gameState.CurrentVoterId;
-            _logger.LogInformation($"Player {gameState.CurrentVoterId} voted for themselves (timeout)");
-        }
-
-        gameState.CurrentVoterIndex++;
-
-        if (gameState.CurrentVoterIndex >= gameState.VoterOrder.Count)
-        {
-            // Все проголосовали, обрабатываем результаты
-            await ProcessVotingResults(room);
-        }
-        else
-        {
-            // Следующий голосующий
-            var settings = GetGameSettings(room);
-            gameState.CurrentVoterId = gameState.VoterOrder[gameState.CurrentVoterIndex];
-            gameState.PhaseStartTime = DateTime.UtcNow;
-            gameState.PhaseTimeSeconds = settings.VotingTime;
-
-            // Формируем список кандидатов (живые игроки)
-            var alivePlayers = room.Users
-                .Where(u => u.Status != UserStatus.Leave && u.IsAlive && room.PlayerRoles!.ContainsKey(u.Id))
-                .Select(u => u.Id)
-                .ToList();
-            
-            var candidates = alivePlayers.Select(id => new
-            {
-                userId = id,
-                userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name
-            }).ToList();
-            await _hubContext.Clients.Group(room.Id).SendAsync("VoterChanged", new
-            {
-                voterId = gameState.CurrentVoterId,
-                voterName = room.Users.FirstOrDefault(u => u.Id == gameState.CurrentVoterId)?.Name,
-                candidates = candidates, // Список живых игроков для голосования
-                timeSeconds = settings.VotingTime
-            });
-        }
+        
+        _logger.LogInformation($"[Room {room.Id}] AdvanceVoting (Simultaneous) called - time expired or all voted. Processing results.");
+        
+        // В одновременном режиме, если время вышло, те кто не проголосовали - считаются не проголосовавшими
+        // (Или можно добавить логику голосования "за себя" для тех кто не успел)
+        
+        // Все проголосовали или время вышло - обрабатываем результаты
+        await ProcessVotingResults(room);
     }
 
     private async Task ProcessVotingResults(RoomDTO room)
