@@ -590,6 +590,32 @@ public class GameTimerService : BackgroundService
         gameState.PhaseStartTime = DateTime.UtcNow;
         gameState.PhaseTimeSeconds = settings.NightActionTime;
 
+        // Очищаем NightActions для тех, кто должен ходить в этой фазе, 
+        // чтобы они могли совершить новое действие, даже если ходили в предыдущих фазах (например, Дон)
+        var potentialActors = room.Users
+            .Where(u => u.IsAlive && u.Status != UserStatus.Leave && room.PlayerRoles!.ContainsKey(u.Id))
+            .Where(u => 
+            {
+                 var r = room.PlayerRoles![u.Id];
+                 return phase switch
+                 {
+                    NightPhase.Don => r == Role.Don,
+                    NightPhase.Mafia => RoleInfo.GetTeam(r) == Team.Evil,
+                    NightPhase.Maniac => r == Role.Maniac,
+                    NightPhase.Sheriff => r == Role.Sheriff,
+                    NightPhase.Doctor => r == Role.Doctor,
+                    NightPhase.Prostitute => r == Role.Prostitute,
+                    _ => false
+                 };
+            })
+            .Select(u => u.Id)
+            .ToList();
+
+        foreach (var id in potentialActors)
+        {
+            gameState.NightActions.Remove(id);
+        }
+
         // Формируем список живых игроков для выбора цели
         var alivePlayers = room.Users
             .Where(u => u.Status != UserStatus.Leave && u.IsAlive && room.PlayerRoles!.ContainsKey(u.Id))

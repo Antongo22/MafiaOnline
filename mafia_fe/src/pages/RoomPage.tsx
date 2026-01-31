@@ -1917,7 +1917,14 @@ export function RoomPage() {
                     {alivePlayers.map(player => (
                       <button
                         key={player.id}
-                        onClick={() => handleNightAction(player.id, nightPhase === "Doctor" ? "heal" : nightPhase === "Prostitute" ? "protect" : "kill")}
+                        onClick={() => {
+                          const actionType =
+                            nightPhase === "Don" || nightPhase === "Sheriff" ? "check" :
+                              nightPhase === "Doctor" ? "heal" :
+                                nightPhase === "Prostitute" ? "protect" :
+                                  "kill";
+                          handleNightAction(player.id, actionType);
+                        }}
                         className={nightPhase === "Mafia" || nightPhase === "Maniac" ? "btn-danger" : "btn-secondary"}
                         style={{ padding: "0.75rem 1rem" }}
                       >
