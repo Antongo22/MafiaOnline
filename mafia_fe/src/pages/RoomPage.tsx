@@ -1756,9 +1756,13 @@ export function RoomPage() {
                 <div style={{
                   width: "100%",
                   flex: isMobile ? 1 : undefined,
-                  minHeight: isMobile ? "50vh" : "300px",
-                  aspectRatio: isMobile ? undefined : "16/9",
+                  minHeight: isMobile ? "50vh" : "400px",
+                  aspectRatio: isMobile ? undefined : "16/9", // Возвращаем аспект контейнера, но ограничиваем высоту
                   maxHeight: isMobile ? undefined : "60vh",
+                  overflow: "hidden",
+                  position: "relative",
+                  background: "#000",
+                  borderRadius: "var(--radius-lg)"
                 }}>
                   <VideoCall
                     key={videoSessionId}
