@@ -1773,7 +1773,7 @@ export function RoomPage() {
 
               {/* Общий чат - скрыт на mobile (показывается во вкладке Чат) */}
               {!isMobile && (
-                <div style={{ minHeight: "300px", height: "400px" }}>
+                <div style={{ minHeight: "600px", height: "1000px" }}>
                   <Chat
                     userId={userId}
                     roomId={room.id}
@@ -1784,7 +1784,7 @@ export function RoomPage() {
 
               {/* Чат мафии (только для мафии во время игры) - скрыт на mobile */}
               {!isMobile && isMafia && gameStatus === "InProgress" && (
-                <div style={{ minHeight: "200px", height: "300px" }}>
+                <div style={{ minHeight: "400px", height: "600px" }}>
                   <MafiaChat
                     roomId={room.id}
                     userId={userId}
