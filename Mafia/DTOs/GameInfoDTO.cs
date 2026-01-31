@@ -1,6 +1,5 @@
 using Mafia.Enums;
 
-
 namespace Mafia.DTOs;
 
 /// <summary>
@@ -11,12 +10,12 @@ public class GameInfoDTO
     /// <summary>
     /// Уникальный идентификатор игры
     /// </summary>
-    public string Id { get; set; }
+    public string Id { get; set; } = string.Empty;
     
     /// <summary>
     /// Название игры
     /// </summary>
-    public string  Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     
     /// <summary>
     /// Количество игроков
@@ -31,12 +30,10 @@ public class GameInfoDTO
     /// <summary>
     /// ID администратора игры
     /// </summary>
-    public int AdminId { get; set; }
+    public string AdminId { get; set; } = string.Empty;
     
     /// <summary>
     /// Текущий статус игры
     /// </summary>
     public GameStatus Status { get; set; }
 }
-
-

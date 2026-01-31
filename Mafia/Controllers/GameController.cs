@@ -394,7 +394,7 @@ public class GameController : ControllerBase
             });
         }
         
-        return Ok(new { role = room.PlayerRoles[userId].ToString() });
+        return Ok(new { role = room.PlayerRoles![userId].ToString() });
     }
 
     /// <summary>

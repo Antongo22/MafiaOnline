@@ -66,7 +66,7 @@ public class VotingAdvancedTests
     }
 
     [Fact]
-    public async Task Vote_NotYourTurn_ShouldReturnBadRequest()
+    public async Task Vote_AlreadyVoted_ShouldReturnBadRequest()
     {
         var controller = CreateController(out _, out _);
         var voterId = "voter1";
@@ -79,21 +79,27 @@ public class VotingAdvancedTests
                 new() { Id = voterId, IsAlive = true, Status = UserStatus.Player },
                 new() { Id = otherId, IsAlive = true, Status = UserStatus.Player }
             },
+            PlayerRoles = new Dictionary<string, Role>
+            {
+                { voterId, Role.Citizen },
+                { otherId, Role.Mafia }
+            },
             CurrentGameState = new GameState 
             { 
                 Phase = GamePhase.Voting, 
-                CurrentVoterId = otherId,
-                CurrentVoterIndex = 0,
                 VoterOrder = new List<string> { otherId, voterId },
-                Votes = new Dictionary<string, string>()
+                Votes = new Dictionary<string, string> { { voterId, otherId } } // Уже проголосовал
             }
         };
         Game.Rooms.Clear();
         Game.Rooms.Add(room);
 
+        // Пытаемся проголосовать второй раз
         var result = await controller.Vote(room.Id, voterId, otherId);
 
         Assert.IsType<BadRequestObjectResult>(result);
+        var badRequest = (BadRequestObjectResult)result;
+        Assert.Equal("You have already voted", badRequest.Value);
         Game.Rooms.Clear();
     }
 

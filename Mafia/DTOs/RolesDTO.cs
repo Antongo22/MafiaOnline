@@ -1,29 +1,29 @@
 namespace Mafia.DTOs;
 
 /// <summary>
-/// Модель информации о роли в игре
+/// Информация о роли для отображения на клиенте
 /// </summary>
 public class RolesDTO
 {
     /// <summary>
     /// Значение роли (enum в виде строки)
     /// </summary>
-    public string RoleValue { get; set; }
+    public string RoleValue { get; set; } = string.Empty;
     
     /// <summary>
-    /// Название роли
+    /// Название роли для отображения
     /// </summary>
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     
     /// <summary>
-    /// Описание роли и её способностей
+    /// Описание роли
     /// </summary>
-    public string Description { get; set; }
+    public string Description { get; set; } = string.Empty;
     
     /// <summary>
-    /// Команда, к которой принадлежит роль
+    /// Команда роли
     /// </summary>
-    public string Team { get; set; }
+    public string Team { get; set; } = string.Empty;
     
     /// <summary>
     /// Является ли роль уникальной (может быть только одна в игре)

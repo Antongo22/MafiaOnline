@@ -843,7 +843,6 @@ public class GameTimerService : BackgroundService
         }
 
         // 3. Проверяем защиту путаны (если путану убили, её цель тоже умирает)
-        var prostituteKilled = false;
         if (prostituteTarget != null && attackTargets.Contains(prostituteTarget))
         {
             // Если цель путаны была атакована, путана её защищает
@@ -851,10 +850,9 @@ public class GameTimerService : BackgroundService
         }
 
         // Проверяем, убили ли саму путану
-        var prostituteUserId = room.PlayerRoles.FirstOrDefault(p => p.Value == Role.Prostitute).Key;
+        var prostituteUserId = room.PlayerRoles?.FirstOrDefault(p => p.Value == Role.Prostitute).Key;
         if (!string.IsNullOrEmpty(prostituteUserId) && attackTargets.Contains(prostituteUserId))
         {
-            prostituteKilled = true;
             // Если путану убили, её цель тоже умирает (и лишается защиты путаны)
             if (prostituteTarget != null)
             {

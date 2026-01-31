@@ -240,6 +240,9 @@ public class GameCycleController : ControllerBase
         if (!target.IsAlive)
             return BadRequest("Cannot vote for dead player");
 
+        if (target.Status == UserStatus.Leave)
+            return BadRequest("Cannot vote for player who left");
+
         // Записываем голос
         gameState.Votes[voterId] = targetId;
 
@@ -250,7 +253,10 @@ public class GameCycleController : ControllerBase
         });
 
         // Проверяем, все ли проголосовали
-        var alivePlayersCount = room.Users.Count(u => u.Status != UserStatus.Leave && u.IsAlive && room.PlayerRoles!.ContainsKey(u.Id));
+        // Добавляем проверку на null для PlayerRoles
+        var alivePlayersCount = room.Users.Count(u => u.Status != UserStatus.Leave 
+                                                      && u.IsAlive 
+                                                      && (room.PlayerRoles == null || room.PlayerRoles.ContainsKey(u.Id)));
         
         if (gameState.Votes.Count >= alivePlayersCount)
         {

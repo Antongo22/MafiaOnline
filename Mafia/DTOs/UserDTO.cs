@@ -1,21 +1,21 @@
-using Mafia.Enums;
-
 namespace Mafia.DTOs;
 
+using Mafia.Enums;
+
 /// <summary>
-/// Модель игрока в комнате
+/// Информация о пользователе в комнате
 /// </summary>
 public class UserDTO
 {
     /// <summary>
     /// Уникальный идентификатор игрока
     /// </summary>
-    public string Id { get; set; }
+    public string Id { get; set; } = string.Empty;
     
     /// <summary>
     /// Имя игрока
     /// </summary>
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     
     /// <summary>
     /// Статус игрока (админ, игрок, покинул)
@@ -23,7 +23,7 @@ public class UserDTO
     public UserStatus Status { get; set; }
     
     /// <summary>
-    /// Жив ли игрок в текущей игре
+    /// Жив ли игрок
     /// </summary>
     public bool IsAlive { get; set; } = true;
 }

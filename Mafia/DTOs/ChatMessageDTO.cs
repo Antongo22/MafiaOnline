@@ -1,48 +1,52 @@
 namespace Mafia.DTOs;
 
 /// <summary>
-/// Модель сообщения в чате
+/// DTO для сообщений чата
 /// </summary>
 public class ChatMessageDTO
 {
     /// <summary>
     /// Уникальный идентификатор сообщения
     /// </summary>
-    public string Id { get; set; }
+    public string Id { get; set; } = string.Empty;
     
     /// <summary>
-    /// ID комнаты, к которой относится сообщение
+    /// ID комнаты
     /// </summary>
-    public string RoomId { get; set; }
+    public string RoomId { get; set; } = string.Empty;
     
     /// <summary>
-    /// ID пользователя-отправителя
+    /// ID пользователя
     /// </summary>
-    public string UserId { get; set; }
+    public string UserId { get; set; } = string.Empty;
     
     /// <summary>
-    /// Имя пользователя-отправителя
+    /// Имя пользователя
     /// </summary>
-    public string UserName { get; set; }
+    public string UserName { get; set; } = string.Empty;
     
     /// <summary>
-    /// Текст сообщения
-    /// </summary>
-    public string Message { get; set; }
-    
-    /// <summary>
-    /// Время отправки сообщения
-    /// </summary>
-    public DateTime Timestamp { get; set; }
-    
-    /// <summary>
-    /// Роль отправителя (используется в чате мафии)
+    /// Роль пользователя
     /// </summary>
     public string? UserRole { get; set; }
     
     /// <summary>
-    /// Принадлежит ли сообщение чату мафии
+    /// Содержимое сообщения
+    /// </summary>
+    public string Message { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Время отправки сообщения
+    /// </summary>
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    
+    /// <summary>
+    /// Является ли сообщение системным
+    /// </summary>
+    public bool IsSystem { get; set; }
+    
+    /// <summary>
+    /// Является ли сообщение из чата мафии
     /// </summary>
     public bool IsMafiaChat { get; set; }
 }
-

@@ -378,6 +378,7 @@ public class ChatHub : Hub
     {
         // В реальном приложении здесь нужно хранить маппинг userId -> connectionId
         // Пока возвращаем пустой список, т.к. мы используем Groups
+        await Task.Yield();
         return new List<string>();
     }
 

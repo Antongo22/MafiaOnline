@@ -1,6 +1,5 @@
 using Mafia.Enums;
 
-
 namespace Mafia.DTOs;
 
 /// <summary>
@@ -11,12 +10,10 @@ public class GameCreateDTO
     /// <summary>
     /// Список имён игроков
     /// </summary>
-    public List<string> PlayersNames { get; set; }
+    public List<string> PlayersNames { get; set; } = new();
     
     /// <summary>
     /// Словарь ролей и их количества
     /// </summary>
-    public Dictionary<Role, int> Roles { get; set; }
-
-    
+    public Dictionary<Role, int> Roles { get; set; } = new();
 }
