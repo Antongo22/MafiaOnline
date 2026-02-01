@@ -282,6 +282,19 @@ public class GameTimerService : BackgroundService
             var maxVotes = voteCounts.Max(v => v.Count);
             var eliminated = voteCounts.Where(v => v.Count == maxVotes).Select(v => v.PlayerId).ToList();
 
+            // Преобразуем голоса в формат с именами для отображения
+            var votesWithNames = gameState.Votes.Select(v => new
+            {
+                voterName = room.Users.FirstOrDefault(u => u.Id == v.Key)?.Name,
+                targetName = room.Users.FirstOrDefault(u => u.Id == v.Value)?.Name
+            }).ToList();
+
+            // Подсчёт голосов по именам игроков
+            var voteCountsByName = voteCounts.ToDictionary(
+                v => room.Users.FirstOrDefault(u => u.Id == v.PlayerId)?.Name ?? "Unknown",
+                v => v.Count
+            );
+
             // Проверяем: если несколько игроков получили одинаковое максимальное количество голосов - ничья
             var isTie = eliminated.Count > 1;
 
@@ -336,19 +349,6 @@ public class GameTimerService : BackgroundService
                     userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name
                 }).ToList();
                 
-                // Преобразуем голоса в формат с именами для отображения
-                var votesWithNames = gameState.Votes.Select(v => new
-                {
-                    voterName = room.Users.FirstOrDefault(u => u.Id == v.Key)?.Name,
-                    targetName = room.Users.FirstOrDefault(u => u.Id == v.Value)?.Name
-                }).ToList();
-
-                // Подсчёт голосов по именам игроков
-                var voteCountsByName = voteCounts.ToDictionary(
-                    v => room.Users.FirstOrDefault(u => u.Id == v.PlayerId)?.Name ?? "Unknown",
-                    v => v.Count
-                );
-
                 await _hubContext.Clients.Group(room.Id).SendAsync("TieBreakerStarted", new
                 {
                     candidates = candidateNames,
@@ -359,19 +359,6 @@ public class GameTimerService : BackgroundService
                 
                 return; // Выходим, обработка TieBreaker будет в AdvancePhase
             }
-
-            // Преобразуем голоса в формат с именами для отображения
-            var votesWithNames = gameState.Votes.Select(v => new
-            {
-                voterName = room.Users.FirstOrDefault(u => u.Id == v.Key)?.Name,
-                targetName = room.Users.FirstOrDefault(u => u.Id == v.Value)?.Name
-            }).ToList();
-
-            // Подсчёт голосов по именам игроков
-            var voteCountsByName = voteCounts.ToDictionary(
-                v => room.Users.FirstOrDefault(u => u.Id == v.PlayerId)?.Name ?? "Unknown",
-                v => v.Count
-            );
 
             await _hubContext.Clients.Group(room.Id).SendAsync("VotingResults", new
             {
@@ -893,7 +880,7 @@ public class GameTimerService : BackgroundService
         // 4. Применяем лечение маньяка (если он лечил себя)
         if (maniacSelfHealed)
         {
-            var maniacUserId = room.PlayerRoles.FirstOrDefault(p => p.Value == Role.Maniac).Key;
+            var maniacUserId = room.PlayerRoles?.FirstOrDefault(p => p.Value == Role.Maniac).Key;
             if (!string.IsNullOrEmpty(maniacUserId) && attackTargets.Contains(maniacUserId))
             {
                 healed.Add(maniacUserId);
@@ -901,7 +888,7 @@ public class GameTimerService : BackgroundService
         }
 
         // 5. Проверяем бессмертного (нельзя убить ночью)
-        var immortalUserId = room.PlayerRoles.FirstOrDefault(p => p.Value == Role.Immortal).Key;
+        var immortalUserId = room.PlayerRoles?.FirstOrDefault(p => p.Value == Role.Immortal).Key;
         if (!string.IsNullOrEmpty(immortalUserId) && attackTargets.Contains(immortalUserId))
         {
             protectedPlayers.Add(immortalUserId);
@@ -1010,7 +997,7 @@ public class GameTimerService : BackgroundService
         gameState.CurrentSpeakerId = alivePlayers.FirstOrDefault();
         
         // Initialize SheriffId if not already set (e.g., first day)
-        if (string.IsNullOrEmpty(gameState.SheriffId) && room.PlayerRoles.Any(p => p.Value == Role.Sheriff))
+        if (string.IsNullOrEmpty(gameState.SheriffId) && room.PlayerRoles != null && room.PlayerRoles.Any(p => p.Value == Role.Sheriff))
         {
             gameState.SheriffId = room.PlayerRoles.FirstOrDefault(p => p.Value == Role.Sheriff).Key;
             _logger.LogInformation($"[Room {room.Id}] SheriffId initialized: {gameState.SheriffId}");
