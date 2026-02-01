@@ -65,27 +65,27 @@ export function RoleDisplay({ myRole, revealedRoles, gameStatus, users }: RoleDi
   if (gameStatus === "InProgress" && myRole) {
     const roleInfo = getRoleInfo(myRole);
     if (!roleInfo) return null;
-    
+
     const colors = getTeamColor(roleInfo.team);
-    
+
     return (
-      <div className="card" style={{ 
+      <div className="card" style={{
         background: colors.bg,
         border: `2px solid ${colors.border}`,
         animation: "fadeIn 0.5s ease-out"
       }}>
-        <div style={{ 
-          display: "flex", 
-          flexDirection: "column", 
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
           gap: "1rem",
           alignItems: "center",
           textAlign: "center"
         }}>
           <div style={{ fontSize: "4rem" }}>{getRoleEmoji(myRole)}</div>
-          
+
           <div>
-            <h2 style={{ 
-              margin: 0, 
+            <h2 style={{
+              margin: 0,
               color: colors.text,
               fontSize: "1.5rem",
               fontWeight: "700"
@@ -105,9 +105,9 @@ export function RoleDisplay({ myRole, revealedRoles, gameStatus, users }: RoleDi
               {getTeamName(roleInfo.team)}
             </div>
           </div>
-          
-          <p style={{ 
-            margin: 0, 
+
+          <p style={{
+            margin: 0,
             color: "var(--text-primary)",
             fontSize: "0.95rem",
             lineHeight: "1.6",
@@ -115,7 +115,7 @@ export function RoleDisplay({ myRole, revealedRoles, gameStatus, users }: RoleDi
           }}>
             {roleInfo.description}
           </p>
-          
+
           <div style={{
             padding: "0.75rem 1rem",
             background: "var(--bg-primary)",
@@ -130,28 +130,28 @@ export function RoleDisplay({ myRole, revealedRoles, gameStatus, users }: RoleDi
       </div>
     );
   }
-  
+
   // Показываем все роли после окончания игры
   if (gameStatus === "Finished" && Object.keys(revealedRoles).length > 0) {
     return (
       <div className="card">
         <h3 style={{ margin: "0 0 1rem 0" }}>🎭 Роли игроков</h3>
-        <div style={{ 
-          display: "grid", 
+        <div style={{
+          display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
           gap: "0.75rem"
         }}>
           {Object.entries(revealedRoles).map(([userId, role]) => {
             const roleInfo = getRoleInfo(role);
             if (!roleInfo) return null;
-            
+
             // Находим имя игрока по его ID
             const player = users.find(u => u.id === userId);
             // Если пользователь не найден, показываем сокращённый ID
             const playerName = player?.name || `Игрок ${userId.substring(0, 8)}...`;
-            
+
             const colors = getTeamColor(roleInfo.team);
-            
+
             return (
               <div
                 key={userId}
@@ -168,7 +168,7 @@ export function RoleDisplay({ myRole, revealedRoles, gameStatus, users }: RoleDi
               >
                 <div style={{ fontSize: "2rem" }}>{getRoleEmoji(role)}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ 
+                  <div style={{
                     fontWeight: "600",
                     fontSize: "0.875rem",
                     whiteSpace: "nowrap",
@@ -177,7 +177,7 @@ export function RoleDisplay({ myRole, revealedRoles, gameStatus, users }: RoleDi
                   }}>
                     {playerName}
                   </div>
-                  <div style={{ 
+                  <div style={{
                     fontSize: "0.75rem",
                     color: colors.text,
                     fontWeight: "500"
@@ -192,6 +192,6 @@ export function RoleDisplay({ myRole, revealedRoles, gameStatus, users }: RoleDi
       </div>
     );
   }
-  
+
   return null;
 }
