@@ -1917,7 +1917,7 @@ export function RoomPage() {
 
               {/* Общий чат - скрыт на mobile (показывается во вкладке Чат) */}
               {!isMobile && (
-                <div style={{ minHeight: "600px", height: "1000px" }}>
+                <div style={{ minHeight: "300px", height: "500px" }}>
                   <Chat
                     userId={userId}
                     roomId={room.id}

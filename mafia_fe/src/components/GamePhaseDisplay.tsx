@@ -58,7 +58,7 @@ export function GamePhaseDisplay({
     if (isMyTurn) {
       return "var(--success)";
     }
-    
+
     switch (phase) {
       case GamePhase.IndividualSpeech:
       case GamePhase.FreeDiscussion:
@@ -100,6 +100,25 @@ export function GamePhaseDisplay({
       }}>
         День {dayNumber}
       </div>
+
+      {isMyTurn && phase === GamePhase.IndividualSpeech && (
+        <div style={{
+          background: "rgba(16, 185, 129, 0.2)",
+          border: "2px solid var(--success)",
+          color: "var(--success)",
+          padding: "1rem",
+          borderRadius: "var(--radius)",
+          width: "100%",
+          textAlign: "center",
+          animation: "pulse 1.5s infinite",
+          fontWeight: "800",
+          fontSize: "1.5rem",
+          textTransform: "uppercase",
+          boxShadow: "0 0 20px rgba(16, 185, 129, 0.4)"
+        }}>
+          🎙 ВАША ОЧЕРЕДЬ ГОВОРИТЬ!
+        </div>
+      )}
 
       {/* Фаза */}
       <div style={{
