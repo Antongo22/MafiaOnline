@@ -5,16 +5,18 @@ interface VotingResultsModalProps {
   eliminated: Array<{ userName: string; role: string }>;
   tie: boolean;
   onClose: () => void;
+  votesWithNames?: Array<{ voterName: string; targetName: string }>;
+  voteCounts?: Record<string, number>;
 }
 
-export function VotingResultsModal({ isOpen, eliminated, tie, onClose }: VotingResultsModalProps) {
-  // Автоматическое закрытие через 4 секунды
+export function VotingResultsModal({ isOpen, eliminated, tie, onClose, votesWithNames, voteCounts }: VotingResultsModalProps) {
+  // Автоматическое закрытие через 8 секунд (увеличили, чтобы успели прочитать)
   useEffect(() => {
     if (isOpen) {
       const timer = setTimeout(() => {
         onClose();
-      }, 4000);
-      
+      }, 8000);
+
       return () => clearTimeout(timer);
     }
   }, [isOpen, onClose]);
@@ -44,22 +46,24 @@ export function VotingResultsModal({ isOpen, eliminated, tie, onClose }: VotingR
         style={{
           background: "linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%)",
           borderRadius: "var(--radius-xl)",
-          padding: "3rem",
+          padding: "2.5rem",
           maxWidth: "600px",
-          width: "90%",
+          width: "95%",
           boxShadow: "0 20px 60px rgba(0, 0, 0, 0.5)",
           border: tie ? "3px solid var(--warning)" : hasEliminated ? "3px solid var(--danger)" : "3px solid var(--info)",
           animation: "slideIn 0.4s ease-out",
-          position: "relative"
+          position: "relative",
+          maxHeight: "90vh",
+          overflowY: "auto"
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Иконка */}
         <div
           style={{
-            fontSize: "5rem",
+            fontSize: "3rem",
             textAlign: "center",
-            marginBottom: "1.5rem",
+            marginBottom: "1rem",
             animation: "scaleIn 0.5s ease-out"
           }}
         >
@@ -69,16 +73,60 @@ export function VotingResultsModal({ isOpen, eliminated, tie, onClose }: VotingR
         {/* Заголовок */}
         <h2
           style={{
-            fontSize: "2rem",
+            fontSize: "1.75rem",
             fontWeight: "700",
             textAlign: "center",
-            marginBottom: "2rem",
+            marginBottom: "1.5rem",
             color: tie ? "var(--warning)" : hasEliminated ? "var(--danger)" : "var(--info)",
             textShadow: "0 2px 10px rgba(0, 0, 0, 0.3)"
           }}
         >
           {tie ? "Ничья!" : hasEliminated ? "Результаты голосования" : "Голосование завершено"}
         </h2>
+
+        {/* Детальный лог голосования */}
+        {votesWithNames && votesWithNames.length > 0 && (
+          <div style={{
+            background: "rgba(0, 0, 0, 0.2)",
+            padding: "1rem",
+            borderRadius: "var(--radius)",
+            marginBottom: "1.5rem",
+            fontSize: "0.9rem",
+            maxHeight: "200px",
+            overflowY: "auto"
+          }}>
+            <div style={{ fontWeight: "bold", marginBottom: "0.5rem", color: "var(--text-secondary)", fontSize: "0.8rem", textTransform: "uppercase" }}>
+              Кто за кого:
+            </div>
+            {votesWithNames.map((v, i) => (
+              <div key={i} style={{ marginBottom: "0.2rem" }}>
+                <strong>{v.voterName}</strong> → <span style={{ color: "var(--warning)" }}>{v.targetName}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Подсчёт по весам */}
+        {voteCounts && Object.keys(voteCounts).length > 0 && (
+          <div style={{ marginBottom: "1.5rem" }}>
+            <div style={{ fontWeight: "bold", marginBottom: "0.5rem", color: "var(--text-secondary)", fontSize: "0.8rem", textTransform: "uppercase" }}>
+              Итоги голосования:
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+              {Object.entries(voteCounts).sort((a, b) => b[1] - a[1]).map(([name, count]) => (
+                <div key={name} style={{
+                  padding: "0.3rem 0.7rem",
+                  background: "var(--bg-primary)",
+                  borderRadius: "20px",
+                  border: "1px solid var(--border)",
+                  fontSize: "0.9rem"
+                }}>
+                  {name}: <strong>{count}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Контент */}
         <div
@@ -90,20 +138,20 @@ export function VotingResultsModal({ isOpen, eliminated, tie, onClose }: VotingR
           {tie ? (
             <p
               style={{
-                fontSize: "1.5rem",
+                fontSize: "1.25rem",
                 color: "var(--warning)",
                 fontWeight: "500"
               }}
             >
-              Голоса разделились поровну. Никто не был исключён! 🤷
+              Голоса разделились поровну. Город переходит к разрешению ничьей! ⚖️
             </p>
           ) : hasEliminated ? (
             <div>
               <p
                 style={{
-                  fontSize: "1.25rem",
+                  fontSize: "1.1rem",
                   color: "var(--text-secondary)",
-                  marginBottom: "1.5rem"
+                  marginBottom: "1rem"
                 }}
               >
                 Город принял решение:
@@ -112,7 +160,7 @@ export function VotingResultsModal({ isOpen, eliminated, tie, onClose }: VotingR
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: "1rem"
+                  gap: "0.75rem"
                 }}
               >
                 {eliminated.map((victim, index) => (
@@ -120,7 +168,7 @@ export function VotingResultsModal({ isOpen, eliminated, tie, onClose }: VotingR
                     key={index}
                     style={{
                       background: "var(--bg-primary)",
-                      padding: "1.5rem",
+                      padding: "1rem",
                       borderRadius: "var(--radius-lg)",
                       border: "2px solid var(--danger)",
                       animation: `slideInLeft 0.5s ease-out ${index * 0.1}s both`
@@ -128,17 +176,16 @@ export function VotingResultsModal({ isOpen, eliminated, tie, onClose }: VotingR
                   >
                     <div
                       style={{
-                        fontSize: "1.5rem",
+                        fontSize: "1.25rem",
                         fontWeight: "600",
-                        color: "var(--text-primary)",
-                        marginBottom: "0.5rem"
+                        color: "var(--text-primary)"
                       }}
                     >
                       {victim.userName}
                     </div>
                     <div
                       style={{
-                        fontSize: "1.125rem",
+                        fontSize: "1rem",
                         color: "var(--danger)",
                         fontWeight: "500"
                       }}
@@ -152,7 +199,7 @@ export function VotingResultsModal({ isOpen, eliminated, tie, onClose }: VotingR
           ) : (
             <p
               style={{
-                fontSize: "1.5rem",
+                fontSize: "1.25rem",
                 color: "var(--info)",
                 fontWeight: "500"
               }}

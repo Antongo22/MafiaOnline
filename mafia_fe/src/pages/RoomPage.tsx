@@ -49,7 +49,7 @@ import { NightResultsModal } from "../components/NightResultsModal";
 import { VotingResultsModal } from "../components/VotingResultsModal";
 import { type User, chatService } from "../services/chatService";
 import { gameService } from "../services/gameService";
-import { GamePhase, type VoterInfo, type NightResults } from "../types/game";
+import { GamePhase, type VoterInfo, type NightResults, type TieBreakerStarted } from "../types/game";
 import { saveRoomState, loadRoomState, clearRoomState, saveLastUsedNames, loadLastUsedNames } from "../utils/storage";
 import { rolesService, type RoleInfo } from "../services/rolesService";
 // import { videoCallService } from "../services/videoCallService";
@@ -124,12 +124,16 @@ export function RoomPage() {
     isOpen: boolean;
     eliminated: Array<{ userName: string; role: string }>;
     tie: boolean;
+    votesWithNames?: Array<{ voterName: string; targetName: string }>;
+    voteCounts?: Record<string, number>;
   }>({ isOpen: false, eliminated: [], tie: false });
 
   // TieBreaker modal
   const [tieBreakerModal, setTieBreakerModal] = useState<{
     isOpen: boolean;
     candidates: Array<{ userId: string; userName: string; role: string | null }>;
+    votesWithNames?: Array<{ voterName: string; targetName: string }>;
+    voteCounts?: Record<string, number>;
   }>({ isOpen: false, candidates: [] });
 
   // Game settings
@@ -570,7 +574,9 @@ export function RoomPage() {
       setVotingResultsModal({
         isOpen: true,
         eliminated: data.eliminated || [],
-        tie: data.tie || false
+        tie: data.tie || false,
+        votesWithNames: data.votesWithNames,
+        voteCounts: data.voteCounts
       });
 
       // Раскрываем роли всех исключённых игроков для всех
@@ -664,15 +670,25 @@ export function RoomPage() {
       showAlert(`🎉 ${winnerNames[data.winner] || data.winner}!`, "success");
     };
 
-    const handleTieBreakerStarted = (data: {
-      candidates: Array<{ userId: string; userName: string; role: string | null }>;
-      timeSeconds: number
-    }) => {
+    const handleTieBreakerStarted = (data: TieBreakerStarted) => {
       setGamePhase(GamePhase.TieBreaker);
       setTieBreakerModal({
         isOpen: true,
-        candidates: data.candidates
+        candidates: data.candidates,
+        votesWithNames: data.votesWithNames,
+        voteCounts: data.voteCounts
       });
+
+      // Также сохраняем результаты для отображения в других местах если нужно
+      if (data.votesWithNames && data.voteCounts) {
+        setVotingResults({
+          votesWithNames: data.votesWithNames,
+          voteCounts: data.voteCounts,
+          eliminated: [],
+          tie: true
+        });
+      }
+
       showAlert("⚖️ Ничья! Голосуйте: убить всех или помиловать всех", "warning");
     };
 
@@ -1340,13 +1356,40 @@ export function RoomPage() {
               <p style={{ marginBottom: "1rem", color: "var(--text-secondary)" }}>
                 Несколько игроков получили одинаковое количество голосов:
               </p>
-              <ul style={{ marginBottom: "1.5rem", paddingLeft: "1.5rem" }}>
-                {tieBreakerModal.candidates.map(c => (
-                  <li key={c.userId} style={{ marginBottom: "0.5rem" }}>
-                    <strong>{c.userName}</strong> {c.role && `(${c.role})`}
-                  </li>
-                ))}
-              </ul>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.5rem" }}>
+                <ul style={{ margin: 0, paddingLeft: "1.5rem" }}>
+                  {tieBreakerModal.candidates.map(c => (
+                    <li key={c.userId} style={{ marginBottom: "0.5rem" }}>
+                      <strong>{c.userName}</strong> {c.role && `(${c.role})`}
+                    </li>
+                  ))}
+                </ul>
+
+                {tieBreakerModal.votesWithNames && tieBreakerModal.voteCounts && (
+                  <div style={{
+                    padding: "1rem",
+                    background: "var(--bg-tertiary)",
+                    borderRadius: "var(--radius)",
+                    fontSize: "0.875rem",
+                    border: "1px solid var(--warning)"
+                  }}>
+                    <div style={{ fontWeight: "bold", marginBottom: "0.5rem", color: "var(--warning)" }}>
+                      КТО ЗА КОГО:
+                    </div>
+                    {tieBreakerModal.votesWithNames.map((v, i) => (
+                      <div key={i}>{v.voterName} → {v.targetName}</div>
+                    ))}
+                    <div style={{ fontWeight: "bold", marginTop: "0.5rem", marginBottom: "0.3rem", color: "var(--warning)" }}>
+                      ИТОГО ГОЛОСОВ:
+                    </div>
+                    {Object.entries(tieBreakerModal.voteCounts).map(([name, count]) => (
+                      <div key={name}>{name}: {count} {count === 1 ? "голос" : count < 5 ? "голоса" : "голосов"}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <p style={{ marginBottom: "1.5rem", fontWeight: "bold" }}>
                 Что делаем?
               </p>

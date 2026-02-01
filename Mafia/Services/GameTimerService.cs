@@ -271,21 +271,10 @@ public class GameTimerService : BackgroundService
     {
         var gameState = room.CurrentGameState!;
 
-        // Подсчитываем голоса с учетом силы голоса (у Дона голос за 2)
+        // Подсчитываем голоса (простое большинство)
         var voteCounts = gameState.Votes
             .GroupBy(v => v.Value)
-            .Select(g => 
-            {
-                var targetId = g.Key;
-                var totalWeight = 0;
-                foreach(var vote in g) {
-                    var voterId = vote.Key;
-                    var voterRole = room.PlayerRoles!.ContainsKey(voterId) ? room.PlayerRoles[voterId] : Role.Citizen;
-                    var weight = (voterRole == Role.Don) ? 2 : 1;
-                    totalWeight += weight;
-                }
-                return new { PlayerId = targetId, Count = totalWeight };
-            })
+            .Select(g => new { PlayerId = g.Key, Count = g.Count() })
             .ToList();
 
         if (voteCounts.Any())
@@ -347,10 +336,25 @@ public class GameTimerService : BackgroundService
                     userName = room.Users.FirstOrDefault(u => u.Id == id)?.Name
                 }).ToList();
                 
+                // Преобразуем голоса в формат с именами для отображения
+                var votesWithNames = gameState.Votes.Select(v => new
+                {
+                    voterName = room.Users.FirstOrDefault(u => u.Id == v.Key)?.Name,
+                    targetName = room.Users.FirstOrDefault(u => u.Id == v.Value)?.Name
+                }).ToList();
+
+                // Подсчёт голосов по именам игроков
+                var voteCountsByName = voteCounts.ToDictionary(
+                    v => room.Users.FirstOrDefault(u => u.Id == v.PlayerId)?.Name ?? "Unknown",
+                    v => v.Count
+                );
+
                 await _hubContext.Clients.Group(room.Id).SendAsync("TieBreakerStarted", new
                 {
                     candidates = candidateNames,
-                    timeSeconds = gameState.PhaseTimeSeconds
+                    timeSeconds = gameState.PhaseTimeSeconds,
+                    votesWithNames = votesWithNames,
+                    voteCounts = voteCountsByName
                 });
                 
                 return; // Выходим, обработка TieBreaker будет в AdvancePhase
@@ -805,7 +809,12 @@ public class GameTimerService : BackgroundService
                     mafiaActions.Add((userId, targetId!));
                     if (!mafiaVotes.ContainsKey(targetId!))
                         mafiaVotes[targetId!] = 0;
-                    mafiaVotes[targetId!]++;
+                    
+                    // У Дона голос за двоих ночью при выборе жертвы
+                    var voteWeight = (userRole == Role.Don) ? 2 : 1;
+                    mafiaVotes[targetId!] += voteWeight;
+
+                    _logger.LogInformation($"[Room {room.Id}] Mafia vote: {userId} ({userRole}) voted for {targetId} with weight {voteWeight}");
                 }
                 // Действие маньяка
                 else if (userRole == Role.Maniac)
@@ -853,6 +862,7 @@ public class GameTimerService : BackgroundService
                 // Ничья - выбираем рандомно
                 var random = new Random();
                 mafiaTarget = candidates[random.Next(candidates.Count)];
+                _logger.LogInformation($"[Room {room.Id}] Mafia vote tie detected (max votes: {maxVotes}). Candidates: {string.Join(", ", candidates)}. Randomly selected: {mafiaTarget}");
             }
 
             if (mafiaTarget != null)

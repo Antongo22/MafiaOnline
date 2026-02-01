@@ -104,6 +104,8 @@ export interface TieBreakerStarted {
     role: string | null;
   }>;
   timeSeconds: number;
+  votesWithNames?: Array<{ voterName: string; targetName: string }>;
+  voteCounts?: Record<string, number>;
 }
 
 export interface TieBreakerResults {
