@@ -243,7 +243,7 @@ public class NightActionTests
         var room = CreateNightRoom(donId, Role.Don, NightPhase.Don);
         // Добавляем шерифа в комнату
         room.Users.Add(new UserDTO { Id = sheriffId, Name = "Sheriff", IsAlive = true, Status = UserStatus.Player });
-        room.PlayerRoles[sheriffId] = Role.Sheriff;
+        room.PlayerRoles![sheriffId] = Role.Sheriff;
         room.CurrentGameState!.SheriffId = sheriffId;
         
         Game.Rooms.Clear();
@@ -279,7 +279,7 @@ public class NightActionTests
         var room = CreateNightRoom(sheriffId, Role.Sheriff, NightPhase.Sheriff);
         // Добавляем мафию
         room.Users.Add(new UserDTO { Id = mafiaId, Name = "Mafia", IsAlive = true, Status = UserStatus.Player });
-        room.PlayerRoles[mafiaId] = Role.Mafia;
+        room.PlayerRoles![mafiaId] = Role.Mafia;
         
         Game.Rooms.Clear();
         Game.Rooms.Add(room);

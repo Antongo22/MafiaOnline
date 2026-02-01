@@ -29,7 +29,7 @@ public class GameCycleController : ControllerBase
     /// Получить текущее состояние игры
     /// </summary>
     [HttpGet("state")]
-    public ActionResult GetGameState(string roomId)
+    public ActionResult GetGameState(string roomId, string? userId = null)
     {
         var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
         if (room == null)
@@ -66,7 +66,11 @@ public class GameCycleController : ControllerBase
         }
 
         // Получаем открытые карты для конкретного пользователя
-        var userId = Request.Query["userId"].ToString();
+        // В тестах Request может быть null, поэтому добавим проверку
+        if (string.IsNullOrEmpty(userId) && Request != null && Request.Query != null && Request.Query.ContainsKey("userId"))
+        {
+            userId = Request.Query["userId"].ToString();
+        }
         var myRevealedCards = new Dictionary<string, string>();
         if (!string.IsNullOrEmpty(userId) && gameState.RevealedCards.TryGetValue(userId, out var revealedIds))
         {
