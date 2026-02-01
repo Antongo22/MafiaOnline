@@ -271,10 +271,21 @@ public class GameTimerService : BackgroundService
     {
         var gameState = room.CurrentGameState!;
 
-        // Подсчитываем голоса
+        // Подсчитываем голоса с учетом силы голоса (у Дона голос за 2)
         var voteCounts = gameState.Votes
             .GroupBy(v => v.Value)
-            .Select(g => new { PlayerId = g.Key, Count = g.Count() })
+            .Select(g => 
+            {
+                var targetId = g.Key;
+                var totalWeight = 0;
+                foreach(var vote in g) {
+                    var voterId = vote.Key;
+                    var voterRole = room.PlayerRoles!.ContainsKey(voterId) ? room.PlayerRoles[voterId] : Role.Citizen;
+                    var weight = (voterRole == Role.Don) ? 2 : 1;
+                    totalWeight += weight;
+                }
+                return new { PlayerId = targetId, Count = totalWeight };
+            })
             .ToList();
 
         if (voteCounts.Any())
@@ -662,9 +673,11 @@ public class GameTimerService : BackgroundService
             .Select(u => room.PlayerRoles[u.Id])
             .ToHashSet();
 
-        _logger.LogInformation($"[Room {room.Id}] GetNextNightPhase: currentPhase={currentPhase}, DonHasFoundSheriff={room.CurrentGameState!.DonHasFoundSheriff}");
-        _logger.LogInformation($"[Room {room.Id}] Alive players ({alivePlayers.Count}): {string.Join(", ", alivePlayers.Select(p => $"{p.Name} ({room.PlayerRoles.GetValueOrDefault(p.Id)})"))}");
-        _logger.LogInformation($"[Room {room.Id}] Alive roles set: {string.Join(", ", aliveRoles)}");
+        _logger.LogInformation($"[Room {room.Id}] GetNextNightPhase: currentPhase={currentPhase}");
+        _logger.LogInformation($"[Room {room.Id}] PlayerRoles keys: {string.Join(", ", room.PlayerRoles!.Keys)}");
+        _logger.LogInformation($"[Room {room.Id}] Alive players IDs: {string.Join(", ", alivePlayers.Select(p => p.Id))}");
+        _logger.LogInformation($"[Room {room.Id}] Alive roles set: {string.Join(", ", aliveRoles.Select(r => r.ToString()))}");
+        _logger.LogInformation($"[Room {room.Id}] Don carries team: {RoleInfo.GetTeam(Role.Don)}");
 
         var nightPhases = new[] 
         {
@@ -685,22 +698,18 @@ public class GameTimerService : BackgroundService
             switch (phase)
             {
                 case NightPhase.Don:
-                    // Дон просыпается отдельно ТОЛЬКО для поиска Шерифа, если:
-                    // 1. Дон жив
-                    // 2. Еще не нашел Шерифа
-                    // 3. Шериф есть в игре
-                    var sheriffInGame = availableRoles.Contains(Role.Sheriff);
-                    var donNeedsToSearch = aliveRoles.Contains(Role.Don) && !room.CurrentGameState!.DonHasFoundSheriff && sheriffInGame;
+                    // Дон всегда просыпается для поиска, если он жив.
+                    // Это нужно для баланса и чтобы не выдавать статус Шерифа (умер он или его нет в игре).
+                    var donIsAlive = aliveRoles.Contains(Role.Don);
                     
-                    if (donNeedsToSearch)
+                    _logger.LogInformation($"[Room {room.Id}] Checking Don phase: donIsAlive={donIsAlive}");
+
+                    if (donIsAlive)
                     {
-                        // Дон должен найти Шерифа - отдельная фаза Don
-                        _logger.LogInformation($"[Room {room.Id}] Selected night phase: Don (searching for Sheriff)");
+                        _logger.LogInformation($"[Room {room.Id}] Selected night phase: Don (mandatory search)");
                         return phase;
                     }
-                    // Если Дон уже нашел Шерифа или Шерифа нет - пропускаем фазу Don
-                    // Дон проснется в фазе Mafia вместе с другими
-                    _logger.LogInformation($"[Room {room.Id}] Skipping Don phase - already found Sheriff or Sheriff not in game");
+                    _logger.LogInformation($"[Room {room.Id}] Skipping Don phase - Don is dead");
                     break;
                 
                 case NightPhase.Mafia:
@@ -989,6 +998,13 @@ public class GameTimerService : BackgroundService
         
         gameState.SpeakerOrder = alivePlayers;
         gameState.CurrentSpeakerId = alivePlayers.FirstOrDefault();
+        
+        // Initialize SheriffId if not already set (e.g., first day)
+        if (string.IsNullOrEmpty(gameState.SheriffId) && room.PlayerRoles.Any(p => p.Value == Role.Sheriff))
+        {
+            gameState.SheriffId = room.PlayerRoles.FirstOrDefault(p => p.Value == Role.Sheriff).Key;
+            _logger.LogInformation($"[Room {room.Id}] SheriffId initialized: {gameState.SheriffId}");
+        }
 
         _logger.LogInformation($"[Room {room.Id}] IndividualSpeech started. Alive players: {alivePlayers.Count}, First speaker: {gameState.CurrentSpeakerId}");
 

@@ -65,6 +65,20 @@ public class GameCycleController : ControllerBase
             currentVoterId = voter?.Id;
         }
 
+        // Получаем открытые карты для конкретного пользователя
+        var userId = Request.Query["userId"].ToString();
+        var myRevealedCards = new Dictionary<string, string>();
+        if (!string.IsNullOrEmpty(userId) && gameState.RevealedCards.TryGetValue(userId, out var revealedIds))
+        {
+            foreach (var targetId in revealedIds)
+            {
+                if (room.PlayerRoles!.TryGetValue(targetId, out var role))
+                {
+                    myRevealedCards[targetId] = role.ToString();
+                }
+            }
+        }
+
         return Ok(new {
             isActive = true,
             phase = gameState.Phase.ToString(),
@@ -77,7 +91,8 @@ public class GameCycleController : ControllerBase
             currentVoterId = currentVoterId,
             isPaused = gameState.IsPaused,
             gameStatus = room.Status.ToString(),
-            winningTeam = gameState.WinningTeam?.ToString()
+            winningTeam = gameState.WinningTeam?.ToString(),
+            myRevealedCards = myRevealedCards
         });
     }
 
@@ -191,6 +206,11 @@ public class GameCycleController : ControllerBase
             CurrentSpeakerId = alivePlayers.FirstOrDefault(),
             SheriffId = room.PlayerRoles.FirstOrDefault(p => p.Value == Role.Sheriff).Key
         };
+
+        _logger.LogInformation($"[Room {room.Id}] Game state initialized. SheriffId: {room.CurrentGameState.SheriffId}");
+        foreach(var pr in room.PlayerRoles) {
+            _logger.LogInformation($"[Room {room.Id}] Player {pr.Key} has role {pr.Value} (Team: {RoleInfo.GetTeam(pr.Value)})");
+        }
 
         await _hubContext.Clients.Group(roomId).SendAsync("GameCycleStarted", new
         {

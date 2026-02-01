@@ -183,7 +183,7 @@ public class GameController : ControllerBase
         
         // Раздаем роли игрокам
         room.PlayerRoles = new Dictionary<string, Role>();
-        for (int i = 0; i < activePlayers.Count; i++)
+        for (int i = 0; i < Math.Min(activePlayers.Count, rolesList.Count); i++)
         {
             room.PlayerRoles[activePlayers[i].Id] = rolesList[i];
         }

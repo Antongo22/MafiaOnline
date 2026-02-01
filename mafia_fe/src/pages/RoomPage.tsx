@@ -309,7 +309,7 @@ export function RoomPage() {
               }
 
               try {
-                const gameStateResponse = await fetch(`${API_URL}/api/GameCycle/state?roomId=${data.id}`);
+                const gameStateResponse = await fetch(`${API_URL}/api/GameCycle/state?roomId=${data.id}&userId=${savedState.userId}`);
                 if (gameStateResponse.ok) {
                   const gameStateData = await gameStateResponse.json();
                   if (gameStateData.isActive) {
@@ -326,6 +326,10 @@ export function RoomPage() {
 
                     if (gameStateData.winningTeam) {
                       setWinningTeam(gameStateData.winningTeam);
+                    }
+
+                    if (gameStateData.myRevealedCards) {
+                      setRevealedRoles(gameStateData.myRevealedCards);
                     }
                   }
                 }
