@@ -1561,7 +1561,7 @@ export function RoomPage() {
             </div>
 
             {/* Унифицированный список участников и ролей - перемещаем ВЫШЕ для лучшей видимости */}
-            <div className="participants-card" style={{ flexShrink: 0, marginBottom: "0.5rem" }}>
+            <div className="participants-card" style={{ flexShrink: 0 }}>
               <RoleDisplay
                 myRole={myRole}
                 revealedRoles={revealedRoles}

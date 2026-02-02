@@ -32,7 +32,7 @@ export function VideoCall({
     // Явный запрос разрешений перед загрузкой iframe
     const requestPermissions = async () => {
       try {
-        await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
         console.log("[VideoCall] Permissions granted");
       } catch (err) {
         console.error("[VideoCall] Failed to get permissions:", err);
@@ -53,6 +53,8 @@ export function VideoCall({
     params.set("autoJoin", "true");
     params.set("hideLeave", "true");
     params.set("hideChat", "true");
+    params.set("video", "false"); // По умолчанию без камеры
+    params.set("audio", "true");  // Микрофон включен по умолчанию
 
     if (isAdmin) {
       params.set("creator", "true"); // Calls frontend will create room if needed

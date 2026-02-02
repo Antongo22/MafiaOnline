@@ -15,7 +15,7 @@ public class RoomDTO
     public GameStatus Status { get; set; }
     
     // Настройки видео
-    public bool IsVideoEnabled { get; set; } = true;
+    public bool IsVideoEnabled { get; set; } = false;
     
     // Настройки игры
     public GameSettings? GameSettings { get; set; }
