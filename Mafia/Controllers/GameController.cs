@@ -262,14 +262,12 @@ public class GameController : ControllerBase
         // Раскрываем роли всех игроков
         if (room.PlayerRoles != null)
         {
-            var rolesWithNames = room.PlayerRoles.Select(kvp => new
-            {
-                userId = kvp.Key,
-                userName = room.Users.FirstOrDefault(u => u.Id == kvp.Key)?.Name,
-                role = kvp.Value.ToString()
-            }).ToDictionary(x => x.userName ?? x.userId, x => x.role);
+            var rolesWithIds = room.PlayerRoles.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value.ToString()
+            );
             
-            await _hubContext.Clients.Group(roomId).SendAsync("AllRolesRevealed", rolesWithNames);
+            await _hubContext.Clients.Group(roomId).SendAsync("AllRolesRevealed", rolesWithIds);
         }
         
         return Ok(new { message = "Game finished", status = room.Status, playerRoles = room.PlayerRoles });

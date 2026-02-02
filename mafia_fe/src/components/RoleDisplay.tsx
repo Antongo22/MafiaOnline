@@ -190,7 +190,7 @@ export function RoleDisplay({
                   display: "flex",
                   alignItems: "center",
                   gap: "1rem",
-                  opacity: isDead ? 0.6 : 1,
+                  opacity: (isDead && gameStatus !== "Finished") ? 0.6 : 1,
                   transition: "all 0.3s ease",
                   position: "relative",
                   boxShadow: isHighlighted ? "0 0 15px var(--warning)44" : "none"
@@ -208,7 +208,10 @@ export function RoleDisplay({
                   borderRadius: "50%",
                   border: `1px solid ${displayRole ? colors.border : "var(--border)"}44`
                 }}>
-                  {isDead ? "💀" : (displayRole ? getRoleEmoji(displayRole) : "👤")}
+                  {/* Показываем эмодзи роли, если она известна (особенно после игры), иначе статус (мертв/жив) */}
+                  {(displayRole && (gameStatus === "Finished" || !isDead || revealedRole))
+                    ? getRoleEmoji(displayRole)
+                    : (isDead ? "💀" : "👤")}
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -216,8 +219,8 @@ export function RoleDisplay({
                     <span style={{
                       fontWeight: "600",
                       fontSize: "0.95rem",
-                      color: isDead ? "var(--text-secondary)" : "var(--text-primary)",
-                      textDecoration: isDead ? "line-through" : "none"
+                      color: (isDead && gameStatus !== "Finished") ? "var(--text-secondary)" : "var(--text-primary)",
+                      textDecoration: (isDead && gameStatus !== "Finished") ? "line-through" : "none"
                     }}>
                       {user.name}
                     </span>
@@ -254,8 +257,8 @@ export function RoleDisplay({
                       ВЫБЫЛ
                     </span>
                   )}
-                  {/* Кнопка кика - показываем в лобби (Created/Waiting или Lobby фаза) */}
-                  {isAdmin && !isCurrentUser && !isDead && (gameStatus === "Created" || gameStatus === "Waiting" || gamePhase === GamePhase.Lobby) && onKick && (
+                  {/* Кнопка кика - показываем всегда для админа (кроме самого себя) */}
+                  {isAdmin && !isCurrentUser && onKick && (
                     <button
                       onClick={() => onKick(user.id)}
                       className="btn-danger btn-sm"

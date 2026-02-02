@@ -1031,24 +1031,20 @@ public class GameTimerService : BackgroundService
         
         room.CurrentGameState.WinningTeam = winner;
 
-        // Преобразуем роли: userId -> userName, Role -> string
-        var rolesWithNames = new Dictionary<string, string>();
+        // Преобразуем роли: userId -> Role string
+        var rolesWithIds = new Dictionary<string, string>();
         if (room.PlayerRoles != null)
         {
             foreach (var kvp in room.PlayerRoles)
             {
-                var user = room.Users.FirstOrDefault(u => u.Id == kvp.Key);
-                if (user != null)
-                {
-                    rolesWithNames[user.Name] = kvp.Value.ToString();
-                }
+                rolesWithIds[kvp.Key] = kvp.Value.ToString();
             }
         }
 
         await _hubContext.Clients.Group(room.Id).SendAsync("GameOver", new
         {
             winner = winner.ToString(),
-            roles = rolesWithNames
+            roles = rolesWithIds
         });
         
         // Статус изменим позже в AdvancePhase
