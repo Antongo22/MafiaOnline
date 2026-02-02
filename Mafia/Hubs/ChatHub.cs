@@ -387,7 +387,22 @@ public class ChatHub : Hub
         var room = Game.Rooms.FirstOrDefault(r => r.Id == roomId);
         if (room == null) return;
         
-        // TODO: Проверка на админа (можно добавить, но для простоты доверимся клиенту/UI)
+        // Проверка на админа
+        if (Game.UserConnections.TryGetValue(Context.ConnectionId, out var connectionInfo))
+        {
+            var userId = connectionInfo.UserId;
+            var user = room.Users.FirstOrDefault(u => u.Id == userId);
+            if (user == null || user.Status != Enums.UserStatus.Admin)
+            {
+                _logger.LogWarning($"User {userId} attempted to change video status in room {roomId} without admin permissions.");
+                return;
+            }
+        }
+        else
+        {
+            _logger.LogWarning($"Unknown connection {Context.ConnectionId} attempted to change video status in room {roomId}.");
+            return;
+        }
 
         if (isEnabled)
         {

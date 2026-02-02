@@ -51,7 +51,6 @@ import { type User, chatService } from "../services/chatService";
 import { gameService } from "../services/gameService";
 import { GamePhase, type VoterInfo, type NightResults, type TieBreakerStarted } from "../types/game";
 import { saveRoomState, loadRoomState, clearRoomState, saveLastUsedNames, loadLastUsedNames } from "../utils/storage";
-import { rolesService, type RoleInfo } from "../services/rolesService";
 // import { videoCallService } from "../services/videoCallService";
 import { Chat } from "../components/Chat";
 import { MobileNavigation, type MobileTab } from "../components/MobileNavigation";
@@ -88,6 +87,7 @@ export function RoomPage() {
   // Game cycle state
   const [gamePhase, setGamePhase] = useState<string>(GamePhase.Lobby);
   const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [phaseTotalTime, setPhaseTotalTime] = useState<number>(30);
   const [currentSpeakerName, setCurrentSpeakerName] = useState<string | undefined>();
   const [currentVoterName, setCurrentVoterName] = useState<string | undefined>();
   const [currentVoterId, setCurrentVoterId] = useState<string | undefined>();
@@ -147,9 +147,8 @@ export function RoomPage() {
   // Alerts
   const [alert, setAlert] = useState<{ message: string; type: "info" | "success" | "warning" | "danger" } | null>(null);
   const [showNightOverlay, setShowNightOverlay] = useState(false);
+  const [showTurnOverlay, setShowTurnOverlay] = useState(false);
 
-  // Roles data
-  const [rolesData, setRolesData] = useState<RoleInfo[]>([]);
 
   // Mobile state
   const isMobile = useIsMobile();
@@ -194,11 +193,6 @@ export function RoomPage() {
   const MAFIA_ROLES = ["Don", "Mafia", "Ninja"];
   const isMafia = myRole && MAFIA_ROLES.includes(myRole);
 
-  // Helper function to get Russian role name
-  const getRussianRoleName = (roleValue: string): string => {
-    const roleInfo = rolesData.find(r => r.roleValue === roleValue);
-    return roleInfo?.name || roleValue;
-  };
 
   // Show alert function
   const showAlert = (message: string, type: "info" | "success" | "warning" | "danger" = "info") => {
@@ -206,14 +200,6 @@ export function RoomPage() {
     setTimeout(() => setAlert(null), 5000);
   };
 
-  // Load roles data
-  useEffect(() => {
-    const loadRoles = async () => {
-      const roles = await rolesService.getRoles();
-      setRolesData(roles);
-    };
-    loadRoles();
-  }, []);
 
   // Сохраняем состояние игры при изменениях, но только если у нас есть базовые данные
   useEffect(() => {
@@ -322,6 +308,7 @@ export function RoomPage() {
                     setTimeLeft(gameStateData.timeLeft);
                     setDayNumber(gameStateData.dayNumber);
                     setNightPhase(gameStateData.nightPhase);
+                    setPhaseTotalTime(gameStateData.totalTime || 30);
                     setCurrentSpeakerName(gameStateData.currentSpeakerName);
                     setCurrentSpeakerId(gameStateData.currentSpeakerId);
                     setCurrentVoterName(gameStateData.currentVoterName);
@@ -452,10 +439,11 @@ export function RoomPage() {
     };
 
     // Game cycle events
-    const handleTimerUpdate = (data: { phase: string; timeLeft: number; isPaused?: boolean; nightPhase?: string | null }) => {
+    const handleTimerUpdate = (data: { phase: string; timeLeft: number; isPaused?: boolean; nightPhase?: string | null; totalTime?: number }) => {
       setTimeLeft(data.timeLeft);
       setGamePhase(data.phase);
       setIsPaused(data.isPaused || false);
+      if (data.totalTime) setPhaseTotalTime(data.totalTime);
 
       // Обновляем ночную фазу если она пришла в данных
       if (data.nightPhase !== undefined) {
@@ -484,6 +472,7 @@ export function RoomPage() {
       setCurrentSpeakerId(data.speakerId);
       setDayNumber(data.dayNumber || dayNumber || 1); // Используем dayNumber из данных если есть
       setTimeLeft(data.timeSeconds || 30);
+      setPhaseTotalTime(data.timeSeconds || 30);
 
       // Показываем алерт только при первом старте игры
       if (isFirstStart) {
@@ -491,15 +480,27 @@ export function RoomPage() {
       }
     };
 
-    const handleSpeakerChanged = (data: { speakerName: string; speakerId: string }) => {
+    const handleSpeakerChanged = (data: { speakerName: string; speakerId: string; timeSeconds?: number }) => {
       setCurrentSpeakerName(data.speakerName);
       setCurrentSpeakerId(data.speakerId);
+      if (data.timeSeconds) {
+        setTimeLeft(data.timeSeconds);
+        setPhaseTotalTime(data.timeSeconds);
+      }
+      if (data.speakerId === userId) {
+        setShowTurnOverlay(true);
+        setTimeout(() => setShowTurnOverlay(false), 3000);
+      }
       showAlert(`🎤 Сейчас говорит: ${data.speakerName}`, "info");
     };
 
-    const handlePhaseChanged = (data: { phase: string }) => {
+    const handlePhaseChanged = (data: { phase: string; timeSeconds?: number }) => {
       setGamePhase(data.phase);
       setCurrentSpeakerName(undefined);
+      if (data.timeSeconds) {
+        setTimeLeft(data.timeSeconds);
+        setPhaseTotalTime(data.timeSeconds);
+      }
 
       // Очищаем результаты голосования при смене фазы
       if (data.phase !== GamePhase.Voting) {
@@ -517,6 +518,10 @@ export function RoomPage() {
       setCurrentVoterId(undefined);
       setHasVoted(false); // Сбрасываем при начале нового голосования
       setVotingCandidates(data.candidates || []);
+      if (data.timeSeconds) {
+        setTimeLeft(data.timeSeconds);
+        setPhaseTotalTime(data.timeSeconds);
+      }
       showAlert("🗳️ Голосование началось!", "warning");
 
       // Переключаем на вкладку "Игра" на мобильных и скроллим
@@ -538,6 +543,8 @@ export function RoomPage() {
       setCurrentVoterId(data.voterId);
       setVotingCandidates(data.candidates || []); // Обновляем список кандидатов
       if (data.voterId === userId) {
+        setShowTurnOverlay(true);
+        setTimeout(() => setShowTurnOverlay(false), 3000);
         showAlert("⏰ Ваш ход голосовать!", "warning");
       }
     };
@@ -604,10 +611,14 @@ export function RoomPage() {
       showAlert(`🌙 Ночь ${data.dayNumber} началась! Город засыпает...`, "info");
     };
 
-    const handleNightPhaseChanged = (data: { nightPhase: string, aliveTargets?: Array<{ userId: string, userName: string }> }) => {
+    const handleNightPhaseChanged = (data: { nightPhase: string, aliveTargets?: Array<{ userId: string, userName: string }>, timeSeconds?: number }) => {
       setNightPhase(data.nightPhase);
       if (data.aliveTargets) {
         setNightTargets(data.aliveTargets);
+      }
+      if (data.timeSeconds) {
+        setTimeLeft(data.timeSeconds);
+        setPhaseTotalTime(data.timeSeconds);
       }
       setGamePhase(GamePhase.Night);
       setLastActedPhase(null); // Сбрасываем флаг действия для новой фазы
@@ -672,6 +683,10 @@ export function RoomPage() {
 
     const handleTieBreakerStarted = (data: TieBreakerStarted) => {
       setGamePhase(GamePhase.TieBreaker);
+      if (data.timeSeconds) {
+        setTimeLeft(data.timeSeconds);
+        setPhaseTotalTime(data.timeSeconds);
+      }
       setTieBreakerModal({
         isOpen: true,
         candidates: data.candidates,
@@ -1136,6 +1151,7 @@ export function RoomPage() {
                 setTimeLeft(gameStateData.timeLeft);
                 setDayNumber(gameStateData.dayNumber);
                 setNightPhase(gameStateData.nightPhase);
+                setPhaseTotalTime(gameStateData.totalTime || 30);
                 setCurrentSpeakerName(gameStateData.currentSpeakerName);
                 setCurrentSpeakerId(gameStateData.currentSpeakerId);
                 setCurrentVoterName(gameStateData.currentVoterName);
@@ -1329,6 +1345,37 @@ export function RoomPage() {
           onClose={() => setVotingResultsModal({ isOpen: false, eliminated: [], tie: false })}
         />
 
+        {/* Оверлей вашего хода */}
+        {showTurnOverlay && (
+          <div style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            background: "rgba(16, 185, 129, 0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            pointerEvents: "none",
+            animation: "fadeOut 3s forwards"
+          }}>
+            <div style={{
+              background: "var(--success)",
+              color: "white",
+              padding: "2rem 4rem",
+              borderRadius: "var(--radius-lg)",
+              fontSize: "3rem",
+              fontWeight: "bold",
+              boxShadow: "0 0 50px rgba(0,0,0,0.5)",
+              textAlign: "center"
+            }}>
+              🎙 ВАШ ХОД!
+            </div>
+          </div>
+        )}
+
         {/* Модальное окно разрешения ничьей */}
         {tieBreakerModal.isOpen && (
           <div style={{
@@ -1513,6 +1560,22 @@ export function RoomPage() {
               </button>
             </div>
 
+            {/* Унифицированный список участников и ролей - перемещаем ВЫШЕ для лучшей видимости */}
+            <div className="participants-card" style={{ flexShrink: 0, marginBottom: "0.5rem" }}>
+              <RoleDisplay
+                myRole={myRole}
+                revealedRoles={revealedRoles}
+                gameStatus={gameStatus}
+                users={users}
+                currentSpeakerId={currentSpeakerId}
+                currentVoterId={currentVoterId}
+                gamePhase={gamePhase}
+                userId={userId}
+                isAdmin={!!isAdmin}
+                onKick={handleKickPlayer}
+              />
+            </div>
+
             {/* Админ-панель */}
             {isAdmin && (
               <AdminPanel
@@ -1526,154 +1589,6 @@ export function RoomPage() {
                 isPaused={isPaused}
               />
             )}
-
-            {/* Отображение ролей */}
-            <div style={{ flexShrink: 0, marginBottom: "1rem" }}>
-              <RoleDisplay
-                myRole={myRole}
-                revealedRoles={revealedRoles}
-                gameStatus={gameStatus}
-                users={users}
-              />
-            </div>
-
-            {/* Список пользователей */}
-            <div className="card participants-card" style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden"
-            }}>
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "1rem"
-              }}>
-                <h3 style={{
-                  margin: 0,
-                  fontSize: "1.125rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem"
-                }}>
-                  <span>👥 Участники</span>
-                  <span className="badge" style={{
-                    background: "var(--accent-light)",
-                    color: "var(--accent-primary)"
-                  }}>
-                    {users.length}
-                  </span>
-                </h3>
-              </div>
-              <div style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.5rem",
-                maxHeight: "400px",
-                overflowY: "auto",
-                paddingRight: "0.25rem"
-              }}>
-                {users.map((user) => {
-                  const isCurrentUser = user.id === userId;
-                  const isUserAdmin = user.status === "Admin";
-                  const isDead = user.isAlive === false;
-                  const isActivePlayer =
-                    (gamePhase === GamePhase.IndividualSpeech && user.id === currentSpeakerId) ||
-                    (gamePhase === GamePhase.Voting && user.id === currentVoterId);
-
-                  // Показываем роль, если игрок мёртв или его карта раскрыта
-                  const revealedRole = revealedRoles[user.id];
-                  const shouldShowRole = isDead || revealedRole;
-
-                  return (
-                    <div
-                      key={user.id}
-                      style={{
-                        padding: "0.75rem",
-                        background: isActivePlayer
-                          ? "var(--warning)"
-                          : isCurrentUser
-                            ? "var(--accent-light)"
-                            : "var(--bg-tertiary)",
-                        border: `2px solid ${isActivePlayer
-                          ? "var(--warning)"
-                          : isCurrentUser
-                            ? "var(--accent-primary)"
-                            : "var(--border)"
-                          }`,
-                        borderRadius: "var(--radius)",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "0.5rem",
-                        transition: "var(--transition)",
-                        opacity: isDead ? 0.5 : 1,
-                        boxShadow: isActivePlayer ? "0 0 20px rgba(251, 191, 36, 0.4)" : "none"
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            width: "8px",
-                            height: "8px",
-                            borderRadius: "50%",
-                            background: isDead ? "var(--danger)" : "var(--success)",
-                            flexShrink: 0
-                          }}></div>
-                          <span style={{
-                            fontSize: "0.875rem",
-                            fontWeight: isCurrentUser || isActivePlayer ? "600" : "normal",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            color: isActivePlayer ? "var(--bg-primary)" : "inherit"
-                          }}>
-                            {isActivePlayer && "▶️ "}
-                            {user.name}
-                            {isCurrentUser && " (вы)"}
-                            {isUserAdmin && " 👑"}
-                            {isDead && " ☠️"}
-                          </span>
-                        </div>
-                        {isAdmin && !isCurrentUser && !isDead && gamePhase === GamePhase.Lobby && (
-                          <button
-                            onClick={() => handleKickPlayer(user.id)}
-                            className="btn-danger btn-sm"
-                            style={{
-                              padding: "0.25rem 0.5rem",
-                              fontSize: "0.75rem",
-                              flexShrink: 0
-                            }}
-                            title="Исключить игрока"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                      {shouldShowRole && revealedRole && (
-                        <div style={{
-                          padding: "0.5rem",
-                          background: "var(--bg-primary)",
-                          borderRadius: "var(--radius-sm)",
-                          fontSize: "0.75rem",
-                          color: "var(--text-secondary)",
-                          border: "1px solid var(--border)",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.5rem",
-                          minHeight: "40px",
-                          flexShrink: 0
-                        }}>
-                          <span>🎭</span>
-                          <span style={{ fontWeight: "500" }}>{getRussianRoleName(revealedRole)}</span>
-                          {!isDead && <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>(раскрыто)</span>}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
 
             {/* Блок настроек игры - только в лобби */}
             {isAdmin && gameStatus === "Created" && (
@@ -1831,6 +1746,7 @@ export function RoomPage() {
                   (gamePhase === GamePhase.Voting && currentVoterId === userId)
                 }
                 winningTeam={winningTeam}
+                totalTime={phaseTotalTime}
               />
             )}
 

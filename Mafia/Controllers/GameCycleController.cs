@@ -96,7 +96,8 @@ public class GameCycleController : ControllerBase
             isPaused = gameState.IsPaused,
             gameStatus = room.Status.ToString(),
             winningTeam = gameState.WinningTeam?.ToString(),
-            myRevealedCards = myRevealedCards
+            myRevealedCards = myRevealedCards,
+            totalTime = gameState.PhaseTimeSeconds
         });
     }
 

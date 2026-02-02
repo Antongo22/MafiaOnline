@@ -3,6 +3,7 @@ import { GamePhase } from "../types/game";
 interface GamePhaseDisplayProps {
   phase: GamePhase;
   timeLeft: number;
+  totalTime: number; // Общее время фазы
   currentSpeakerName?: string;
   currentVoterName?: string;
   nightPhase?: string;
@@ -40,6 +41,7 @@ const TEAM_NAMES: Record<string, string> = {
 export function GamePhaseDisplay({
   phase,
   timeLeft,
+  totalTime,
   currentSpeakerName,
   currentVoterName,
   nightPhase,
@@ -188,7 +190,7 @@ export function GamePhaseDisplay({
             overflow: "hidden"
           }}>
             <div style={{
-              width: `${(timeLeft / 30) * 100}%`, // Примерно, нужно знать общее время
+              width: `${(timeLeft / (totalTime || 1)) * 100}%`,
               height: "100%",
               background: getPhaseColor(),
               transition: "width 1s linear"
