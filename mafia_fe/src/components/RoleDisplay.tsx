@@ -235,7 +235,7 @@ export function RoleDisplay({
                       fontWeight: "500",
                       marginTop: "0.1rem"
                     }}>
-                      {roleInfo.name} • {getTeamName(roleInfo.team)}
+                      {roleInfo.name}
                     </div>
                   )}
                 </div>
