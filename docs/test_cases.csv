@@ -1,16 +1,17 @@
-ID,Название теста,Класс,Описание,Тип,Приоритет
-TC-001,CheckWinCondition_MafiaEqualsGood_ShouldReturnEvil,WinConditionServiceTests,Мафия побеждает когда их количество >= мирных,Unit,High
-TC-002,CheckWinCondition_AllMafiaDeadAndNoManiac_ShouldReturnGood,WinConditionServiceTests,Мирные побеждают когда вся мафия мертва,Unit,High
-TC-003,CheckWinCondition_ManiacAlone_ShouldReturnNeutral,WinConditionServiceTests,Маньяк побеждает оставшись один,Unit,High
-TC-004,CheckWinCondition_GameInProgress_ShouldReturnNull,WinConditionServiceTests,Игра продолжается если нет победителя,Unit,High
-TC-005,Vote_ForDeadPlayer_ShouldReturnBadRequest,VotingProtectionTests,Нельзя голосовать за мертвого игрока,Unit,High
-TC-006,Vote_ForPlayerWhoLeft_ShouldReturnBadRequest,VotingProtectionTests,Нельзя голосовать за вышедшего игрока,Unit,Medium
-TC-007,Vote_ForAlivePlayer_ShouldSucceed,VotingProtectionTests,Успешное голосование за живого игрока,Unit,High
-TC-008,ShufflePlayersWithRoles_WithValidInput_ShouldReturnCorrectNumberOfRoles,GameServiceTests,Корректное распределение ролей по игрокам,Unit,High
-TC-009,ShufflePlayersWithRoles_WithMismatchedCounts_ShouldThrowInvalidOperationException,GameServiceTests,Ошибка при несовпадении количества игроков и ролей,Unit,Medium
-TC-010,CreateRoom_WithValidData_ShouldReturnOk,RoomControllerTests,Успешное создание комнаты через API,Integration,High
-TC-011,CreateRoom_WithEmptyRoomName_ShouldReturnBadRequest,RoomControllerTests,Ошибка при создании комнаты с пустым именем,Integration,Medium
-TC-012,JoinRoom_WithValidInviteCode_ShouldReturnOk,RoomControllerTests,Успешный вход в комнату по коду,Integration,High
-TC-013,JoinRoom_WithInvalidInviteCode_ShouldReturnNotFound,RoomControllerTests,Ошибка при входе с неверным кодом,Integration,Medium
-TC-014,StartGame_WithNonAdmin_ShouldReturnUnauthorized,GameControllerTests,Только админ может запустить игру,Integration,High
-TC-015,LeaveRoom_AsAdmin_ShouldDisbandRoom,RoomControllerTests,Выход админа расформировывает комнату,Integration,High
+﻿sep=;
+ID;Название теста;Класс;Описание;Тип;Приоритет
+TC-001;CheckWinCondition_MafiaEqualsGood_ShouldReturnEvil;WinConditionServiceTests;Мафия побеждает когда их количество больше или равно мирным;Unit;High
+TC-002;CheckWinCondition_AllMafiaDeadAndNoManiac_ShouldReturnGood;WinConditionServiceTests;Мирные побеждают когда вся мафия мертва;Unit;High
+TC-003;CheckWinCondition_ManiacAlone_ShouldReturnNeutral;WinConditionServiceTests;Маньяк побеждает оставшись один;Unit;High
+TC-004;CheckWinCondition_GameInProgress_ShouldReturnNull;WinConditionServiceTests;Игра продолжается если нет победителя;Unit;High
+TC-005;Vote_ForDeadPlayer_ShouldReturnBadRequest;VotingProtectionTests;Нельзя голосовать за мертвого игрока;Unit;High
+TC-006;Vote_ForPlayerWhoLeft_ShouldReturnBadRequest;VotingProtectionTests;Нельзя голосовать за вышедшего игрока;Unit;Medium
+TC-007;Vote_ForAlivePlayer_ShouldSucceed;VotingProtectionTests;Успешное голосование за живого игрока;Unit;High
+TC-008;ShufflePlayersWithRoles_WithValidInput_ShouldReturnCorrectNumberOfRoles;GameServiceTests;Корректное распределение ролей по игрокам;Unit;High
+TC-009;ShufflePlayersWithRoles_WithMismatchedCounts_ShouldThrowInvalidOperationException;GameServiceTests;Ошибка при несовпадении количества игроков и ролей;Unit;Medium
+TC-010;CreateRoom_WithValidData_ShouldReturnOk;RoomControllerTests;Успешное создание комнаты через API;Integration;High
+TC-011;CreateRoom_WithEmptyRoomName_ShouldReturnBadRequest;RoomControllerTests;Ошибка при создании комнаты с пустым именем;Integration;Medium
+TC-012;JoinRoom_WithValidInviteCode_ShouldReturnOk;RoomControllerTests;Успешный вход в комнату по коду;Integration;High
+TC-013;JoinRoom_WithInvalidInviteCode_ShouldReturnNotFound;RoomControllerTests;Ошибка при входе с неверным кодом;Integration;Medium
+TC-014;StartGame_WithNonAdmin_ShouldReturnUnauthorized;GameControllerTests;Только админ может запустить игру;Integration;High
+TC-015;LeaveRoom_AsAdmin_ShouldDisbandRoom;RoomControllerTests;Выход админа расформировывает комнату;Integration;High
