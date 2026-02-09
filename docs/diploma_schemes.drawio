@@ -101,7 +101,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="design-arch" name="6. Архитектура">
-    <mxGraphModel dx="3155" dy="1921" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1920" pageHeight="1080" background="none" math="0" shadow="0">
+    <mxGraphModel dx="2197" dy="1253" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1920" pageHeight="1080" background="none" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -124,7 +124,7 @@
           <mxGeometry height="120" width="350" x="1240" y="137" as="geometry" />
         </mxCell>
         <mxCell id="a4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=17;fontColor=#f9fafb;align=center;verticalAlign=middle;" value="In-memory state&#xa;Game.Rooms + ChatHistory&#xa;(текущее состояние партии)" vertex="1">
-          <mxGeometry height="110" width="350" x="1488" y="326" as="geometry" />
+          <mxGeometry height="110" width="350" x="1162" y="334" as="geometry" />
         </mxCell>
         <mxCell id="a5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=18;fontColor=#f9fafb;align=center;verticalAlign=middle;" value="SignalR ChatHub&#xa;реалтайм-сообщения и события" vertex="1">
           <mxGeometry height="110" width="340" x="700" y="330" as="geometry" />
@@ -132,20 +132,20 @@
         <mxCell id="a6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=17;fontColor=#f9fafb;align=center;verticalAlign=middle;" value="VideoCallService + LiveKitProxyController&#xa;проксирование запросов к Calls" vertex="1">
           <mxGeometry height="110" width="340" x="510" y="533" as="geometry" />
         </mxCell>
-        <mxCell id="ext-box" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#6b7280;strokeWidth=2;dashed=1;fontSize=14;fontColor=#d1d5db;align=center;verticalAlign=top;spacingTop=6;" value="Внешний сервис видеосвязи (не часть ядра Mafia)" vertex="1">
-          <mxGeometry height="572" width="1146" x="966" y="513" as="geometry" />
+        <mxCell id="ext-box" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#6b7280;strokeWidth=2;dashed=1;fontSize=14;fontColor=#d1d5db;align=right;verticalAlign=top;spacingTop=6;" value="Внешний сервис видеосвязи (не часть ядра Mafia)" vertex="1">
+          <mxGeometry height="434" width="879" x="164" y="657" as="geometry" />
         </mxCell>
         <mxCell id="a7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=18;fontColor=#f9fafb;align=center;verticalAlign=middle;" value="Calls Service (FastAPI, внешний)&#xa;/rooms /tokens /participants /chat" vertex="1">
-          <mxGeometry height="100" width="290" x="991" y="533" as="geometry" />
+          <mxGeometry height="100" width="290" x="531" y="773" as="geometry" />
         </mxCell>
         <mxCell id="a8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=18;fontColor=#f9fafb;align=center;verticalAlign=middle;" value="LiveKit Server (SFU)&#xa;медиа-маршрутизация&#xa;аудио/видео потоков" vertex="1">
-          <mxGeometry height="100" width="250" x="1626" y="576" as="geometry" />
+          <mxGeometry height="100" width="250" x="196" y="916" as="geometry" />
         </mxCell>
         <mxCell id="a9" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=17;fontColor=#f9fafb;align=center;verticalAlign=middle;" value="Видеопоток WebRTC&#xa;(клиент &lt;-&gt; LiveKit)" vertex="1">
-          <mxGeometry height="90" width="340" x="1581" y="796" as="geometry" />
+          <mxGeometry height="90" width="340" x="647" y="932" as="geometry" />
         </mxCell>
         <mxCell id="a10" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=14;fontColor=#f9fafb;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;" value="Текстовое пояснение архитектуры&#xa;1) Пользователь работает с веб-клиентом React.&#xa;2) Клиент обращается к Mafia API по REST и к ChatHub по SignalR.&#xa;3) Game Core управляет фазами, ролями и условиями победы, обновляя in-memory state.&#xa;4) Для видеосвязи Mafia использует внешний сервис calls через proxy-контроллер.&#xa;5) Calls взаимодействует с LiveKit, а медиапоток WebRTC идет между клиентом и LiveKit." vertex="1">
-          <mxGeometry height="190" width="640" x="-88" y="1160" as="geometry" />
+          <mxGeometry height="190" width="640" x="307" y="1255" as="geometry" />
         </mxCell>
         <mxCell id="e1" edge="1" parent="1" source="a1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;fontSize=14;" target="a2" value="REST">
           <mxGeometry relative="1" as="geometry" />
@@ -198,7 +198,7 @@
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="235" y="800" />
-              <mxPoint x="1415" y="800" />
+              <mxPoint x="255" y="800" />
             </Array>
           </mxGeometry>
         </mxCell>
@@ -294,131 +294,175 @@
     </mxGraphModel>
   </diagram>
   <diagram id="structure-mafia" name="9. Структурная схема Mafia">
-    <mxGraphModel dx="2066" dy="1441" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1920" pageHeight="1080" background="none" math="0" shadow="0">
+    <mxGraphModel dx="3797" dy="1653" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1920" pageHeight="1080" background="none" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="s-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=34;fontStyle=1;fontColor=#f9fafb;" value="Структурная схема проекта Mafia" vertex="1">
-          <mxGeometry height="50" width="820" x="40" y="20" as="geometry" />
+        <mxCell id="st-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=36;fontStyle=1;fontColor=#f9fafb;" value="Структурная схема проекта Mafia" vertex="1">
+          <mxGeometry height="52" width="900" x="244" y="-293" as="geometry" />
         </mxCell>
-        <mxCell id="s1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=18;fontColor=#f9fafb;" value="Mafia.sln" vertex="1">
-          <mxGeometry height="56" width="260" x="120" y="90" as="geometry" />
+        <mxCell id="st-subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontColor=#d1d5db;" value="Стартовые файлы: backend — Mafia/Mafia/Program.cs, frontend — Mafia/mafia_fe/src/main.tsx" vertex="1">
+          <mxGeometry height="24" width="1260" x="166" y="-99" as="geometry" />
         </mxCell>
-        <mxCell id="s2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=18;fontColor=#f9fafb;" value="Mafia/Mafia.csproj" vertex="1">
-          <mxGeometry height="56" width="260" x="120" y="170" as="geometry" />
+        <mxCell id="sln" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=17;fontColor=#f9fafb;" value="Mafia.sln" vertex="1">
+          <mxGeometry height="56" width="440" x="740" y="94" as="geometry" />
         </mxCell>
-        <mxCell id="s3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=16;fontColor=#f9fafb;" value="Program.cs (точка входа API)" vertex="1">
-          <mxGeometry height="56" width="260" x="120" y="250" as="geometry" />
+        <mxCell id="proj-be" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=15;fontColor=#f9fafb;" value="Mafia/Mafia.csproj" vertex="1">
+          <mxGeometry height="54" width="340" x="140" y="178" as="geometry" />
         </mxCell>
-        <mxCell id="s4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=14;fontColor=#f9fafb;" value="Controllers/&#xa;Room, Game, GameCycle, Role, Admin, LiveKitProxy" vertex="1">
-          <mxGeometry height="90" width="350" x="506" y="559" as="geometry" />
+        <mxCell id="proj-fe" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=15;fontColor=#f9fafb;" value="Mafia/mafia_fe/package.json" vertex="1">
+          <mxGeometry height="54" width="360" x="560" y="178" as="geometry" />
         </mxCell>
-        <mxCell id="s5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=14;fontColor=#f9fafb;" value="Services/&#xa;Game, GameTimerService, WinConditionService, VideoCallService" vertex="1">
-          <mxGeometry height="90" width="390" x="972" y="142" as="geometry" />
+        <mxCell id="proj-ut" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=14;fontColor=#f9fafb;" value="Mafia.UnitTests/Mafia.UnitTests.csproj" vertex="1">
+          <mxGeometry height="54" width="360" x="1020" y="178" as="geometry" />
         </mxCell>
-        <mxCell id="s6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=14;fontColor=#f9fafb;" value="Models + DTOs + Enums&#xa;GameState, RoomDTO, UserDTO, Role, GamePhase" vertex="1">
-          <mxGeometry height="90" width="350" x="1471" y="244" as="geometry" />
+        <mxCell id="proj-it" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=14;fontColor=#f9fafb;" value="Mafia.IntegrationTests/Mafia.IntegrationTests.csproj" vertex="1">
+          <mxGeometry height="54" width="400" x="1023" y="350" as="geometry" />
         </mxCell>
-        <mxCell id="s7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=15;fontColor=#f9fafb;" value="Hubs/ChatHub.cs (SignalR)" vertex="1">
-          <mxGeometry height="56" width="300" x="705" y="358" as="geometry" />
+        <mxCell id="be-start" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=15;fontColor=#f9fafb;" value="Program.cs (точка входа API)" vertex="1">
+          <mxGeometry height="54" width="340" x="140" y="252" as="geometry" />
         </mxCell>
-        <mxCell id="s8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=14;fontColor=#f9fafb;" value="mafia_fe/src/pages/RoomPage.tsx&#xa;главный экран и сценарии игры" vertex="1">
-          <mxGeometry height="70" width="300" x="120" y="370" as="geometry" />
+        <mxCell id="be-c" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Controllers/&#xa;Room, Game, GameCycle, Role, Admin, LiveKitProxy" vertex="1">
+          <mxGeometry height="80" width="380" x="140" y="324" as="geometry" />
         </mxCell>
-        <mxCell id="s9" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=14;fontColor=#f9fafb;" value="mafia_fe/src/components/*&#xa;UI-блоки (голосование, роль, чат, админ-панель)" vertex="1">
-          <mxGeometry height="70" width="300" x="120" y="460" as="geometry" />
+        <mxCell id="be-s" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Services/&#xa;Game, GameTimerService, WinConditionService, VideoCallService" vertex="1">
+          <mxGeometry height="80" width="380" x="-88" y="457" as="geometry" />
         </mxCell>
-        <mxCell id="s10" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=14;fontColor=#f9fafb;" value="mafia_fe/src/services/*&#xa;gameService, chatService, rolesService, videoCallService" vertex="1">
-          <mxGeometry height="70" width="300" x="120" y="550" as="geometry" />
+        <mxCell id="be-h" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=14;fontColor=#f9fafb;" value="Hubs/ChatHub.cs" vertex="1">
+          <mxGeometry height="58" width="380" x="226" y="614" as="geometry" />
         </mxCell>
-        <mxCell id="s11" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;dashed=1;fontSize=15;fontColor=#f9fafb;" value="Внешний сервис: calls (FastAPI + LiveKit)" vertex="1">
-          <mxGeometry height="56" width="390" x="1197" y="430" as="geometry" />
+        <mxCell id="be-m" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Models + DTOs + Enums + Helpers + Middleware&#xa;GameState, RoomDTO, Role, ValidationHelper, ExceptionHandling" vertex="1">
+          <mxGeometry height="82" width="380" x="222" y="863" as="geometry" />
         </mxCell>
-        <mxCell id="se1" edge="1" parent="1" source="s1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="s2">
+        <mxCell id="fe-start" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=15;fontColor=#f9fafb;" value="src/main.tsx (точка входа UI)" vertex="1">
+          <mxGeometry height="54" width="360" x="560" y="252" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-room" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=14;fontColor=#f9fafb;" value="src/pages/RoomPage.tsx" vertex="1">
+          <mxGeometry height="54" width="360" x="560" y="324" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-comp" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="src/components/*&#xa;VideoCall, Chat, VotingPanel, AdminPanel" vertex="1">
+          <mxGeometry height="74" width="400" x="1020" y="252" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-serv" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="src/services/*&#xa;gameService, rolesService, chatService, videoCallService" vertex="1">
+          <mxGeometry height="82" width="430" x="682" y="492" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-types" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="src/types + src/utils&#xa;модели клиента и localStorage-утилиты" vertex="1">
+          <mxGeometry height="74" width="390" x="702" y="632" as="geometry" />
+        </mxCell>
+        <mxCell id="calls-ext" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;dashed=1;fontSize=15;fontColor=#f9fafb;" value="Внешний сервис calls (FastAPI + LiveKit)" vertex="1">
+          <mxGeometry height="82" width="369" x="1126" y="574" as="geometry" />
+        </mxCell>
+        <mxCell id="se1" edge="1" parent="1" source="sln" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="proj-be">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="se2" edge="1" parent="1" source="s2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="s3">
+        <mxCell id="se2" edge="1" parent="1" source="sln" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="proj-fe">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="se3" edge="1" parent="1" source="s3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="s4">
+        <mxCell id="se3" edge="1" parent="1" source="sln" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="proj-ut">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="se4" edge="1" parent="1" source="sln" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="proj-it">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="250" y="324" />
-              <mxPoint x="633" y="324" />
+              <mxPoint x="1479" y="122" />
+              <mxPoint x="1479" y="254" />
+              <mxPoint x="1482" y="254" />
+              <mxPoint x="1482" y="384" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="se4" edge="1" parent="1" source="s4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="s5">
+        <mxCell id="se5" edge="1" parent="1" source="proj-be" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="be-start">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="se5" edge="1" parent="1" source="s5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="s6">
+        <mxCell id="se6" edge="1" parent="1" source="be-start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="be-c">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="se6" edge="1" parent="1" source="s4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;exitX=0.671;exitY=0.044;exitDx=0;exitDy=0;exitPerimeter=0;" target="s7">
+        <mxCell id="se7" edge="1" parent="1" source="be-c" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="be-s">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="se6b" edge="1" parent="1" source="s5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;fontSize=12;" target="s7" value="IHubContext (push)">
+        <mxCell id="se8" edge="1" parent="1" source="be-s" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;fontSize=12;" target="be-h" value="IHubContext push">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="se9" edge="1" parent="1" source="be-s" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="be-m">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="se10" edge="1" parent="1" source="proj-fe" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="fe-start">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="se11" edge="1" parent="1" source="fe-start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="fe-room">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="se12" edge="1" parent="1" source="fe-room" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="fe-comp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="se13" edge="1" parent="1" source="fe-room" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="fe-serv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="se14" edge="1" parent="1" source="fe-serv" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="fe-types">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="se15" edge="1" parent="1" source="fe-serv" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;fontSize=12;" target="be-c" value="REST">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="1081" y="295" />
-              <mxPoint x="855" y="295" />
+              <mxPoint x="330" y="499" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="se7" edge="1" parent="1" source="s8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="s9">
+        <mxCell id="se16" edge="1" parent="1" source="fe-serv" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;fontSize=12;" target="be-h" value="SignalR">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="se8" edge="1" parent="1" source="s9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;" target="s10">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="se8b" edge="1" parent="1" source="s10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;startArrow=block;startFill=1;endFill=1;strokeColor=#9ca3af;strokeWidth=2;fontSize=12;" target="s7" value="SignalR">
-          <mxGeometry relative="1" as="geometry">
+        <mxCell id="se17" edge="1" parent="1" source="be-s" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;fontSize=12;" target="calls-ext" value="HTTP API">
+          <mxGeometry relative="1" x="0.5498" y="3" as="geometry">
+            <mxPoint as="offset" />
             <Array as="points">
-              <mxPoint x="455" y="585" />
-              <mxPoint x="455" y="387" />
+              <mxPoint x="1461" y="461" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="se10" edge="1" parent="1" source="s5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeColor=#9ca3af;strokeWidth=2;fontSize=12;" target="s11" value="HTTP/WS">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1273" y="331" />
-              <mxPoint x="1392" y="331" />
-            </Array>
-          </mxGeometry>
+        <mxCell id="cap1" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=22;fontStyle=2;fontColor=#f9fafb;" value="Описание элементов схемы" vertex="1">
+          <mxGeometry height="34" width="520" x="-1161" y="83" as="geometry" />
         </mxCell>
-        <mxCell id="tbl-head-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=14;fontStyle=1;fontColor=#f9fafb;" value="Элемент схемы" vertex="1">
-          <mxGeometry height="44" width="360" x="120" y="700" as="geometry" />
+        <mxCell id="th1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontStyle=1;fontSize=14;fontColor=#f9fafb;" value="Название" vertex="1">
+          <mxGeometry height="40" width="480" x="-1644" y="-314" as="geometry" />
         </mxCell>
-        <mxCell id="tbl-head-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=14;fontStyle=1;fontColor=#f9fafb;" value="Описание" vertex="1">
-          <mxGeometry height="44" width="1140" x="480" y="700" as="geometry" />
+        <mxCell id="th2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontStyle=1;fontSize=14;fontColor=#f9fafb;" value="Описание" vertex="1">
+          <mxGeometry height="40" width="1300" x="-1164" y="-314" as="geometry" />
         </mxCell>
-        <mxCell id="tbl-r1c1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Mafia.sln / Mafia.csproj / Program.cs" vertex="1">
-          <mxGeometry height="52" width="360" x="120" y="744" as="geometry" />
+        <mxCell id="tr1c1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Mafia.sln" vertex="1">
+          <mxGeometry height="46" width="480" x="-1644" y="-274" as="geometry" />
         </mxCell>
-        <mxCell id="tbl-r1c2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Точка входа и конфигурация backend API: DI, middleware, маршруты контроллеров." vertex="1">
-          <mxGeometry height="52" width="1140" x="480" y="744" as="geometry" />
+        <mxCell id="tr1c2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Файл решения: объединяет backend API, frontend и тестовые проекты." vertex="1">
+          <mxGeometry height="46" width="1300" x="-1164" y="-274" as="geometry" />
         </mxCell>
-        <mxCell id="tbl-r2c1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Controllers + Services + Models/DTOs" vertex="1">
-          <mxGeometry height="52" width="360" x="120" y="796" as="geometry" />
+        <mxCell id="tr2c1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Mafia/Mafia.csproj → Program.cs" vertex="1">
+          <mxGeometry height="46" width="480" x="-1644" y="-228" as="geometry" />
         </mxCell>
-        <mxCell id="tbl-r2c2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Реализуют игровую логику: цикл игры день/ночь, роли, голосование, условия победы, API-операции комнат." vertex="1">
-          <mxGeometry height="52" width="1140" x="480" y="796" as="geometry" />
+        <mxCell id="tr2c2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Точка входа backend API: настройка DI, middleware, CORS, SignalR и маршрутов контроллеров." vertex="1">
+          <mxGeometry height="46" width="1300" x="-1164" y="-228" as="geometry" />
         </mxCell>
-        <mxCell id="tbl-r3c1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="mafia_fe (RoomPage, components, services)" vertex="1">
-          <mxGeometry height="52" width="360" x="120" y="848" as="geometry" />
+        <mxCell id="tr3c1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Controllers / Services / Hubs / Models+DTOs+Enums" vertex="1">
+          <mxGeometry height="46" width="480" x="-1644" y="-182" as="geometry" />
         </mxCell>
-        <mxCell id="tbl-r3c2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Клиентская часть интерфейса: сценарии игрока/админа, отображение фаз, взаимодействие с REST/SignalR." vertex="1">
-          <mxGeometry height="52" width="1140" x="480" y="848" as="geometry" />
+        <mxCell id="tr3c2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Серверная логика игры: цикл день/ночь, роли, состояние партии, realtime-события через ChatHub." vertex="1">
+          <mxGeometry height="46" width="1300" x="-1164" y="-182" as="geometry" />
         </mxCell>
-        <mxCell id="tbl-r4c1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="calls (внешний сервис)" vertex="1">
-          <mxGeometry height="52" width="360" x="120" y="900" as="geometry" />
+        <mxCell id="tr4c1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="mafia_fe/src/main.tsx → pages/components/services" vertex="1">
+          <mxGeometry height="46" width="480" x="-1644" y="-136" as="geometry" />
         </mxCell>
-        <mxCell id="tbl-r4c2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Отдельный видеосервис для токенов, управления участниками и медиапотоков через LiveKit; интеграция по API." vertex="1">
-          <mxGeometry height="52" width="1140" x="480" y="900" as="geometry" />
+        <mxCell id="tr4c2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Клиентский SPA интерфейс: взаимодействие с backend по REST и SignalR, отображение UI игровых фаз." vertex="1">
+          <mxGeometry height="46" width="1300" x="-1164" y="-136" as="geometry" />
         </mxCell>
-        <mxCell id="yebGuLrjmaAf0uCbzwH1-1" edge="1" parent="1" source="s10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.589;entryDx=0;entryDy=0;entryPerimeter=0;" target="s4">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="tr5c1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Mafia.UnitTests / Mafia.IntegrationTests" vertex="1">
+          <mxGeometry height="46" width="480" x="-1644" y="-90" as="geometry" />
+        </mxCell>
+        <mxCell id="tr5c2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Набор модулей автоматической проверки: unit-тесты для логики и integration-тесты для API-контрактов." vertex="1">
+          <mxGeometry height="46" width="1300" x="-1164" y="-90" as="geometry" />
+        </mxCell>
+        <mxCell id="tr6c1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="calls (внешний сервис)" vertex="1">
+          <mxGeometry height="46" width="480" x="-1644" y="-44" as="geometry" />
+        </mxCell>
+        <mxCell id="tr6c2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9ca3af;strokeWidth=2;fontSize=13;fontColor=#f9fafb;" value="Видеосервис FastAPI+LiveKit: токены и управление участниками; вызывается backend Mafia по HTTP API." vertex="1">
+          <mxGeometry height="46" width="1300" x="-1164" y="-44" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
