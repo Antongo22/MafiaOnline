@@ -183,6 +183,8 @@
         height: auto;
         flex: 1;
         overflow-y: auto;
+        padding-bottom: calc(90px + env(safe-area-inset-bottom));
+        box-sizing: border-box;
     }
 
     .room-center {
