@@ -122,9 +122,18 @@ export function RoleDisplay({
           }}>
             {getRoleEmoji(myRole)}
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.25rem" }}>
-              <h2 style={{ margin: 0, fontSize: "1.5rem", fontWeight: "800", color: "var(--text-primary)" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0.5rem 0.75rem", marginBottom: "0.25rem" }}>
+              <h2 style={{
+                margin: 0,
+                fontSize: "1.5rem",
+                fontWeight: "800",
+                color: "var(--text-primary)",
+                lineHeight: "1.15",
+                minWidth: 0,
+                overflowWrap: "anywhere",
+                wordBreak: "break-word"
+              }}>
                 {roleInfo.name}
               </h2>
               <span style={{

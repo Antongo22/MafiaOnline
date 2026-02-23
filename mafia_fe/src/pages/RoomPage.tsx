@@ -192,6 +192,13 @@ export function RoomPage() {
 
   const MAFIA_ROLES = ["Don", "Mafia", "Ninja"];
   const isMafia = myRole && MAFIA_ROLES.includes(myRole);
+  const showMafiaChatTab = Boolean(isMobile && isMafia && gameStatus === "InProgress");
+
+  useEffect(() => {
+    if (mobileTab === "mafia" && !showMafiaChatTab) {
+      setMobileTab("chat");
+    }
+  }, [mobileTab, showMafiaChatTab]);
 
 
   // Show alert function
@@ -1182,10 +1189,28 @@ export function RoomPage() {
     if (!confirmLeave) return;
 
     try {
-      const lastRoomId = room.id;
       const lastUserId = userId;
+      
+      // ВАЖНО: сначала уведомляем backend через HTTP.
+      // Раньше мы сначала вызывали chatService.leaveRoom(), что удаляло админа из room.Users
+      // и последующий /api/Room/leave уже не мог расформировать комнату.
+      const response = await fetch(`${API_URL}/api/Room/leave?userId=${lastUserId}`, {
+        method: "POST",
+      });
 
-      // 1. Немедленно очищаем локальное состояние
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Не удалось покинуть комнату");
+      }
+
+      // Закрываем SignalR-соединение целиком, чтобы точно выйти из групп комнаты
+      try {
+        await chatService.disconnect();
+      } catch (e) {
+        console.warn("[RoomPage] SignalR disconnect failed", e);
+      }
+
+      // Очищаем локальное состояние после успешного ответа сервера
       clearRoomState();
       setRoom(null);
       setUserId(null);
@@ -1203,20 +1228,10 @@ export function RoomPage() {
         setRoomName("");
       }
 
-      // 2. Фоновые попытки уведомить сервер
-      try {
-        await chatService.leaveRoom(lastRoomId, lastUserId);
-      } catch (e) {
-        console.warn("[RoomPage] SignalR leaveRoom failed", e);
-      }
-
-      fetch(`${API_URL}/api/Room/leave?userId=${lastUserId}`, {
-        method: "POST",
-      }).catch(err => console.warn("[RoomPage] API leave call failed:", err));
-
       console.log("[RoomPage] Left room successfully");
     } catch (err) {
       console.error("[RoomPage] Error in handleLeaveRoom:", err);
+      setError(err instanceof Error ? err.message : "Не удалось покинуть комнату");
     }
   };
 
@@ -1595,7 +1610,9 @@ export function RoomPage() {
               <div className="card settings-card" style={{
                 display: "flex",
                 flexDirection: "column",
-                overflow: "hidden"
+                overflow: "hidden",
+                minHeight: 0,
+                maxHeight: isMobile ? "calc(100dvh - 230px)" : undefined
               }}>
                 <h3 style={{
                   margin: 0,
@@ -1603,12 +1620,20 @@ export function RoomPage() {
                   fontSize: "1.125rem",
                   display: "flex",
                   alignItems: "center",
-                  gap: "0.5rem"
+                  gap: "0.5rem",
+                  flexShrink: 0
                 }}>
                   <span>⚙️ Настройки игры</span>
                 </h3>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "1rem",
+                  overflowY: "auto",
+                  minHeight: 0,
+                  paddingRight: "0.25rem"
+                }}>
                   <div>
                     <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", fontSize: "0.875rem" }}>
                       Время на индивидуальное выступление (секунды)
@@ -1696,28 +1721,25 @@ export function RoomPage() {
                       }}
                     />
                   </div>
-                </div>
 
-                <button
-                  onClick={handleSaveGameSettings}
-                  className="btn-primary"
-                  style={{
-                    marginTop: "1rem",
-                    width: "100%"
-                  }}
-                >
-                  Сохранить настройки
-                </button>
-
-                <div style={{ marginTop: "1.5rem", borderTop: "1px solid var(--border)", paddingTop: "1rem" }}>
-                  <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem" }}>Видеосвязь</h4>
                   <button
-                    onClick={() => chatService.setVideoStatus(room.id, !isVideoEnabled)}
-                    className={isVideoEnabled ? "btn-danger" : "btn-success"}
+                    onClick={handleSaveGameSettings}
+                    className="btn-primary"
                     style={{ width: "100%" }}
                   >
-                    {isVideoEnabled ? "Отключить видеозвонок" : "Включить видеозвонок"}
+                    Сохранить настройки
                   </button>
+
+                  <div style={{ borderTop: "1px solid var(--border)", paddingTop: "1rem" }}>
+                    <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem" }}>Видеосвязь</h4>
+                    <button
+                      onClick={() => chatService.setVideoStatus(room.id, !isVideoEnabled)}
+                      className={isVideoEnabled ? "btn-danger" : "btn-success"}
+                      style={{ width: "100%" }}
+                    >
+                      {isVideoEnabled ? "Отключить видеозвонок" : "Включить видеозвонок"}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1767,7 +1789,8 @@ export function RoomPage() {
                   minHeight: isMobile ? "50vh" : "400px",
                   aspectRatio: isMobile ? undefined : "16/9", // Возвращаем аспект контейнера, но ограничиваем высоту
                   maxHeight: isMobile ? undefined : "60vh",
-                  overflow: "hidden",
+                  overflowX: isMobile ? "auto" : "hidden",
+                  overflowY: isMobile ? "auto" : "hidden",
                   position: "relative",
                   background: "#000",
                   borderRadius: "var(--radius-lg)"
@@ -1980,7 +2003,7 @@ export function RoomPage() {
           {/* Правая панель - Чат (только десктоп) */}
 
 
-          {/* Вкладка Чат - показывается только на mobile (fullscreen) */}
+          {/* Вкладка общего чата - показывается только на mobile (fullscreen) */}
           {isMobile && mobileTab === 'chat' && (
             <div style={{
               position: "fixed",
@@ -1995,38 +2018,51 @@ export function RoomPage() {
               paddingTop: "0px",
               paddingBottom: (isInputFocused || keyboardOpen) ? "0px" : "90px" // Убираем отступ когда пишем
             }}>
-              {/* Mobile Chat Header with Close/Back button logic if needed, but tabs handle it */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                <Chat
+                  userId={userId}
+                  roomId={room.id}
+                  userName={userName}
+                />
+              </div>
+            </div>
+          )}
 
-              {/* Если мафия и ночь - показываем чат мафии, иначе обычный чат */}
-              {isMafia && gameStatus === "InProgress" && gamePhase === GamePhase.Night ? (
-                <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                  <div style={{
-                    padding: "0.5rem 1rem",
-                    background: "var(--danger-light)",
-                    color: "var(--danger)",
-                    fontWeight: 600,
-                    fontSize: "0.875rem",
-                    textAlign: "center"
-                  }}>
-                    🌙 Чат мафии (только вы видите)
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <MafiaChat
-                      roomId={room.id}
-                      userId={userId}
-                      userName={userName}
-                    />
-                  </div>
+          {/* Вкладка чата мафии на мобильном - отдельная от общего чата */}
+          {isMobile && mobileTab === 'mafia' && showMafiaChatTab && (
+            <div style={{
+              position: "fixed",
+              top: `${viewportTop}px`,
+              left: 0,
+              right: 0,
+              height: `${viewportHeight}px`,
+              display: "flex",
+              flexDirection: "column",
+              background: "var(--bg-primary)",
+              zIndex: 50,
+              paddingTop: "0px",
+              paddingBottom: (isInputFocused || keyboardOpen) ? "0px" : "90px"
+            }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                <div style={{
+                  padding: "0.5rem 1rem",
+                  background: "var(--danger-light)",
+                  color: "var(--danger)",
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                  textAlign: "center",
+                  flexShrink: 0
+                }}>
+                  🔫 Чат мафии (отдельная вкладка)
                 </div>
-              ) : (
-                <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                  <Chat
-                    userId={userId}
+                <div style={{ flex: 1, minHeight: 0 }}>
+                  <MafiaChat
                     roomId={room.id}
+                    userId={userId}
                     userName={userName}
                   />
                 </div>
-              )}
+              </div>
             </div>
           )}
 
@@ -2113,6 +2149,7 @@ export function RoomPage() {
             <MobileNavigation
               activeTab={mobileTab}
               onTabChange={setMobileTab}
+              showMafiaTab={showMafiaChatTab}
             />
           )}
         </div >

@@ -106,65 +106,89 @@ public class GameTimerService : BackgroundService
     private async Task AdvancePhase(RoomDTO room)
     {
         var gameState = room.CurrentGameState!;
+
+        if (gameState.IsPhaseTransitionInProgress)
+        {
+            _logger.LogDebug("[Room {RoomId}] AdvancePhase skipped: transition already in progress (phase: {Phase})", room.Id, gameState.Phase);
+            return;
+        }
+
+        gameState.IsPhaseTransitionInProgress = true;
+
+        try
+        {
         
         _logger.LogInformation($"[Room {room.Id}] AdvancePhase called. Current phase: {gameState.Phase}, IsFirstCycle: {gameState.IsFirstCycle}, FirstNightCompleted: {gameState.FirstNightCompleted}, DayNumber: {gameState.DayNumber}");
         
-        switch (gameState.Phase)
-        {
-            case GamePhase.IndividualSpeech:
-                _logger.LogInformation($"[Room {room.Id}] Advancing IndividualSpeech");
-                await AdvanceIndividualSpeech(room);
-                break;
+            switch (gameState.Phase)
+            {
+                case GamePhase.IndividualSpeech:
+                    _logger.LogInformation($"[Room {room.Id}] Advancing IndividualSpeech");
+                    await AdvanceIndividualSpeech(room);
+                    break;
 
-            case GamePhase.GameOver:
-                 _logger.LogInformation($"[Room {room.Id}] GameOver phase ended -> Setting Status to Finished");
-                 room.Status = GameStatus.Finished;
-                 await _hubContext.Clients.Group(room.Id).SendAsync("GameStatusChanged", new { status = room.Status.ToString() });
-                 break;
+                case GamePhase.GameOver:
+                     _logger.LogInformation($"[Room {room.Id}] GameOver phase ended -> Setting Status to Finished");
+                     room.Status = GameStatus.Finished;
+                     await _hubContext.Clients.Group(room.Id).SendAsync("GameStatusChanged", new { status = room.Status.ToString() });
+                     break;
             
-            case GamePhase.FreeDiscussion:
-                // Первый цикл: Обсуждение → Ночь → Обсуждение → Голосование
-                // Последующие: Ночь → Обсуждение → Голосование
-                // Если это первый цикл И первая ночь ещё не была - идём в ночь
-                // Иначе - идём в голосование
-                _logger.LogInformation($"[Room {room.Id}] FreeDiscussion: IsFirstCycle={gameState.IsFirstCycle}, FirstNightCompleted={gameState.FirstNightCompleted}, DayNumber={gameState.DayNumber}");
-                if (gameState.IsFirstCycle && !gameState.FirstNightCompleted)
-                {
-                    _logger.LogInformation($"[Room {room.Id}] FreeDiscussion -> Night (first cycle, before first night)");
-                    await StartNight(room);
-                }
-                else
-                {
-                    _logger.LogInformation($"[Room {room.Id}] FreeDiscussion -> Voting (IsFirstCycle={gameState.IsFirstCycle}, FirstNightCompleted={gameState.FirstNightCompleted})");
-                    await StartVoting(room);
-                }
-                break;
+                case GamePhase.FreeDiscussion:
+                    // Первый цикл: Обсуждение → Ночь → Обсуждение → Голосование
+                    // Последующие: Ночь → Обсуждение → Голосование
+                    // Если это первый цикл И первая ночь ещё не была - идём в ночь
+                    // Иначе - идём в голосование
+                    _logger.LogInformation($"[Room {room.Id}] FreeDiscussion: IsFirstCycle={gameState.IsFirstCycle}, FirstNightCompleted={gameState.FirstNightCompleted}, DayNumber={gameState.DayNumber}");
+                    if (gameState.IsFirstCycle && !gameState.FirstNightCompleted)
+                    {
+                        _logger.LogInformation($"[Room {room.Id}] FreeDiscussion -> Night (first cycle, before first night)");
+                        await StartNight(room);
+                    }
+                    else
+                    {
+                        _logger.LogInformation($"[Room {room.Id}] FreeDiscussion -> Voting (IsFirstCycle={gameState.IsFirstCycle}, FirstNightCompleted={gameState.FirstNightCompleted})");
+                        await StartVoting(room);
+                    }
+                    break;
             
-            case GamePhase.Voting:
-                _logger.LogInformation($"[Room {room.Id}] Advancing Voting");
-                await AdvanceVoting(room);
-                break;
+                case GamePhase.Voting:
+                    _logger.LogInformation($"[Room {room.Id}] Advancing Voting");
+                    await AdvanceVoting(room);
+                    break;
             
-            case GamePhase.TieBreaker:
-                // Если результаты уже показаны, это задержка - переходим к ночи
-                if (gameState.TieBreakerResultsShown)
-                {
-                    _logger.LogInformation($"[Room {room.Id}] TieBreaker results delay ended -> Starting Night");
-                    gameState.TieBreakerResultsShown = false; // Сбрасываем флаг
-                    await StartNight(room);
-                }
-                else
-                {
-                    // Обрабатываем голосование TieBreaker
-                    _logger.LogInformation($"[Room {room.Id}] Advancing TieBreaker");
-                    await ProcessTieBreakerResults(room);
-                }
-                break;
+                case GamePhase.TieBreaker:
+                    // Если результаты уже показаны, это задержка - переходим к ночи
+                    if (gameState.TieBreakerResultsShown)
+                    {
+                        _logger.LogInformation($"[Room {room.Id}] TieBreaker results delay ended -> Starting Night");
+                        gameState.TieBreakerResultsShown = false; // Сбрасываем флаг
+                        await StartNight(room);
+                    }
+                    else
+                    {
+                        // Обрабатываем голосование TieBreaker
+                        _logger.LogInformation($"[Room {room.Id}] Advancing TieBreaker");
+                        await ProcessTieBreakerResults(room);
+                    }
+                    break;
             
-            case GamePhase.Night:
-                _logger.LogInformation($"[Room {room.Id}] Advancing Night phase: {gameState.CurrentNightPhase}");
-                await AdvanceNight(room);
-                break;
+                case GamePhase.Night:
+                    _logger.LogInformation($"[Room {room.Id}] Advancing Night phase: {gameState.CurrentNightPhase}");
+                    await AdvanceNight(room);
+                    break;
+            }
+        }
+        finally
+        {
+            // Снимаем флаг даже если произошла ошибка, иначе комната "застынет"
+            if (room.CurrentGameState != null)
+            {
+                room.CurrentGameState.IsPhaseTransitionInProgress = false;
+            }
+            else
+            {
+                gameState.IsPhaseTransitionInProgress = false;
+            }
         }
     }
 
@@ -529,6 +553,8 @@ public class GameTimerService : BackgroundService
         gameState.NightActions.Clear();
         gameState.PendingDeaths.Clear();
         gameState.DayNumber++;
+        gameState.PhaseStartTime = DateTime.UtcNow;
+        gameState.PhaseTimeSeconds = 3; // Фаза подготовки к ночи (warning)
 
         _logger.LogInformation($"[Room {room.Id}] Night started. Day number: {gameState.DayNumber}");
 
@@ -1055,4 +1081,3 @@ public class GameTimerService : BackgroundService
         await _videoCallService.UnmuteAllVideoAsync(room.Id);
     }
 }
-

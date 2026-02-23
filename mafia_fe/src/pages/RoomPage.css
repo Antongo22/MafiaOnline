@@ -66,6 +66,7 @@
 .room-sidebar-left .settings-card {
     max-height: 900px;
     overflow-y: auto;
+    min-height: 0;
 }
 
 /* Admin panel card - larger with scroll */

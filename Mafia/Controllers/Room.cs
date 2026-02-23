@@ -116,9 +116,21 @@ public class Room : ControllerBase
         if (user.Status == UserStatus.Admin)
         {
             var roomId = room.Id;
+            var roomUserIds = room.Users.Select(u => u.Id).ToHashSet();
+            var participantConnectionIds = Game.UserConnections
+                .Where(kvp => kvp.Value.RoomId == roomId && roomUserIds.Contains(kvp.Value.UserId))
+                .Select(kvp => kvp.Key)
+                .Distinct()
+                .ToList();
             
             // Отправляем уведомление всем участникам о расформировании
             await _hubContext.Clients.Group(roomId).SendAsync("RoomDisbanded", new { roomId = roomId });
+            
+            // Дополнительно отправляем напрямую по connectionId (на случай потери membership в группе)
+            foreach (var connectionId in participantConnectionIds)
+            {
+                await _hubContext.Clients.Client(connectionId).SendAsync("RoomDisbanded", new { roomId = roomId });
+            }
             
             // Удаляем комнату полностью
             Game.Rooms.Remove(room);
