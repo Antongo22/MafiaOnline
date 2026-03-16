@@ -6,7 +6,27 @@ on:
   workflow_dispatch:
 
 jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+        include-prerelease: true
+
+    - name: Restore backend dependencies
+      run: dotnet restore Mafia.sln
+
+    - name: Run backend tests
+      run: dotnet test Mafia.sln --configuration Release --no-restore
+
   deploy:
+    needs: backend-tests
     runs-on: ubuntu-latest
 
     steps:
