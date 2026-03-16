@@ -1335,6 +1335,22 @@ export function RoomPage() {
     }
   };
 
+  const getNightActionTargets = () => {
+    if (!userId) return [];
+
+    const signalRTargets = nightTargets.filter(target => target.userId !== userId);
+    if (signalRTargets.length > 0) {
+      return signalRTargets;
+    }
+
+    return users
+      .filter(user => user.id !== userId && user.status !== "Leave" && user.isAlive !== false)
+      .map(user => ({
+        userId: user.id,
+        userName: user.name
+      }));
+  };
+
   // Determine which component to show based on game phase
   // Убираем модальные окна для голосования и ночных действий.
   // Теперь UI встроен в основную панель.
@@ -1954,7 +1970,7 @@ export function RoomPage() {
               const actionInfo = actionDescriptions[nightPhase];
               if (!actionInfo) return null;
 
-              const alivePlayers = nightTargets.filter(u => u.userId !== userId);
+              const alivePlayers = getNightActionTargets();
 
               return (
                 <div className="card" style={{ padding: "1.5rem", background: "var(--bg-secondary)", border: "2px solid var(--danger)" }}>
