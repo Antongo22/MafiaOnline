@@ -988,7 +988,8 @@ export function RoomPage() {
   ]);
   */
 
-  const handleCreateRoom = async (e: React.FormEvent) => {
+    // Обработчик создания игровой комнаты
+    const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!roomName.trim() || !userName.trim()) {
       setError("Заполните все поля");
@@ -2256,7 +2257,8 @@ export function RoomPage() {
           </div>
         )}
 
-        <form onSubmit={mode === "create" ? handleCreateRoom : handleJoinRoom} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          // Элементы интерфейса для ввода данных
+          <form onSubmit={mode === "create" ? handleCreateRoom : handleJoinRoom} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           <div>
             <label style={{
               display: "block",
