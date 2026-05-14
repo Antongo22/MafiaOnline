@@ -1,4 +1,4 @@
-<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.3.0 Chrome/140.0.7339.249 Electron/38.7.2 Safari/537.36" version="29.3.0" pages="5">
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.6.6 Chrome/144.0.7559.236 Electron/40.8.4 Safari/537.36" version="29.6.6" pages="5">
   <diagram id="requirements-5" name="5. Требования">
     <mxGraphModel dx="2066" dy="1408" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1920" pageHeight="1080" background="none" math="0" shadow="0">
       <root>
@@ -101,7 +101,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="design-arch" name="6. Архитектура">
-    <mxGraphModel dx="2831" dy="1656" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1920" pageHeight="1080" background="none" math="0" shadow="0">
+    <mxGraphModel dx="2466" dy="1442" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1920" pageHeight="1080" background="none" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -109,7 +109,7 @@
           <mxGeometry height="60" width="980" x="40" y="24" as="geometry" />
         </mxCell>
         <mxCell id="a0" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeWidth=2;fontSize=17;align=center;verticalAlign=middle;labelBackgroundColor=none;" value="Пользователь&#xa;(браузер)" vertex="1">
-          <mxGeometry height="84" width="210" x="-195" y="160" as="geometry" />
+          <mxGeometry height="84" width="210" x="-205" y="150" as="geometry" />
         </mxCell>
         <mxCell id="a1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeWidth=2;fontSize=18;align=center;verticalAlign=middle;labelBackgroundColor=none;" value="Клиент (React, mafia_fe)&#xa;RoomPage, UI-компоненты, services" vertex="1">
           <mxGeometry height="120" width="340" x="119" y="132" as="geometry" />
@@ -121,7 +121,7 @@
           <mxGeometry height="120" width="340" x="700" y="132" as="geometry" />
         </mxCell>
         <mxCell id="a3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeWidth=2;fontSize=18;align=center;verticalAlign=middle;labelBackgroundColor=none;" value="Game Core&#xa;GameState, GameTimerService,&#xa;WinConditionService" vertex="1">
-          <mxGeometry height="120" width="350" x="1240" y="137" as="geometry" />
+          <mxGeometry height="120" width="350" x="1240" y="132" as="geometry" />
         </mxCell>
         <mxCell id="a4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeWidth=2;fontSize=17;align=center;verticalAlign=middle;labelBackgroundColor=none;" value="In-memory state&#xa;Game.Rooms + ChatHistory&#xa;(текущее состояние партии)" vertex="1">
           <mxGeometry height="110" width="350" x="1162" y="334" as="geometry" />
@@ -148,10 +148,12 @@
           <mxGeometry height="190" width="640" x="307" y="1255" as="geometry" />
         </mxCell>
         <mxCell id="e1" edge="1" parent="1" source="a1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;labelBackgroundColor=none;fontColor=default;" target="a2" value="REST">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry relative="1" x="0.0539" y="-8" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="e2" edge="1" parent="1" source="a1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;exitX=0.709;exitY=1.008;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.003;entryY=0.4;entryDx=0;entryDy=0;entryPerimeter=0;labelBackgroundColor=none;fontColor=default;" target="a5" value="SignalR">
-          <mxGeometry relative="1" x="0.3654" as="geometry">
+          <mxGeometry relative="1" x="0.3559" y="13" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
               <mxPoint x="367" y="253" />
@@ -164,13 +166,18 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="e3" edge="1" parent="1" source="a2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;labelBackgroundColor=none;fontColor=default;" target="a3" value="логика игры">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry relative="1" x="0.06" y="16" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="e4" edge="1" parent="1" source="a3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;labelBackgroundColor=none;fontColor=default;" target="a4" value="чтение/запись">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry relative="1" x="0.1873" y="-11" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="e5" edge="1" parent="1" source="a3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;labelBackgroundColor=none;fontColor=default;" target="a5" value="игровые события">
-          <mxGeometry relative="1" as="geometry">
+          <mxGeometry relative="1" x="-0.0087" y="-60" as="geometry">
+            <mxPoint as="offset" />
             <Array as="points">
               <mxPoint x="1119" y="232" />
               <mxPoint x="1119" y="385" />
@@ -178,7 +185,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="e6" edge="1" parent="1" source="a2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;labelBackgroundColor=none;fontColor=default;" target="a6" value="управление медиа">
-          <mxGeometry relative="1" x="-0.1053" as="geometry">
+          <mxGeometry relative="1" x="-0.2744" y="11" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
               <mxPoint x="646" y="192" />
@@ -189,39 +196,54 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="e7" edge="1" parent="1" source="a6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;labelBackgroundColor=none;fontColor=default;" target="a7" value="proxy HTTP">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry relative="1" x="0.0299" y="-47" as="geometry">
+            <mxPoint x="1" y="-7" as="offset" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="e8" edge="1" parent="1" source="a7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;labelBackgroundColor=none;fontColor=default;" target="a8" value="Server API">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry relative="1" x="-0.0097" y="-12" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="e9" edge="1" parent="1" source="a1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;labelBackgroundColor=none;fontColor=default;" target="a8" value="WebRTC">
-          <mxGeometry relative="1" as="geometry">
+          <mxGeometry relative="1" x="-0.038" y="-31" as="geometry">
+            <mxPoint as="offset" />
             <Array as="points">
               <mxPoint x="235" y="800" />
               <mxPoint x="255" y="800" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e10" edge="1" parent="1" source="a8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;labelBackgroundColor=none;fontColor=default;" target="a9" value="канал медиа">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="e10" edge="1" parent="1" source="a8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;labelBackgroundColor=none;fontColor=default;curved=0;" target="a9" value="канал медиа">
+          <mxGeometry relative="1" x="-0.1039" y="10" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="e11" edge="1" parent="1" source="a0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;labelBackgroundColor=none;fontColor=default;" target="a1" value="UI">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry relative="1" y="-17" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="e12" edge="1" parent="1" source="a1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=block;startFill=1;endFill=1;strokeWidth=2;fontSize=13;exitX=0.15;exitY=1.008;exitDx=0;exitDy=0;exitPerimeter=0;labelBackgroundColor=none;fontColor=default;" target="a1s" value="чтение/запись">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry relative="1" x="-0.0091" y="9" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="e13" edge="1" parent="1" source="a2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=13;labelBackgroundColor=none;fontColor=default;" target="a5" value="IHubContext push">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry relative="1" x="-0.2564" y="-59" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="e14" edge="1" parent="1" source="a6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=13;labelBackgroundColor=none;fontColor=default;" target="a5" value="игровые события">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry relative="1" x="-0.0143" y="9" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
   <diagram id="design-data-algo" name="8. Данные и алгоритм">
-    <mxGraphModel dx="2066" dy="1408" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1920" pageHeight="1080" background="none" math="0" shadow="0">
+    <mxGraphModel dx="2175" dy="1918" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1920" pageHeight="1080" background="none" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -256,7 +278,7 @@
           <mxGeometry height="220" width="410" x="1400" y="170" as="geometry" />
         </mxCell>
         <mxCell id="cmp" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeWidth=2;fontSize=16;align=left;verticalAlign=top;spacingLeft=10;spacingTop=10;labelBackgroundColor=none;" value="Сравнение и обоснование методов&#xa;1) Синхронизация состояния: Polling vs SignalR → выбран SignalR (меньше задержка, push-события)&#xa;2) Видеосвязь: P2P WebRTC vs SFU (LiveKit) → выбран SFU (масштабируемость при 8–12 игроков)&#xa;3) Хранение state: только БД vs in-memory Game.Rooms → выбран in-memory для быстрых игровых сессий" vertex="1">
-          <mxGeometry height="250" width="790" x="987" y="306" as="geometry" />
+          <mxGeometry height="250" width="790" x="1041" y="-301" as="geometry" />
         </mxCell>
         <mxCell id="me1" edge="1" parent="1" source="in1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;labelBackgroundColor=none;fontColor=default;" target="m1">
           <mxGeometry relative="1" as="geometry" />
@@ -277,10 +299,13 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="me7" edge="1" parent="1" source="d1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;labelBackgroundColor=none;fontColor=default;" target="m6" value="да">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry relative="1" x="-0.0385" y="-11" as="geometry">
+            <mxPoint x="11" y="-11" as="offset" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="me8" edge="1" parent="1" source="d1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=14;labelBackgroundColor=none;fontColor=default;" target="m3" value="нет">
-          <mxGeometry relative="1" as="geometry">
+          <mxGeometry relative="1" x="0.0038" y="15" as="geometry">
+            <mxPoint as="offset" />
             <Array as="points">
               <mxPoint x="510" y="770" />
               <mxPoint x="510" y="405" />
@@ -294,7 +319,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="structure-mafia" name="9. Структурная схема Mafia">
-    <mxGraphModel dx="4066" dy="1808" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1920" pageHeight="1080" background="none" math="0" shadow="0">
+    <mxGraphModel dx="4019" dy="1554" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1920" pageHeight="1080" background="none" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -326,13 +351,13 @@
           <mxGeometry height="80" width="380" x="140" y="324" as="geometry" />
         </mxCell>
         <mxCell id="be-s" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeWidth=2;fontSize=13;labelBackgroundColor=none;" value="Services/&#xa;Game, GameTimerService, WinConditionService, VideoCallService" vertex="1">
-          <mxGeometry height="80" width="380" x="-88" y="457" as="geometry" />
+          <mxGeometry height="80" width="380" x="-218" y="450" as="geometry" />
         </mxCell>
         <mxCell id="be-h" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeWidth=2;fontSize=14;labelBackgroundColor=none;" value="Hubs/ChatHub.cs" vertex="1">
           <mxGeometry height="58" width="380" x="226" y="614" as="geometry" />
         </mxCell>
         <mxCell id="be-m" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeWidth=2;fontSize=13;labelBackgroundColor=none;" value="Models + DTOs + Enums + Helpers + Middleware&#xa;GameState, RoomDTO, Role, ValidationHelper, ExceptionHandling" vertex="1">
-          <mxGeometry height="82" width="380" x="222" y="863" as="geometry" />
+          <mxGeometry height="82" width="380" x="220" y="709" as="geometry" />
         </mxCell>
         <mxCell id="fe-start" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeWidth=2;fontSize=15;labelBackgroundColor=none;" value="src/main.tsx (точка входа UI)" vertex="1">
           <mxGeometry height="54" width="360" x="560" y="252" as="geometry" />
@@ -350,7 +375,7 @@
           <mxGeometry height="74" width="390" x="702" y="632" as="geometry" />
         </mxCell>
         <mxCell id="calls-ext" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeWidth=2;dashed=1;fontSize=15;labelBackgroundColor=none;" value="Внешний сервис calls (FastAPI + LiveKit)" vertex="1">
-          <mxGeometry height="82" width="369" x="1126" y="574" as="geometry" />
+          <mxGeometry height="82" width="369" x="1187" y="492" as="geometry" />
         </mxCell>
         <mxCell id="se1" edge="1" parent="1" source="sln" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeWidth=2;labelBackgroundColor=none;fontColor=default;" target="proj-be">
           <mxGeometry relative="1" as="geometry" />
@@ -381,10 +406,18 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="se8" edge="1" parent="1" source="be-s" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=none;fontColor=default;" target="be-h" value="IHubContext push">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry relative="1" x="-0.4339" y="-14" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="se9" edge="1" parent="1" source="be-s" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeWidth=2;labelBackgroundColor=none;fontColor=default;" target="be-m">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint y="550" />
+              <mxPoint x="118" y="550" />
+              <mxPoint x="118" y="748" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <mxCell id="se10" edge="1" parent="1" source="proj-fe" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeWidth=2;labelBackgroundColor=none;fontColor=default;" target="fe-start">
           <mxGeometry relative="1" as="geometry" />
@@ -402,17 +435,20 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="se15" edge="1" parent="1" source="fe-serv" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=none;fontColor=default;" target="be-c" value="REST">
-          <mxGeometry relative="1" as="geometry">
+          <mxGeometry relative="1" x="0.0064" y="-8" as="geometry">
+            <mxPoint as="offset" />
             <Array as="points">
-              <mxPoint x="330" y="499" />
+              <mxPoint x="469" y="499" />
             </Array>
           </mxGeometry>
         </mxCell>
         <mxCell id="se16" edge="1" parent="1" source="fe-serv" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=none;fontColor=default;" target="be-h" value="SignalR">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry relative="1" x="0.0031" y="11" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="se17" edge="1" parent="1" source="be-s" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;strokeWidth=2;fontSize=12;labelBackgroundColor=none;fontColor=default;" target="calls-ext" value="HTTP API">
-          <mxGeometry relative="1" x="0.5498" y="3" as="geometry">
+          <mxGeometry relative="1" x="0.5454" y="12" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
               <mxPoint x="1461" y="461" />
