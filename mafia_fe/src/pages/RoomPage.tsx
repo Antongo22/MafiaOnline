@@ -2257,8 +2257,7 @@ export function RoomPage() {
           </div>
         )}
 
-          // Элементы интерфейса для ввода данных
-          <form onSubmit={mode === "create" ? handleCreateRoom : handleJoinRoom} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+        <form onSubmit={mode === "create" ? handleCreateRoom : handleJoinRoom} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           <div>
             <label style={{
               display: "block",
